@@ -9,6 +9,7 @@ const SECTIONS = [
   { href: "/settings/lists/vehicle_type", label: "Vehicle Types" },
   { href: "/settings/lists/partnership_status", label: "Partnership Statuses" },
   { href: "/settings/lists/partnership_tier", label: "Partnership Tiers" },
+  { href: "/settings/equipment", label: "Equipment Presets" },
   { href: "/settings/zones", label: "Zone Reference" },
   { href: "/settings/values", label: "Values & Goals" },
   { href: "/settings/templates", label: "Message Templates" },

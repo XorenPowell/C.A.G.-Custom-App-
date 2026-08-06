@@ -69,7 +69,14 @@ export function filterPartnerships(
     }
 
     if (needle) {
-      const hay = [p.business_name, p.poc_name, p.address, p.secondary_poc_name]
+      // Notes are searchable too, otherwise they are write-only.
+      const hay = [
+        p.business_name,
+        p.address,
+        p.poc_name,
+        p.secondary_poc_name,
+        p.notes,
+      ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();

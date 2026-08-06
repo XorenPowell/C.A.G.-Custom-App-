@@ -17,6 +17,7 @@ drop table  if exists entity_fees         cascade;
 drop table  if exists entity_rates        cascade;
 drop table  if exists entity_references   cascade;
 drop table  if exists entities            cascade;
+drop table  if exists equipment_presets   cascade;
 drop table  if exists message_templates   cascade;
 drop table  if exists list_items          cascade;
 drop table  if exists settings            cascade;
@@ -77,6 +78,24 @@ create table message_templates (
   updated_at    timestamptz not null default now()
 );
 create trigger message_templates_updated_at before update on message_templates
+  for each row execute function set_updated_at();
+
+-- Backs the item autocomplete on an entity's Equipment section. A lookup, not
+-- a foreign key: equipment rows copy the text, so editing or deleting a preset
+-- never disturbs equipment already recorded against an entity.
+create table equipment_presets (
+  id           uuid primary key default gen_random_uuid(),
+  item_name    text not null,
+  default_note text,
+  category     text not null default 'Other',
+  sort_order   integer not null default 0,
+  archived     boolean not null default false,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+create unique index equipment_presets_name_idx on equipment_presets (lower(item_name));
+create index equipment_presets_category_idx on equipment_presets (category, sort_order);
+create trigger equipment_presets_updated_at before update on equipment_presets
   for each row execute function set_updated_at();
 
 -- =====================================================================
@@ -398,6 +417,7 @@ left join lateral (
 alter table settings            enable row level security;
 alter table list_items          enable row level security;
 alter table message_templates   enable row level security;
+alter table equipment_presets   enable row level security;
 alter table entities            enable row level security;
 alter table entity_references   enable row level security;
 alter table entity_rates        enable row level security;
@@ -414,7 +434,7 @@ do $$
 declare t text;
 begin
   foreach t in array array[
-    'settings','list_items','message_templates','entities','entity_references',
+    'settings','list_items','message_templates','equipment_presets','entities','entity_references',
     'entity_rates','entity_fees','entity_equipment','entity_availability',
     'partnerships','jobs','job_workers','job_worker_fees'
   ] loop

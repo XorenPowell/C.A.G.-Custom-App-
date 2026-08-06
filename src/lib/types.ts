@@ -117,6 +117,16 @@ export type EntityAvailability = {
   end_time: string | null;
 };
 
+/** Backs the autocomplete on the entity Equipment section. Editable in Settings. */
+export type EquipmentPreset = {
+  id: string;
+  item_name: string;
+  default_note: string | null;
+  category: string;
+  sort_order: number;
+  archived: boolean;
+};
+
 export type EntityFull = Entity & {
   entity_references: EntityReference[];
   entity_rates: EntityRate[];

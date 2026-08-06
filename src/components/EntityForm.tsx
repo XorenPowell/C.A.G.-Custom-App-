@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import SaveBar from "@/components/SaveBar";
 import {
   AddButton,
   Checkbox,
+  Field,
   MoneyInput,
   NumberInput,
   RepeatRow,
@@ -14,10 +15,16 @@ import {
   TextArea,
   TextInput,
 } from "@/components/Form";
+import EquipmentItemInput from "@/components/EquipmentItemInput";
 import { saveEntity, type EntityPayload } from "@/app/actions/entities";
 import { active, optionsFor, type Lists } from "@/lib/lists";
 import { entityType } from "@/lib/format";
-import { ENTITY_STATUSES, type EntityFull, type EntityStatus } from "@/lib/types";
+import {
+  ENTITY_STATUSES,
+  type EntityFull,
+  type EntityStatus,
+  type EquipmentPreset,
+} from "@/lib/types";
 
 type RefRow = EntityPayload["references"][number];
 type RateRow = EntityPayload["rates"][number];
@@ -27,9 +34,11 @@ type EquipRow = EntityPayload["equipment"][number];
 export default function EntityForm({
   entity,
   lists,
+  presets,
 }: {
   entity: EntityFull | null;
   lists: Lists;
+  presets: EquipmentPreset[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -91,6 +100,33 @@ export default function EntityForm({
 
   const categories = active(lists.service_category);
   const vehicles = active(lists.vehicle_type);
+
+  /** Every default note in the library, used to tell autofill from real writing. */
+  const presetNotes = useMemo(
+    () => new Set(presets.map((p) => p.default_note?.trim()).filter(Boolean) as string[]),
+    [presets],
+  );
+
+  /**
+   * Fills the note from the chosen preset, but only over a blank note or one
+   * still holding a previous preset's untouched default. A note the dispatcher
+   * actually wrote survives switching items.
+   */
+  function applyPreset(index: number, preset: EquipmentPreset) {
+    setEquipment((prev) =>
+      prev.map((row, j) => {
+        if (j !== index) return row;
+        const current = (row.notes ?? "").trim();
+        const isAutofilled = current === "" || presetNotes.has(current);
+        return {
+          ...row,
+          item_name: preset.item_name,
+          notes: isAutofilled ? (preset.default_note ?? "") : row.notes,
+        };
+      }),
+    );
+    setStatusMsg(null);
+  }
 
   function save() {
     start(async () => {
@@ -359,7 +395,10 @@ export default function EntityForm({
       </Section>
 
       <Section title="Equipment">
-        <p className="muted mb-2 text-xs">Searchable across the whole roster.</p>
+        <p className="muted mb-2 text-xs">
+          Searchable across the whole roster, on both the item name and its notes. Type
+          to search the preset library — picking a bundle fills in what it contains.
+        </p>
         {equipment.map((it, i) => (
           <RepeatRow
             key={i}
@@ -367,15 +406,18 @@ export default function EntityForm({
             onRemove={() => setEquipment((prev) => prev.filter((_, j) => j !== i))}
           >
             <div className="grid-form">
-              <TextInput
-                label="Item"
-                value={it.item_name ?? ""}
-                onChange={(e) =>
-                  setEquipment((prev) =>
-                    prev.map((row, j) => (j === i ? { ...row, item_name: e.target.value } : row)),
-                  )
-                }
-              />
+              <Field label="Item">
+                <EquipmentItemInput
+                  value={it.item_name ?? ""}
+                  presets={presets}
+                  onChange={(v) =>
+                    setEquipment((prev) =>
+                      prev.map((row, j) => (j === i ? { ...row, item_name: v } : row)),
+                    )
+                  }
+                  onPickPreset={(preset) => applyPreset(i, preset)}
+                />
+              </Field>
               <NumberInput
                 label="Quantity"
                 min={0}
@@ -390,9 +432,11 @@ export default function EntityForm({
                 }
               />
             </div>
-            <TextInput
+            <TextArea
               label="Notes"
+              className="mb-0"
               value={it.notes ?? ""}
+              placeholder="Filled from the preset when you pick one — edit freely"
               onChange={(e) =>
                 setEquipment((prev) =>
                   prev.map((row, j) => (j === i ? { ...row, notes: e.target.value } : row)),
@@ -406,6 +450,11 @@ export default function EntityForm({
         >
           Add item
         </AddButton>
+        {presets.length === 0 && (
+          <p className="muted mt-2 text-xs">
+            No presets in the library yet — add them in Settings &rarr; Equipment Presets.
+          </p>
+        )}
       </Section>
 
       <Section title="References">

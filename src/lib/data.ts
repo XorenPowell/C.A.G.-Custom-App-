@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { EMPTY_LISTS, type Lists } from "@/lib/lists";
-import type { ListItem, MessageTemplate, Settings } from "@/lib/types";
+import type { EquipmentPreset, ListItem, MessageTemplate, Settings } from "@/lib/types";
 
 // Pure helpers live in lists.ts so client components can use them too.
 export {
@@ -46,6 +46,21 @@ export async function getSettings(): Promise<Settings> {
       daily_partnerships_goal: 10,
     }
   );
+}
+
+/** The equipment preset library, ordered bundles-first then by category. */
+export async function getEquipmentPresets(): Promise<EquipmentPreset[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("equipment_presets")
+    .select("*")
+    .order("sort_order")
+    .order("item_name");
+
+  // The table arrives in migration 002; an un-migrated database should still
+  // render the roster rather than blowing up on a missing relation.
+  if (error) return [];
+  return (data ?? []) as EquipmentPreset[];
 }
 
 export async function getTemplates(): Promise<MessageTemplate[]> {

@@ -30,20 +30,29 @@ export function rateFor(entity: EntityFull, categoryId: string | null) {
   return (entity.entity_rates ?? []).find((r) => r.service_category_id === categoryId) ?? null;
 }
 
-/** Free-text search spans entity name, worker names, equipment and POC. */
+/**
+ * Free-text search spans entity name, worker names, POC, and equipment.
+ *
+ * Equipment matches on the notes as well as the item name, so a crew logged as
+ * carrying a "General Moving Kit" is found by searching "dolly" even though no
+ * separate dolly row exists — the contents live in that preset's note.
+ */
 export function matchesText(entity: EntityFull, q: string): boolean {
   const needle = q.trim().toLowerCase();
   if (!needle) return true;
 
   if (entity.entity_name?.toLowerCase().includes(needle)) return true;
   if ((entity.worker_names ?? []).some((w) => w.toLowerCase().includes(needle))) return true;
+  if ((entity.poc_name ?? "").toLowerCase().includes(needle)) return true;
+
   if (
-    (entity.entity_equipment ?? []).some((e) =>
-      (e.item_name ?? "").toLowerCase().includes(needle),
+    (entity.entity_equipment ?? []).some(
+      (e) =>
+        (e.item_name ?? "").toLowerCase().includes(needle) ||
+        (e.notes ?? "").toLowerCase().includes(needle),
     )
   )
     return true;
-  if ((entity.poc_name ?? "").toLowerCase().includes(needle)) return true;
 
   return false;
 }
