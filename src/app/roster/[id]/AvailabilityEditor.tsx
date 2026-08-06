@@ -7,6 +7,20 @@ import { todayISO } from "@/lib/dates";
 import { daysSince, isAvailabilityStale } from "@/lib/format";
 import type { EntityAvailability } from "@/lib/types";
 
+/** YYYY-MM-DD from local date parts, never routed through UTC. */
+function localISO(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** Date arithmetic on the string itself, so no timezone can shift the day. */
+function addDaysISO(iso: string, days: number): string {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+
 /**
  * Availability lives on the entity page rather than the main form so it can be
  * updated in a few taps, and so a profile edit never resets the staleness clock.
@@ -41,11 +55,36 @@ export default function AvailabilityEditor({
   const age = daysSince(updatedAt);
 
   function addDay(offset: number) {
+    // Built from local date parts. toISOString() would roll over to tomorrow
+    // any evening after 7pm Chicago time, because it converts to UTC first.
     const d = new Date();
     d.setDate(d.getDate() + offset);
-    const iso = d.toISOString().slice(0, 10);
+    const iso = localISO(d);
     if (rows.some((r) => r.date === iso)) return;
     setRows((prev) => [...prev, { date: iso, start_time: "", end_time: "" }]);
+    setStatus(null);
+  }
+
+  /**
+   * Copies a block's times onto the next day that has no block yet. Holding
+   * down Duplicate walks a week forward without retyping the hours, which is
+   * the common case — the same shift repeated across several days.
+   */
+  function duplicate(index: number) {
+    setRows((prev) => {
+      const source = prev[index];
+      if (!source.date) return prev;
+
+      const taken = new Set(prev.map((r) => r.date));
+      let next = source.date;
+      for (let i = 0; i < 366; i++) {
+        next = addDaysISO(next, 1);
+        if (!taken.has(next)) break;
+      }
+
+      const copy: AvailabilityBlock = { ...source, date: next };
+      return [...prev.slice(0, index + 1), copy, ...prev.slice(index + 1)];
+    });
     setStatus(null);
   }
 
@@ -135,13 +174,30 @@ export default function AvailabilityEditor({
           />
           <button
             type="button"
+            className="btn btn-sm"
+            onClick={() => duplicate(i)}
+            title="Copy these times to the next day that has no block yet"
+          >
+            Duplicate
+          </button>
+          <button
+            type="button"
             className="btn btn-sm btn-danger"
             onClick={() => setRows((prev) => prev.filter((_, j) => j !== i))}
+            title="Remove this block"
+            aria-label="Remove this block"
           >
             ✕
           </button>
         </div>
       ))}
+
+      {rows.length > 0 && (
+        <p className="muted mb-2 text-xs">
+          Duplicate copies a block&apos;s hours onto the next open day — tap it repeatedly
+          to fill out a week.
+        </p>
+      )}
 
       {rows.length === 0 && (
         <p className="muted mb-2 text-sm">No availability blocks set.</p>
