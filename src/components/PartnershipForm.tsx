@@ -6,7 +6,8 @@ import SaveBar from "@/components/SaveBar";
 import { NumberInput, Section, Select, TextArea, TextInput } from "@/components/Form";
 import { savePartnership, type PartnershipPayload } from "@/app/actions/partnerships";
 import { optionsFor, type Lists } from "@/lib/lists";
-import { todayISO } from "@/lib/dates";
+import { followUpDue, followUpLabel, todayLocal } from "@/lib/follow-up";
+import { dateLongDisplay } from "@/lib/format";
 import type { Partnership } from "@/lib/types";
 
 const str = (v: unknown) => (v === null || v === undefined ? "" : String(v));
@@ -40,7 +41,9 @@ export default function PartnershipForm({
     total_cards_dropped: str(partnership?.total_cards_dropped ?? 0),
     fliers_dropped_last_visit: str(partnership?.fliers_dropped_last_visit ?? 0),
     total_fliers_dropped: str(partnership?.total_fliers_dropped ?? 0),
-    date_added: partnership?.date_added ?? todayISO(),
+    date_signed: partnership?.date_signed ?? "",
+    last_contact: partnership?.last_contact ?? "",
+    follow_up_days: str(partnership?.follow_up_days ?? ""),
     notes: partnership?.notes ?? "",
   });
 
@@ -48,6 +51,15 @@ export default function PartnershipForm({
     setForm((f) => ({ ...f, ...next }));
     setStatusMsg(null);
   }
+
+  // date_signed is the only thing that separates a lead from a partnership.
+  const isLeadNow = !form.date_signed;
+  const followUpInput = {
+    last_contact: form.last_contact || null,
+    follow_up_days: form.follow_up_days === "" ? null : Number(form.follow_up_days),
+  };
+  const due = followUpDue(followUpInput);
+  const dueLabel = followUpLabel(followUpInput);
 
   function save() {
     start(async () => {
@@ -117,13 +129,85 @@ export default function PartnershipForm({
               </option>
             ))}
           </Select>
+        </div>
+      </Section>
+
+      <Section title="Pipeline">
+        <div className="grid-form">
           <TextInput
-            label="Date added"
+            label="Date signed"
             type="date"
-            value={form.date_added}
-            onChange={(e) => patch({ date_added: e.target.value })}
+            value={form.date_signed}
+            onChange={(e) => patch({ date_signed: e.target.value })}
+            hint="Leave blank while this is still a lead."
+          />
+          <TextInput
+            label="Last contact"
+            type="date"
+            value={form.last_contact}
+            onChange={(e) => patch({ last_contact: e.target.value })}
+            hint="Any outreach — call, email or visit."
+          />
+          <NumberInput
+            label="Follow up in (days)"
+            step="1"
+            min={0}
+            placeholder="e.g. 14"
+            value={form.follow_up_days}
+            onChange={(e) => patch({ follow_up_days: e.target.value })}
+            hint="Counted from last contact."
           />
         </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => patch({ last_contact: todayLocal() })}
+          >
+            Contacted today
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => patch({ date_signed: todayLocal() })}
+            disabled={!!form.date_signed}
+          >
+            Signed today
+          </button>
+        </div>
+
+        <p
+          className={`mt-3 border p-2 text-sm ${
+            isLeadNow
+              ? "border-[var(--color-line)] bg-[var(--color-sunken)]"
+              : "border-[var(--color-good)] text-[var(--color-good)]"
+          }`}
+        >
+          {isLeadNow ? (
+            <>
+              <strong>Lead.</strong> Visible in your list, but excluded from New
+              Partnerships, the tier chart and every other figure until a signed date is
+              set.
+            </>
+          ) : (
+            <>
+              <strong>Signed partnership.</strong> Counts toward New Partnerships for{" "}
+              {dateLongDisplay(form.date_signed)} and appears in the tier breakdown.
+            </>
+          )}
+        </p>
+
+        {due && (
+          <p className="muted mt-2 text-sm">
+            Next follow-up: <strong>{dateLongDisplay(due)}</strong> ({dueLabel})
+          </p>
+        )}
+        {!due && form.follow_up_days && !form.last_contact && (
+          <p className="muted mt-2 text-sm">
+            Set a last contact date and the follow-up date will calculate from it.
+          </p>
+        )}
       </Section>
 
       <Section title="Primary Contact">

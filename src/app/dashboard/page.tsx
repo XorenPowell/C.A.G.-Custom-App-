@@ -95,7 +95,7 @@ export default async function DashboardPage({
               emphasis={
                 data.partnershipsToday >= settings.daily_partnerships_goal ? "good" : null
               }
-              sub="added today"
+              sub="contacted today"
             />
             <Stat
               label="Jobs this month"
@@ -165,7 +165,11 @@ export default async function DashboardPage({
         {/* ---------- partnerships ---------- */}
         <Panel title="Partnerships">
           <StatGrid>
-            <Stat label="New partnerships" value={num(data.newPartnerships, 0)} />
+            <Stat
+              label="New partnerships"
+              value={num(data.newPartnerships, 0)}
+              sub="signed in range"
+            />
             <Stat label="Referrals produced" value={num(data.referralsProduced, 0)} />
             <Stat
               label="Cards dropped"
@@ -194,8 +198,9 @@ export default async function DashboardPage({
         <p className="muted mt-4 text-xs">
           Volume, revenue and profit are scoped by invoice date (falling back to arrival
           date, then created date). Leads, conversion and referrals are scoped by the date
-          the job was created. New partnerships use their date added. Cards and fliers are
-          lifetime running totals across every partnership.
+          the job was created. New partnerships use their signed date — partnership leads
+          with no signed date are excluded from every figure on this screen. Cards and
+          fliers are lifetime running totals across signed partnerships.
         </p>
       </main>
     </>

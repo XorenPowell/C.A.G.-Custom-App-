@@ -207,7 +207,15 @@ create table partnerships (
   total_cards_dropped         integer not null default 0,
   fliers_dropped_last_visit   integer not null default 0,
   total_fliers_dropped        integer not null default 0,
-  date_added                  date not null default current_date,
+
+  -- Leads and real partnerships share this table. `date_signed` is the
+  -- discriminator: null means it is still a lead and it stays out of every
+  -- metric; set means it counts. When the lead was first written down is
+  -- already captured by created_at.
+  date_signed                 date,
+  last_contact                date,          -- any outreach: call, email, visit
+  follow_up_days              integer,       -- "follow up in N days" from last_contact
+
   notes                       text,
   created_at                  timestamptz not null default now(),
   updated_at                  timestamptz not null default now()
@@ -217,6 +225,8 @@ create trigger partnerships_updated_at before update on partnerships
 create index partnerships_status_idx on partnerships (status_id);
 create index partnerships_tier_idx on partnerships (tier_id);
 create index partnerships_zone_idx on partnerships (zone_id);
+create index partnerships_date_signed_idx on partnerships (date_signed);
+create index partnerships_last_contact_idx on partnerships (last_contact);
 
 -- =====================================================================
 -- JOBS

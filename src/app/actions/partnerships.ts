@@ -4,6 +4,20 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { fail, ok, orNull, toInt, type ActionResult } from "@/lib/persist";
 
+/** Whichever YYYY-MM-DD date is later; null when both are blank. */
+function laterOf(a: string | null, b: string | null): string | null {
+  if (!a) return b || null;
+  if (!b) return a;
+  return a >= b ? a : b;
+}
+
+/** Blank stays blank — a missing follow-up interval is not "0 days". */
+function toNullableInt(v: unknown): number | null {
+  if (v === null || v === undefined || String(v).trim() === "") return null;
+  const n = parseInt(String(v), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
 export type PartnershipPayload = {
   id: string | null;
   business_name: string;
@@ -22,7 +36,9 @@ export type PartnershipPayload = {
   total_cards_dropped: number | string;
   fliers_dropped_last_visit: number | string;
   total_fliers_dropped: number | string;
-  date_added: string | null;
+  date_signed: string | null;
+  last_contact: string | null;
+  follow_up_days: number | string | null;
   notes: string | null;
 };
 
@@ -50,7 +66,11 @@ export async function savePartnership(
     total_cards_dropped: toInt(payload.total_cards_dropped),
     fliers_dropped_last_visit: toInt(payload.fliers_dropped_last_visit),
     total_fliers_dropped: toInt(payload.total_fliers_dropped),
-    date_added: payload.date_added || new Date().toISOString().slice(0, 10),
+    // Null keeps this a lead; a date promotes it to a real partnership.
+    date_signed: payload.date_signed || null,
+    // Visiting someone is contacting them, so a later visit date carries.
+    last_contact: laterOf(payload.last_contact, payload.last_visit),
+    follow_up_days: toNullableInt(payload.follow_up_days),
     notes: orNull(payload.notes),
   };
 

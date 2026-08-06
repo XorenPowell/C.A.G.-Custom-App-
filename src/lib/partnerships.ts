@@ -1,5 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
+import { followUpDue, followUpState, isLead, todayLocal } from "@/lib/follow-up";
 import type { JobFinancials, Partnership } from "@/lib/types";
+
+export {
+  daysUntilFollowUp,
+  followUpDue,
+  followUpLabel,
+  followUpState,
+  isLead,
+  isSigned,
+  type FollowUpState,
+} from "@/lib/follow-up";
 
 export async function getPartnerships(): Promise<Partnership[]> {
   const supabase = await createClient();
@@ -22,17 +33,41 @@ export type PartnershipFilters = {
   status?: string;
   tier?: string;
   zone?: string;
+  /** "lead" = not yet signed, "signed" = a real partnership, "" = both. */
+  pipeline?: string;
+  /** "due" = overdue or due today, "overdue" = overdue only. */
+  due?: string;
+  sort?: string;
 };
+
+export const PARTNERSHIP_SORTS = [
+  { value: "follow_up", label: "Follow-up due" },
+  { value: "business_name", label: "Business name" },
+  { value: "last_contact", label: "Last contact" },
+  { value: "date_signed", label: "Date signed" },
+  { value: "created_at", label: "Recently added" },
+] as const;
 
 export function filterPartnerships(
   rows: Partnership[],
   f: PartnershipFilters,
 ): Partnership[] {
   const needle = (f.q ?? "").trim().toLowerCase();
-  return rows.filter((p) => {
+  const today = todayLocal();
+
+  const filtered = rows.filter((p) => {
+    if (f.pipeline === "lead" && !isLead(p)) return false;
+    if (f.pipeline === "signed" && isLead(p)) return false;
     if (f.status && p.status_id !== f.status) return false;
     if (f.tier && p.tier_id !== f.tier) return false;
     if (f.zone && p.zone_id !== f.zone) return false;
+
+    if (f.due) {
+      const state = followUpState(p, today);
+      if (f.due === "overdue" && state !== "overdue") return false;
+      if (f.due === "due" && state !== "overdue" && state !== "today") return false;
+    }
+
     if (needle) {
       const hay = [p.business_name, p.poc_name, p.address, p.secondary_poc_name]
         .filter(Boolean)
@@ -42,6 +77,41 @@ export function filterPartnerships(
     }
     return true;
   });
+
+  return sortPartnerships(filtered, f.sort);
+}
+
+function sortPartnerships(rows: Partnership[], sort?: string): Partnership[] {
+  const out = [...rows];
+  const byName = (a: Partnership, b: Partnership) =>
+    a.business_name.localeCompare(b.business_name);
+
+  switch (sort) {
+    case "business_name":
+      return out.sort(byName);
+    case "last_contact":
+      // Never contacted sorts last, not first.
+      return out.sort(
+        (a, b) => (b.last_contact ?? "").localeCompare(a.last_contact ?? "") || byName(a, b),
+      );
+    case "date_signed":
+      return out.sort(
+        (a, b) => (b.date_signed ?? "").localeCompare(a.date_signed ?? "") || byName(a, b),
+      );
+    case "created_at":
+      return out.sort((a, b) => b.created_at.localeCompare(a.created_at));
+    case "follow_up":
+    default:
+      // Most overdue first; rows with no follow-up set fall to the bottom.
+      return out.sort((a, b) => {
+        const da = followUpDue(a);
+        const db = followUpDue(b);
+        if (da && db) return da.localeCompare(db) || byName(a, b);
+        if (da) return -1;
+        if (db) return 1;
+        return byName(a, b);
+      });
+  }
 }
 
 export type PartnershipReferral = {

@@ -13,7 +13,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *     created_at, matching how the job_financials view derives week/month
  *   - demand generation  -> created_at, because a lead is generated when it
  *     arrives, not when it is invoiced
- *   - new partnerships   -> date_added
+ *   - new partnerships   -> date_signed. A partnership with no signed date is
+ *     still a lead and is excluded from every figure here.
  */
 
 type JobRow = {
@@ -111,18 +112,25 @@ export async function getDashboard(
 
   const financials = await fetchFinancials(supabase, jobIds);
 
-  const partnerships = await pageAll<{
+  const allPartnerships = await pageAll<{
     id: string;
-    date_added: string;
+    date_signed: string | null;
+    last_contact: string | null;
     tier_id: string | null;
     total_cards_dropped: number;
     total_fliers_dropped: number;
   }>((from, to) =>
     supabase
       .from("partnerships")
-      .select("id, date_added, tier_id, total_cards_dropped, total_fliers_dropped")
+      .select(
+        "id, date_signed, last_contact, tier_id, total_cards_dropped, total_fliers_dropped",
+      )
       .range(from, to),
   );
+
+  // A partnership without a signed date is still a lead. Leads are excluded
+  // from every figure below — they exist only to be worked in the list.
+  const partnerships = allPartnerships.filter((p) => !!p.date_signed);
 
   // ---- volume, revenue, profit: scoped by activity date -------------------
   const activity = jobs.filter((j) => within(activityDate(j), range));
@@ -142,13 +150,19 @@ export async function getDashboard(
     (j) => financials.get(j.id)?.repeat_customer,
   ).length;
 
-  const inRangePartnerships = partnerships.filter((p) => within(p.date_added, range));
+  const inRangePartnerships = partnerships.filter((p) => within(p.date_signed, range));
 
-  const [leadsToday, partnershipsToday, jobsThisMonth] = await Promise.all([
-    countJobsCreatedOn(supabase, todayISO()),
-    countPartnershipsAddedOn(supabase, todayISO()),
+  const today = todayISO();
+  const [leadsToday, jobsThisMonth] = await Promise.all([
+    countJobsCreatedOn(supabase, today),
     countJobsThisMonth(supabase),
   ]);
+
+  // The daily partnership goal is an outreach target, so it counts businesses
+  // actually contacted today — leads included — not rows typed into the app.
+  const partnershipsToday = allPartnerships.filter(
+    (p) => p.last_contact?.slice(0, 10) === today,
+  ).length;
 
   return {
     jobsCompleted: completed.length,
@@ -268,17 +282,6 @@ async function countJobsCreatedOn(supabase: SupabaseClient, day: string): Promis
     .select("id", { count: "exact", head: true })
     .gte("created_at", day)
     .lt("created_at", nextDay(day));
-  return count ?? 0;
-}
-
-async function countPartnershipsAddedOn(
-  supabase: SupabaseClient,
-  day: string,
-): Promise<number> {
-  const { count } = await supabase
-    .from("partnerships")
-    .select("id", { count: "exact", head: true })
-    .eq("date_added", day);
   return count ?? 0;
 }
 

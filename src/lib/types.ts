@@ -143,7 +143,10 @@ export type Partnership = {
   total_cards_dropped: number;
   fliers_dropped_last_visit: number;
   total_fliers_dropped: number;
-  date_added: string;
+  /** Null while this is still a lead. Set means it counts toward every metric. */
+  date_signed: string | null;
+  last_contact: string | null;
+  follow_up_days: number | null;
   notes: string | null;
   created_at: string;
 };

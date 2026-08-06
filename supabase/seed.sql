@@ -51,11 +51,15 @@ insert into list_items (kind, name, sort_order) values
 on conflict do nothing;
 
 -- ---------- partnership statuses ---------------------------------------
+-- The lead pipeline. Status is for the dispatcher's eyes only — what makes a
+-- partnership count toward the metrics is `date_signed` being set, not the
+-- status name, so these can be renamed freely.
 insert into list_items (kind, name, sort_order) values
-  ('partnership_status','Prospect',  10),
-  ('partnership_status','Contacted', 20),
-  ('partnership_status','Signed',    30),
-  ('partnership_status','Inactive',  40)
+  ('partnership_status','Pending Contact', 10),
+  ('partnership_status','Called',          20),
+  ('partnership_status','Visited',         30),
+  ('partnership_status','Signed',          40),
+  ('partnership_status','Rejected',        50)
 on conflict do nothing;
 
 -- ---------- partnership tiers ------------------------------------------
