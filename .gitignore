@@ -11,5 +11,12 @@ dev.log
 .env
 .env*.local
 .vercel
+
+# Credential screenshots and exports — never commit these
+*Client ID*
+*client-id*
+*secret*
+*credential*
+*.key
 *.tsbuildinfo
 next-env.d.ts
