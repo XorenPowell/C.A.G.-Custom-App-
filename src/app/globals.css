@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   C.A.G. — plain, dense, fast. Function over aesthetics.
+   No animation, no transitions, no decorative anything.
+   Mobile is a first-class layout, not a fallback.
+   ------------------------------------------------------------------ */
+
+@theme {
+  --color-ink: #111827;
+  --color-muted: #6b7280;
+  --color-line: #d1d5db;
+  --color-line-soft: #e5e7eb;
+  --color-surface: #ffffff;
+  --color-sunken: #f3f4f6;
+  --color-accent: #1d4ed8;
+  --color-danger: #b91c1c;
+  --color-warn: #b45309;
+  --color-good: #15803d;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-sunken);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+/* iOS zooms the page when a focused input is under 16px. */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+@media (min-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 14px;
+  }
+}
+
+@layer components {
+  /* ---- structure ---- */
+  .page {
+    @apply mx-auto w-full max-w-6xl px-3 pb-24 pt-3 md:px-6 md:pt-5;
+  }
+  .card {
+    @apply border border-[var(--color-line)] bg-white;
+  }
+  .card-pad {
+    @apply p-3 md:p-4;
+  }
+  .section-title {
+    @apply border-b border-[var(--color-line)] bg-[var(--color-sunken)] px-3 py-2 text-xs font-bold uppercase tracking-wide text-[var(--color-muted)];
+  }
+  .h1 {
+    @apply text-lg font-bold md:text-xl;
+  }
+  .h2 {
+    @apply text-base font-bold;
+  }
+  .muted {
+    @apply text-[var(--color-muted)];
+  }
+  .mono {
+    @apply font-mono tabular-nums;
+  }
+
+  /* ---- forms ---- */
+  .label {
+    @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)];
+  }
+  .input,
+  .select,
+  .textarea {
+    @apply block w-full border border-[var(--color-line)] bg-white px-2 py-2 text-[var(--color-ink)] outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] disabled:bg-[var(--color-sunken)];
+  }
+  .textarea {
+    @apply min-h-24;
+  }
+  .field {
+    @apply mb-3;
+  }
+  .grid-form {
+    @apply grid grid-cols-1 gap-x-4 gap-y-0 md:grid-cols-2;
+  }
+
+  /* ---- buttons: 44px min height so they are usable one-handed ---- */
+  .btn {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)] hover:bg-[var(--color-sunken)] disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply border-[var(--color-accent)] bg-[var(--color-accent)] text-white hover:bg-[#1e40af];
+  }
+  .btn-danger {
+    @apply border-[var(--color-danger)] text-[var(--color-danger)] hover:bg-red-50;
+  }
+  .btn-sm {
+    @apply min-h-9 px-2 py-1 text-xs;
+  }
+
+  /* ---- tables ---- */
+  .table {
+    @apply w-full border-collapse text-sm;
+  }
+  .table th {
+    @apply border-b border-[var(--color-line)] bg-[var(--color-sunken)] px-2 py-2 text-left text-xs font-bold uppercase tracking-wide text-[var(--color-muted)] whitespace-nowrap;
+  }
+  .table td {
+    @apply border-b border-[var(--color-line-soft)] px-2 py-2 align-top;
+  }
+  .table tbody tr:hover {
+    @apply bg-[var(--color-sunken)];
+  }
+
+  /* ---- misc ---- */
+  .badge {
+    @apply inline-block border px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap;
+  }
+  .link {
+    @apply text-[var(--color-accent)] underline underline-offset-2;
+  }
+  .row-repeat {
+    @apply border border-[var(--color-line)] bg-[var(--color-sunken)] p-2;
+  }
+  .scroll-x {
+    @apply -mx-3 overflow-x-auto px-3 md:mx-0 md:px-0;
+  }
+}
