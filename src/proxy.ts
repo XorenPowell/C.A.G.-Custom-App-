@@ -34,9 +34,11 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // The Google callback lands in the same browser, so it keeps the session
-  // cookie and stays behind auth like everything else. Only /login is public.
+  // cookie and stays behind auth like everything else. Only the login page and
+  // the version probe are public — the probe has to be reachable without a
+  // session to be useful for checking what is deployed.
   const path = request.nextUrl.pathname;
-  const isPublic = path === "/login";
+  const isPublic = path === "/login" || path === "/api/version";
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
