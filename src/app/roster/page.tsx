@@ -18,14 +18,16 @@ export default async function RosterPage({
 
   const filters = {
     q: sp.q ?? "",
-    status: sp.status ?? "",
+    // Fresh navigation (no `status` in the URL) defaults to Active; an explicit
+    // "All" selection from the filter form comes through as "" and is respected.
+    status: sp.status ?? "Active",
     zone: sp.zone ?? "",
     category: sp.category ?? "",
     vehicle: sp.vehicle ?? "",
     avail: sp.avail ?? "",
   };
   const rows = filterEntities(all, filters);
-  const anyFilter = Object.values(filters).some(Boolean);
+  const anyFilter = [sp.q, sp.status, sp.zone, sp.category, sp.vehicle, sp.avail].some(Boolean);
 
   return (
     <>

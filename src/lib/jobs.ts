@@ -87,8 +87,8 @@ export async function getJobList(f: JobFilters): Promise<JobListResult> {
   const supabase = await createClient();
 
   const sort: SortField = (SORT_FIELDS.find((s) => s.value === f.sort)?.value ??
-    "date_of_invoice") as SortField;
-  const ascending = f.dir === "asc";
+    "arrival_date") as SortField;
+  const ascending = f.dir === undefined ? true : f.dir === "asc";
   const page = Math.max(1, parseInt(f.page ?? "1", 10) || 1);
 
   let jobIdsForEntity: string[] | null = null;
@@ -117,7 +117,10 @@ export async function getJobList(f: JobFilters): Promise<JobListResult> {
       { count: "exact" },
     );
 
-  if (f.status) query = query.eq("status", f.status);
+  // Fresh navigation (no `status` param) defaults to Booked; an explicit "All"
+  // selection from the filter form comes through as "" and is respected.
+  const status = f.status === undefined ? "Booked" : f.status;
+  if (status) query = query.eq("status", status);
   if (f.category) query = query.eq("service_category_id", f.category);
   if (f.source) query = query.eq("lead_source_id", f.source);
   if (f.zone) query = query.eq("zone_id", f.zone);
