@@ -42,12 +42,16 @@ end $$;
 
 -- Scalar configuration. Exactly one row, guaranteed by the `singleton` check.
 create table settings (
-  id                        boolean primary key default true check (id),
-  default_pos_fee_percent   numeric(6,3) not null default 5.0,
-  monthly_jobs_goal         integer      not null default 300,
-  daily_leads_goal          integer      not null default 5,
-  daily_partnerships_goal   integer      not null default 10,
-  updated_at                timestamptz  not null default now()
+  id                          boolean primary key default true check (id),
+  default_pos_fee_percent     numeric(6,3) not null default 5.0,
+  -- Dispatcher commission: a flat percent of the worker payout, capped in
+  -- dollars. Independent of the invoice, POS fee and other job costs.
+  default_commission_percent  numeric(6,3)  not null default 5.0,
+  default_commission_cap      numeric(12,2) not null default 50.0,
+  monthly_jobs_goal           integer      not null default 300,
+  daily_leads_goal            integer      not null default 5,
+  daily_partnerships_goal     integer      not null default 10,
+  updated_at                  timestamptz  not null default now()
 );
 create trigger settings_updated_at before update on settings
   for each row execute function set_updated_at();
@@ -284,6 +288,11 @@ create table jobs (
   pos_fee_percent     numeric(6,3)  not null default 5.0,
   other_job_costs     numeric(12,2) not null default 0,
 
+  -- Dispatcher commission on this job: percent of the worker payout, capped
+  -- in dollars. Seeded from settings, editable per job.
+  commission_percent  numeric(6,3)  not null default 5.0,
+  commission_cap      numeric(12,2) not null default 50.0,
+
   -- Section 4 exception: dispatcher may type over the calculated payout.
   total_worker_payout_override numeric(12,2),
 
@@ -378,6 +387,11 @@ left join lateral (
 ) f on true;
 
 -- Per job. Downstream figures always use the effective (override-aware) payout.
+--
+-- `commission_amount` is the dispatcher's take: a flat percent of the worker
+-- payout, capped in dollars. It is deliberately independent of the invoice,
+-- the POS fee and other job costs — it is not a profit/loss figure, it is
+-- what the dispatcher is paid on this job.
 create view job_financials as
 select
   j.id as job_id,
@@ -387,10 +401,10 @@ select
   coalesce(j.total_worker_payout_override, p.payout, 0)
     + round(j.total_invoice_paid * j.pos_fee_percent / 100.0, 2)
     + j.other_job_costs                                     as total_job_costs,
-  j.total_invoice_paid
-    - ( coalesce(j.total_worker_payout_override, p.payout, 0)
-        + round(j.total_invoice_paid * j.pos_fee_percent / 100.0, 2)
-        + j.other_job_costs )                               as profit,
+  least(
+    round(coalesce(j.total_worker_payout_override, p.payout, 0) * j.commission_percent / 100.0, 2),
+    j.commission_cap
+  )                                                          as commission_amount,
   date_trunc('week', coalesce(j.date_of_invoice, j.arrival_date, j.created_at::date))::date as week_of,
   to_char(coalesce(j.date_of_invoice, j.arrival_date, j.created_at::date), 'YYYY-MM')       as month,
   exists (

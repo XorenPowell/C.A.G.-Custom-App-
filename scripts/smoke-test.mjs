@@ -129,13 +129,14 @@ try {
   check("worker calculated_pay", pay.calculated_pay, 280);
   check("worker effective_pay (no override)", pay.effective_pay, 280);
 
-  // job: payout 280, pos fee 1000*5% = 50, costs 280+50+50 = 380, profit 620
+  // job: payout 280, pos fee 1000*5% = 50, costs 280+50+50 = 380
+  // commission = min(280 * 5%, $50 cap) = 14
   const { data: fin1 } = await db
     .from("job_financials").select("*").eq("job_id", job.id).single();
   check("pos_fee_amount", fin1.pos_fee_amount, 50);
   check("total_worker_payout", fin1.total_worker_payout, 280);
   check("total_job_costs", fin1.total_job_costs, 380);
-  check("profit", fin1.profit, 620);
+  check("commission_amount", fin1.commission_amount, 14);
   ok("week_of is the Monday", fin1.week_of === "2026-08-03", `got ${fin1.week_of}`);
   ok("month", fin1.month === "2026-08", `got ${fin1.month}`);
   ok("repeat_customer false on first job", fin1.repeat_customer === false);
@@ -145,7 +146,8 @@ try {
   const { data: fin2 } = await db
     .from("job_financials").select("*").eq("job_id", job.id).single();
   check("payout uses worker override", fin2.total_worker_payout, 300);
-  check("profit follows worker override", fin2.profit, 600);
+  // commission = min(300 * 5%, $50 cap) = 15
+  check("commission follows worker override", fin2.commission_amount, 15);
 
   // ---------- job-level override wins over worker sum ----------
   await db.from("jobs").update({ total_worker_payout_override: 500 }).eq("id", job.id);
@@ -153,7 +155,15 @@ try {
     .from("job_financials").select("*").eq("job_id", job.id).single();
   check("job override wins", fin3.total_worker_payout, 500);
   check("calculated payout still exposed", fin3.calculated_worker_payout, 300);
-  check("profit follows job override", fin3.profit, 400);
+  // commission = min(500 * 5%, $50 cap) = 25
+  check("commission follows job override", fin3.commission_amount, 25);
+
+  // ---------- commission cap ----------
+  await db.from("jobs").update({ total_worker_payout_override: 2000 }).eq("id", job.id);
+  const { data: fin3b } = await db
+    .from("job_financials").select("*").eq("job_id", job.id).single();
+  // 2000 * 5% = 100, but capped at $50
+  check("commission is capped", fin3b.commission_amount, 50);
 
   // ---------- clearing the override returns to auto ----------
   await db.from("jobs").update({ total_worker_payout_override: null }).eq("id", job.id);

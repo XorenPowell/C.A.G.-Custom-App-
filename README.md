@@ -39,9 +39,15 @@ lists, not fixed slots.
 ### Derived values
 
 Nothing computed is ever stored. `job_worker_pay` and `job_financials` are views
-that compute worker pay, POS fee, job costs, profit, week/month and the repeat
-customer flag on read. `src/lib/calc.ts` mirrors those views exactly so the job
-form can show live totals while editing — **if you change one, change both.**
+that compute worker pay, POS fee, job costs, dispatcher commission, week/month
+and the repeat customer flag on read. `src/lib/calc.ts` mirrors those views
+exactly so the job form can show live totals while editing — **if you change
+one, change both.**
+
+`commission_amount` is the dispatcher's take: `commission_percent` of the
+effective worker payout, capped at `commission_cap` (both per-job columns,
+defaulting from Settings). It is deliberately independent of the invoice, the
+POS fee and other job costs — it is not a profit/loss figure.
 
 The only editable derived values are `worker_total_pay` and `total_worker_payout`.
 Each has a nullable override column; the override wins when present and every

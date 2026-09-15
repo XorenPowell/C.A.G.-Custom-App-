@@ -119,16 +119,12 @@ export default async function DashboardPage({
           </StatGrid>
         </Panel>
 
-        {/* ---------- revenue & profit ---------- */}
-        <Panel title="Revenue & Profit">
+        {/* ---------- revenue & commission ---------- */}
+        <Panel title="Revenue & Commission">
           <StatGrid>
             <Stat label="Total revenue" value={money(data.totalRevenue)} />
-            <Stat
-              label="Total profit"
-              value={money(data.totalProfit)}
-              emphasis={data.totalProfit < 0 ? "bad" : "good"}
-            />
-            <Stat label="Avg profit / job" value={money(data.avgProfitPerJob)} />
+            <Stat label="Total commissions" value={money(data.totalCommission)} />
+            <Stat label="Avg commission / job" value={money(data.avgCommissionPerJob)} />
           </StatGrid>
           <div className="mt-3">
             <h3 className="label">Revenue by service category</h3>
@@ -196,11 +192,12 @@ export default async function DashboardPage({
         </Panel>
 
         <p className="muted mt-4 text-xs">
-          Volume, revenue and profit are scoped by invoice date (falling back to arrival
-          date, then created date). Leads, conversion and referrals are scoped by the date
-          the job was created. New partnerships use their signed date — partnership leads
-          with no signed date are excluded from every figure on this screen. Cards and
-          fliers are lifetime running totals across signed partnerships.
+          Volume, revenue and commission are scoped by invoice date (falling back to
+          arrival date, then created date). Leads, conversion and referrals are scoped by
+          the date the job was created. New partnerships use their signed date — partnership
+          leads with no signed date are excluded from every figure on this screen. Cards and
+          fliers are lifetime running totals across signed partnerships. Commission is a flat
+          percent of worker payout capped in dollars per job — independent of the invoice.
         </p>
       </main>
     </>

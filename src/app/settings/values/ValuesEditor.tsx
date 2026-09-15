@@ -9,6 +9,8 @@ import type { Settings } from "@/lib/types";
 export default function ValuesEditor({ settings }: { settings: Settings }) {
   const [values, setValues] = useState<SettingsValues>({
     default_pos_fee_percent: settings.default_pos_fee_percent,
+    default_commission_percent: settings.default_commission_percent,
+    default_commission_cap: settings.default_commission_cap,
     monthly_jobs_goal: settings.monthly_jobs_goal,
     daily_leads_goal: settings.daily_leads_goal,
     daily_partnerships_goal: settings.daily_partnerships_goal,
@@ -43,6 +45,24 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
               patch({ default_pos_fee_percent: Number(e.target.value) })
             }
             hint="Pre-fills new jobs. 5 = 5% of the invoice. Editable per job."
+          />
+          <NumberInput
+            label="Default commission %"
+            step="0.1"
+            value={values.default_commission_percent}
+            onChange={(e) =>
+              patch({ default_commission_percent: Number(e.target.value) })
+            }
+            hint="Dispatcher's take, as a percent of worker payout. Pre-fills new jobs, editable per job."
+          />
+          <NumberInput
+            label="Commission cap ($)"
+            step="1"
+            value={values.default_commission_cap}
+            onChange={(e) =>
+              patch({ default_commission_cap: Number(e.target.value) })
+            }
+            hint="Commission never exceeds this amount. Pre-fills new jobs, editable per job."
           />
           <NumberInput
             label="Monthly jobs goal"

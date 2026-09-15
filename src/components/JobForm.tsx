@@ -84,6 +84,8 @@ export default function JobForm({
     total_invoice_paid: str(job?.total_invoice_paid ?? 0),
     pos_fee_percent: str(job?.pos_fee_percent ?? settings.default_pos_fee_percent),
     other_job_costs: str(job?.other_job_costs ?? 0),
+    commission_percent: str(job?.commission_percent ?? settings.default_commission_percent),
+    commission_cap: str(job?.commission_cap ?? settings.default_commission_cap),
     total_worker_payout_override: str(job?.total_worker_payout_override),
     invoice_ref: job?.invoice_ref ?? "",
     notes: job?.notes ?? "",
@@ -172,6 +174,8 @@ export default function JobForm({
           total_invoice_paid: form.total_invoice_paid,
           pos_fee_percent: form.pos_fee_percent,
           other_job_costs: form.other_job_costs,
+          commission_percent: form.commission_percent,
+          commission_cap: form.commission_cap,
           total_worker_payout_override: form.total_worker_payout_override,
         },
         workers.map((w) => ({ ...w, fees: w.fees })),
@@ -204,6 +208,8 @@ export default function JobForm({
         total_invoice_paid: form.total_invoice_paid,
         pos_fee_percent: form.pos_fee_percent,
         other_job_costs: form.other_job_costs,
+        commission_percent: form.commission_percent,
+        commission_cap: form.commission_cap,
         total_worker_payout_override: form.total_worker_payout_override || null,
         invoice_ref: form.invoice_ref,
         notes: form.notes,
@@ -590,6 +596,19 @@ export default function JobForm({
             onChange={(e) => patch({ invoice_ref: e.target.value })}
             hint="Optional — Square invoice number or link."
           />
+          <NumberInput
+            label="Commission %"
+            step="0.1"
+            value={form.commission_percent}
+            onChange={(e) => patch({ commission_percent: e.target.value })}
+            hint={`Dispatcher's take on worker payout. Default is ${settings.default_commission_percent}% — editable per job.`}
+          />
+          <MoneyInput
+            label="Commission cap"
+            value={form.commission_cap}
+            onChange={(e) => patch({ commission_cap: e.target.value })}
+            hint={`Commission never exceeds this. Default is ${money(settings.default_commission_cap)}.`}
+          />
         </div>
       </Section>
 
@@ -613,10 +632,9 @@ export default function JobForm({
           />
           <SummaryRow label="Total job costs" value={money(totals.totalJobCosts)} strong />
           <SummaryRow
-            label="Profit"
-            value={money(totals.profit)}
+            label={`Commission (${form.commission_percent || 0}%, capped at ${money(Number(form.commission_cap) || 0)})`}
+            value={money(totals.commissionAmount)}
             strong
-            tone={totals.profit < 0 ? "bad" : "good"}
           />
         </dl>
 

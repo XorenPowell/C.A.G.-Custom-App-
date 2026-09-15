@@ -39,6 +39,9 @@ export type ListItem = {
 export type Settings = {
   id: boolean;
   default_pos_fee_percent: number;
+  /** Dispatcher commission: percent of worker payout, capped in dollars. */
+  default_commission_percent: number;
+  default_commission_cap: number;
   monthly_jobs_goal: number;
   daily_leads_goal: number;
   daily_partnerships_goal: number;
@@ -180,6 +183,9 @@ export type Job = {
   total_invoice_paid: number;
   pos_fee_percent: number;
   other_job_costs: number;
+  /** Dispatcher commission on this job: percent of worker payout, capped in dollars. */
+  commission_percent: number;
+  commission_cap: number;
   total_worker_payout_override: number | null;
   invoice_ref: string | null;
   notes: string | null;
@@ -221,7 +227,8 @@ export type JobFinancials = {
   total_worker_payout: number;
   pos_fee_amount: number;
   total_job_costs: number;
-  profit: number;
+  /** Dispatcher's take: percent of worker payout, capped in dollars. Not a profit/loss figure. */
+  commission_amount: number;
   week_of: string | null;
   month: string | null;
   repeat_customer: boolean;

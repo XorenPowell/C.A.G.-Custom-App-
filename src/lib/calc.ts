@@ -23,6 +23,8 @@ export type JobMoneyInput = {
   total_invoice_paid: number | string | null;
   pos_fee_percent: number | string | null;
   other_job_costs: number | string | null;
+  commission_percent: number | string | null;
+  commission_cap: number | string | null;
   total_worker_payout_override: number | string | null;
 };
 
@@ -76,7 +78,8 @@ export type JobTotals = {
   totalWorkerPayout: number;
   posFeeAmount: number;
   totalJobCosts: number;
-  profit: number;
+  /** Dispatcher's take: percent of worker payout, capped in dollars. Not a profit/loss figure. */
+  commissionAmount: number;
 };
 
 export function jobTotals(job: JobMoneyInput, workers: WorkerInput[]): JobTotals {
@@ -86,8 +89,13 @@ export function jobTotals(job: JobMoneyInput, workers: WorkerInput[]): JobTotals
   // pos_fee_percent is a percentage: 5.0 means 5%.
   const posFeeAmount = round2((n(job.total_invoice_paid) * n(job.pos_fee_percent)) / 100);
   const totalJobCosts = round2(totalWorkerPayout + posFeeAmount + n(job.other_job_costs));
-  const profit = round2(n(job.total_invoice_paid) - totalJobCosts);
-  return { calculatedWorkerPayout, totalWorkerPayout, posFeeAmount, totalJobCosts, profit };
+  // Independent of the invoice, POS fee and other job costs — a flat percent
+  // of the worker payout, capped in dollars.
+  const commissionAmount = Math.min(
+    round2((totalWorkerPayout * n(job.commission_percent)) / 100),
+    n(job.commission_cap),
+  );
+  return { calculatedWorkerPayout, totalWorkerPayout, posFeeAmount, totalJobCosts, commissionAmount };
 }
 
 /** Monday of the week containing the given YYYY-MM-DD date. */
