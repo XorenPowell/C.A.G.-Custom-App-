@@ -73,6 +73,29 @@ export function monthEndISO(): string {
   return iso(new Date(d.getFullYear(), d.getMonth() + 1, 0));
 }
 
+export const WEEKDAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const;
+
+/**
+ * The current pay period: the most recent occurrence of `startDay`
+ * (0=Sunday..6=Saturday) on or before today, through today — inclusive on
+ * both ends. If today itself is `startDay`, the period is just today.
+ */
+export function payPeriodRange(startDay: number, today = new Date()): DateRange {
+  const dow = today.getDay();
+  const diff = (dow - startDay + 7) % 7;
+  const start = new Date(today);
+  start.setDate(today.getDate() - diff);
+  return { start: iso(start), end: iso(today) };
+}
+
 export function rangeLabel(r: DateRange): string {
   if (!r.start && !r.end) return "All time";
   if (r.start && r.end) return `${r.start} → ${r.end}`;

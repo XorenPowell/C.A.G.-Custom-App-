@@ -140,7 +140,8 @@ export async function saveJob(payload: JobPayload): Promise<JobSaveResult> {
 
   revalidatePath("/jobs", "layout");
   revalidatePath("/roster", "layout");
-  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+  revalidatePath("/");
   return { ok: true, id: jobId, warning };
 }
 

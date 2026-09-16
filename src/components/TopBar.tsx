@@ -2,13 +2,13 @@ import Link from "next/link";
 import { signOut } from "@/app/actions/auth";
 
 /**
- * Compact header. Every screen other than the menu gets a back link, so the
- * menu is always one tap away on a phone.
+ * Compact header. Every screen other than Home gets a back link, so Home is
+ * always one tap away on a phone.
  */
 export default function TopBar({
   title,
   back = "/",
-  backLabel = "Menu",
+  backLabel = "Home",
   action,
 }: {
   title: string;

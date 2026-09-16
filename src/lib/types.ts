@@ -45,6 +45,10 @@ export type Settings = {
   monthly_jobs_goal: number;
   daily_inquiries_goal: number;
   daily_partnerships_goal: number;
+  /** 0=Sunday..6=Saturday. The home screen's "Next payout" sums commission from this weekday through today. */
+  pay_period_start_day: number;
+  /** Per-token color overrides from the Appearance settings screen. Empty object = shipped defaults. */
+  theme_overrides: Record<string, string>;
 };
 
 export type MessageTemplate = {

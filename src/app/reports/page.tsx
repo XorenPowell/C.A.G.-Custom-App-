@@ -6,7 +6,7 @@ import { getLists, nameMap } from "@/lib/data";
 import { RANGE_PRESETS, rangeLabel, resolveRange, type RangePreset } from "@/lib/dates";
 import { money, num, percent } from "@/lib/format";
 
-export default async function DashboardPage({
+export default async function ReportsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
@@ -22,10 +22,10 @@ export default async function DashboardPage({
 
   return (
     <>
-      <TopBar title="Dashboard" />
+      <TopBar title="Full Report" />
       <main className="page">
         {/* ---------- range selector: drives every figure below ---------- */}
-        <form method="get" action="/dashboard" className="card card-pad mb-3">
+        <form method="get" action="/reports" className="card card-pad mb-3">
           <div className="mb-2 flex flex-wrap gap-1">
             {RANGE_PRESETS.filter((p) => p !== "Custom").map((p) => (
               <button

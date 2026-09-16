@@ -90,7 +90,8 @@ export async function savePartnership(
   }
 
   revalidatePath("/partnerships", "layout");
-  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+  revalidatePath("/");
   return ok(id);
 }
 
