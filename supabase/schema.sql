@@ -7,6 +7,7 @@
 -- ---------- clean slate -----------------------------------------------
 drop view   if exists job_financials      cascade;
 drop view   if exists job_worker_pay      cascade;
+drop table  if exists face_to_face_conversations cascade;
 drop table  if exists job_worker_fees     cascade;
 drop table  if exists job_workers         cascade;
 drop table  if exists jobs                cascade;
@@ -348,6 +349,44 @@ create table job_worker_fees (
 create index job_worker_fees_worker_idx on job_worker_fees (job_worker_id);
 
 -- =====================================================================
+-- WORK FACE TO FACE
+-- Standalone outreach log — not read by any other screen yet (dashboard,
+-- reports, etc. are untouched). One row per in-person conversation.
+-- =====================================================================
+create table face_to_face_conversations (
+  id                  uuid primary key default gen_random_uuid(),
+  -- Stamped the moment "+ New Conversation" is tapped, before any other
+  -- field is filled in — the point of the field is exactly when the
+  -- conversation started, not whenever the form happens to get saved.
+  occurred_at         timestamptz not null default now(),
+
+  contact_name        text,
+  contact_phone       text,
+  contact_email       text,
+  -- Who the service would be for: the person in front of the dispatcher, or
+  -- someone they're inquiring on behalf of. Fixed pair, not Settings-driven
+  -- — same treatment as a job's customer_type.
+  inquiry_for         text check (inquiry_for in ('Themselves','A Friend')),
+
+  service_category_id uuid references list_items(id) on delete set null,
+  zone_id             uuid references list_items(id) on delete set null,
+
+  cards_given         integer not null default 0,
+  -- 1-10 slider: how interested the dispatcher judged them to be.
+  intent_level        integer not null default 5 check (intent_level between 1 and 10),
+
+  notes               text,
+
+  created_at          timestamptz not null default now(),
+  updated_at          timestamptz not null default now()
+);
+create trigger face_to_face_conversations_updated_at before update on face_to_face_conversations
+  for each row execute function set_updated_at();
+create index face_to_face_conversations_occurred_idx on face_to_face_conversations (occurred_at desc);
+create index face_to_face_conversations_category_idx on face_to_face_conversations (service_category_id);
+create index face_to_face_conversations_zone_idx on face_to_face_conversations (zone_id);
+
+-- =====================================================================
 -- GOOGLE CALENDAR CREDENTIALS
 -- Single row. Service-role only — no RLS policy is granted to `authenticated`,
 -- so the refresh token can never be read from the browser.
@@ -447,6 +486,7 @@ alter table partnerships        enable row level security;
 alter table jobs                enable row level security;
 alter table job_workers         enable row level security;
 alter table job_worker_fees     enable row level security;
+alter table face_to_face_conversations enable row level security;
 alter table google_credentials  enable row level security;
 
 do $$
@@ -455,7 +495,7 @@ begin
   foreach t in array array[
     'settings','list_items','message_templates','equipment_presets','entities','entity_references',
     'entity_rates','entity_fees','entity_equipment','entity_availability',
-    'partnerships','jobs','job_workers','job_worker_fees'
+    'partnerships','jobs','job_workers','job_worker_fees','face_to_face_conversations'
   ] loop
     execute format(
       'create policy %I on %I for all to authenticated using (true) with check (true)',
