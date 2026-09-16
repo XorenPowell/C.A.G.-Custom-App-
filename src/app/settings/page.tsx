@@ -14,6 +14,7 @@ const SECTIONS = [
   { href: "/settings/values", label: "Values & Goals" },
   { href: "/settings/templates", label: "Message Templates" },
   { href: "/settings/calendar", label: "Google Calendar" },
+  { href: "/settings/appearance", label: "Appearance" },
 ];
 
 export default function SettingsPage() {

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { fail, ok, orNull, toInt, type ActionResult } from "@/lib/persist";
+import { sanitizeThemeOverrides } from "@/lib/theme";
 import type { Audience, ListKind } from "@/lib/types";
 
 export type ListItemDraft = {
@@ -172,6 +173,38 @@ export async function saveTemplates(drafts: TemplateDraft[]): Promise<ActionResu
 export async function deleteTemplate(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("message_templates").delete().eq("id", id);
+  if (error) return fail(error.message);
+  revalidatePath("/", "layout");
+  return ok();
+}
+
+/**
+ * Only known tokens with valid hex values are written — anything else is
+ * silently dropped rather than failing the save, since the color inputs on
+ * the Appearance screen can't produce anything invalid anyway.
+ */
+export async function saveThemeOverrides(
+  overrides: Record<string, string>,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const clean = sanitizeThemeOverrides(overrides);
+  const { error } = await supabase
+    .from("settings")
+    .update({ theme_overrides: clean })
+    .eq("id", true);
+  if (error) return fail(error.message);
+  // The root layout reads theme_overrides on every request, so invalidating
+  // it here is what makes a saved color apply live, everywhere, immediately.
+  revalidatePath("/", "layout");
+  return ok();
+}
+
+export async function resetThemeOverrides(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("settings")
+    .update({ theme_overrides: {} })
+    .eq("id", true);
   if (error) return fail(error.message);
   revalidatePath("/", "layout");
   return ok();

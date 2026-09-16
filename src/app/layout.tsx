@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Oswald } from "next/font/google";
+import { getSettings } from "@/lib/data";
+import { buildOverrideCss } from "@/lib/theme";
 import "./globals.css";
 
 // Oswald drives numeric stats, section titles, ticket times and headlines;
@@ -32,10 +34,21 @@ export const viewport: Viewport = {
   themeColor: "#17191c",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Applied as a server-rendered <style> tag — not a client script — so the
+  // overridden colors are in the very first paint with no flash of the
+  // shipped defaults and no JS required. Settings -> Appearance edits this
+  // via saveThemeOverrides(), which revalidates this layout so the change
+  // shows up immediately without a manual reload.
+  const settings = await getSettings();
+  const overrideCss = buildOverrideCss(settings.theme_overrides ?? {});
+
   return (
     <html lang="en" className={`${inter.variable} ${oswald.variable}`}>
-      <body>{children}</body>
+      <body>
+        {overrideCss && <style>{overrideCss}</style>}
+        {children}
+      </body>
     </html>
   );
 }

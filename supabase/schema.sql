@@ -51,6 +51,11 @@ create table settings (
   monthly_jobs_goal           integer      not null default 300,
   daily_inquiries_goal        integer      not null default 5,
   daily_partnerships_goal     integer      not null default 10,
+  -- 0=Sunday..6=Saturday. Drives the home screen's Next Payout window.
+  pay_period_start_day        integer      not null default 5,
+  -- CSS custom-property overrides from Settings -> Appearance. Empty means
+  -- every token uses the shipped default in globals.css's @theme block.
+  theme_overrides             jsonb        not null default '{}'::jsonb,
   updated_at                  timestamptz  not null default now()
 );
 create trigger settings_updated_at before update on settings
