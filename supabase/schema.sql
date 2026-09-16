@@ -9,6 +9,7 @@ drop view   if exists job_financials      cascade;
 drop view   if exists job_worker_pay      cascade;
 drop table  if exists face_to_face_conversations cascade;
 drop table  if exists face_to_face_sessions cascade;
+drop table  if exists time_entries          cascade;
 drop table  if exists job_worker_fees     cascade;
 drop table  if exists job_workers         cascade;
 drop table  if exists jobs                cascade;
@@ -413,6 +414,22 @@ create index face_to_face_conversations_category_idx on face_to_face_conversatio
 create index face_to_face_conversations_zone_idx on face_to_face_conversations (zone_id);
 
 -- =====================================================================
+-- TIME CLOCK
+-- Single clock-in/clock-out log. `clocked_out_at` null means the entry is
+-- the active one — same one-active-record pattern as face_to_face_sessions.
+-- =====================================================================
+create table time_entries (
+  id              uuid primary key default gen_random_uuid(),
+  clocked_in_at   timestamptz not null default now(),
+  clocked_out_at  timestamptz,
+  -- What got done during this period. Asked for at clock-out.
+  notes           text,
+  created_at      timestamptz not null default now()
+);
+create index time_entries_clocked_in_idx on time_entries (clocked_in_at desc);
+create index time_entries_active_idx on time_entries (clocked_out_at) where clocked_out_at is null;
+
+-- =====================================================================
 -- GOOGLE CALENDAR CREDENTIALS
 -- Single row. Service-role only — no RLS policy is granted to `authenticated`,
 -- so the refresh token can never be read from the browser.
@@ -514,6 +531,7 @@ alter table job_workers         enable row level security;
 alter table job_worker_fees     enable row level security;
 alter table face_to_face_sessions enable row level security;
 alter table face_to_face_conversations enable row level security;
+alter table time_entries        enable row level security;
 alter table google_credentials  enable row level security;
 
 do $$
@@ -523,7 +541,7 @@ begin
     'settings','list_items','message_templates','equipment_presets','entities','entity_references',
     'entity_rates','entity_fees','entity_equipment','entity_availability',
     'partnerships','jobs','job_workers','job_worker_fees',
-    'face_to_face_sessions','face_to_face_conversations'
+    'face_to_face_sessions','face_to_face_conversations','time_entries'
   ] loop
     execute format(
       'create policy %I on %I for all to authenticated using (true) with check (true)',

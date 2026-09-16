@@ -17,6 +17,7 @@ const NAV_ITEMS: { href: string; label: string; badge?: string }[] = [
   { href: "/partnerships", label: "Partnerships" },
   { href: "/face-to-face", label: "Work Face to Face", badge: "New" },
   { href: "/settings", label: "Settings" },
+  { href: "/time-clock", label: "Clock In / Clock Out" },
 ];
 
 export default async function HomePage({
