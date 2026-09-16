@@ -58,6 +58,7 @@ export default async function FaceToFacePage() {
                     weekday: "short",
                     month: "short",
                     day: "numeric",
+                    timeZone: "America/Chicago",
                   })}
                 </span>
                 {!s.ended_at && (
