@@ -18,7 +18,7 @@ export default function LoadingOverlay({
     <div
       role="status"
       aria-live="polite"
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-white/70 backdrop-blur-[1px]"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-white/40 backdrop-blur-[1px]"
     >
       {timedOut ? (
         <div className="mx-4 max-w-xs border border-gray-300 bg-white p-4 text-center shadow-lg">
