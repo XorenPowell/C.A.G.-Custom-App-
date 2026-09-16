@@ -167,6 +167,9 @@ export type Partnership = {
   total_fliers_dropped: number;
   last_contact: string | null;
   follow_up_days: number | null;
+  /** Stamped once, the first time status ever entered that stage. Never overwritten afterward. */
+  developing_at: string | null;
+  mature_at: string | null;
   notes: string | null;
   created_at: string;
 };

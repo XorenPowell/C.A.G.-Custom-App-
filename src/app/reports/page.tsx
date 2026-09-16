@@ -138,12 +138,12 @@ export default async function ReportsPage({
             <Stat
               label="Developing"
               value={num(data.developingPartnerships, 0)}
-              sub="right now, not range-scoped"
+              sub="reached in range"
             />
             <Stat
               label="Mature"
               value={num(data.maturePartnerships, 0)}
-              sub="right now, not range-scoped"
+              sub="reached in range"
             />
             <Stat label="Referrals produced" value={num(data.referralsProduced, 0)} />
             <Stat
