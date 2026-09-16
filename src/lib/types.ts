@@ -261,6 +261,19 @@ export type FaceToFaceSession = {
   created_at: string;
 };
 
+/**
+ * Time clock: one clock-in/clock-out entry. `clocked_out_at` null means it's
+ * the active entry — there is only ever one at a time. `notes` is asked for
+ * at clock-out ("what did you accomplish").
+ */
+export type TimeEntry = {
+  id: string;
+  clocked_in_at: string;
+  clocked_out_at: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
 export type FaceToFaceConversation = {
   id: string;
   occurred_at: string;
