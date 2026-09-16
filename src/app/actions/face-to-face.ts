@@ -47,6 +47,19 @@ export async function endSession(id: string): Promise<ActionResult> {
 }
 
 /**
+ * Deletes a session outright. Its conversations go with it (the DB foreign
+ * key is `on delete cascade`) — the confirm dialog on the button warns about
+ * this before calling in.
+ */
+export async function deleteSession(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("face_to_face_sessions").delete().eq("id", id);
+  if (error) return fail(error.message);
+  revalidatePath("/face-to-face", "layout");
+  return ok();
+}
+
+/**
  * Inserts a bare conversation row tied to this session, stamped with the
  * current time, then routes to it to fill in details — the timestamp needs
  * to be the moment of the tap, not whenever the form eventually saves.

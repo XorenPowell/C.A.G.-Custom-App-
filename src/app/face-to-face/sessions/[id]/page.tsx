@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import TopBar from "@/components/TopBar";
 import SessionTimer from "@/components/SessionTimer";
 import EndSessionButton from "@/components/EndSessionButton";
+import DeleteSessionButton from "@/components/DeleteSessionButton";
 import { startConversationInSession } from "@/app/actions/face-to-face";
 import { getSession, getSessionConversations } from "@/lib/face-to-face";
 import { getLists, lookup, nameMap } from "@/lib/data";
@@ -86,7 +87,10 @@ export default async function SessionDetailPage({
 
           <ConversationList conversations={conversations} names={names} />
 
-          <EndSessionButton id={session.id} />
+          <div className="mb-16 mt-6 border-t border-[var(--color-line)] pt-4">
+            <EndSessionButton id={session.id} />
+            <DeleteSessionButton id={session.id} />
+          </div>
         </main>
       </>
     );
@@ -115,6 +119,10 @@ export default async function SessionDetailPage({
         </div>
 
         <ConversationList conversations={conversations} names={names} />
+
+        <div className="mb-16 mt-6 border-t border-[var(--color-line)] pt-4">
+          <DeleteSessionButton id={session.id} />
+        </div>
       </main>
     </>
   );
