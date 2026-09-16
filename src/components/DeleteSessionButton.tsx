@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { deleteSession } from "@/app/actions/face-to-face";
 
 export default function DeleteSessionButton({ id }: { id: string }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, start] = useGlobalTransition();
   const [error, setError] = useState<string | null>(null);
 
   return (

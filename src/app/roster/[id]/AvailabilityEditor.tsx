@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { saveAvailability, type AvailabilityBlock } from "@/app/actions/entities";
 import { todayISO } from "@/lib/dates";
 import { daysSince, isAvailabilityStale } from "@/lib/format";
@@ -47,7 +48,7 @@ export default function AvailabilityEditor({
       })),
   );
   const [noteText, setNoteText] = useState(note ?? "");
-  const [pending, start] = useTransition();
+  const [pending, start] = useGlobalTransition();
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 

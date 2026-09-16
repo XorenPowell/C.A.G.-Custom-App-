@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import SaveBar from "@/components/SaveBar";
 import { NumberInput } from "@/components/Form";
 import { saveFaceToFaceGoal } from "@/app/actions/settings";
 
 export default function FaceToFaceSettingsEditor({ dailyGoal }: { dailyGoal: number }) {
   const [value, setValue] = useState(String(dailyGoal));
-  const [pending, start] = useTransition();
+  const [pending, start] = useGlobalTransition();
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 

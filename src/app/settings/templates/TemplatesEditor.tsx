@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import SaveBar from "@/components/SaveBar";
 import { deleteTemplate, saveTemplates, type TemplateDraft } from "@/app/actions/settings";
 import { TEMPLATE_VARS, unknownTokens } from "@/lib/templates";
@@ -16,7 +17,7 @@ export default function TemplatesEditor({ templates }: { templates: MessageTempl
     })),
   );
   const [filter, setFilter] = useState<Audience | "All">("All");
-  const [pending, start] = useTransition();
+  const [pending, start] = useGlobalTransition();
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 

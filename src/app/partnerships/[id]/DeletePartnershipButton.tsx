@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { deletePartnership } from "@/app/actions/partnerships";
 
 export default function DeletePartnershipButton({
@@ -12,7 +13,7 @@ export default function DeletePartnershipButton({
   name: string;
 }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, start] = useGlobalTransition();
   const [error, setError] = useState<string | null>(null);
 
   return (

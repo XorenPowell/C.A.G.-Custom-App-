@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Oswald } from "next/font/google";
 import { getSettings } from "@/lib/data";
 import { buildOverrideCss } from "@/lib/theme";
+import { GlobalLoadingProvider } from "@/components/GlobalLoadingProvider";
 import "./globals.css";
 
 // Oswald drives numeric stats, section titles, ticket times and headlines;
@@ -47,7 +48,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" className={`${inter.variable} ${oswald.variable}`}>
       <body>
         {overrideCss && <style>{overrideCss}</style>}
-        {children}
+        <GlobalLoadingProvider>{children}</GlobalLoadingProvider>
       </body>
     </html>
   );
