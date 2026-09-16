@@ -17,7 +17,7 @@ export default function TopBar({
   action?: React.ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-[var(--color-line)] bg-white">
+    <header className="sticky top-0 z-20 border-b border-[var(--color-line)] bg-[var(--color-surface)]">
       <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-3 py-2 md:px-6">
         {back && (
           <Link href={back} className="btn btn-sm shrink-0">

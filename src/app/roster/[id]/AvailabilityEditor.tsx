@@ -111,7 +111,7 @@ export default function AvailabilityEditor({
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         {stale ? (
-          <span className="badge border-[var(--color-danger)] bg-red-50 text-[var(--color-danger)]">
+          <span className="badge border-[var(--color-danger)] bg-[var(--panel-raised)] text-[var(--color-danger)]">
             ⚑ {age === null ? "Never set" : `${age} days old`}
           </span>
         ) : (

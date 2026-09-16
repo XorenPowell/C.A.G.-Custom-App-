@@ -44,7 +44,7 @@ export default function LoginForm({ next }: { next: string }) {
       </div>
 
       {state.error && (
-        <p className="mb-3 border border-[var(--color-danger)] bg-red-50 px-2 py-2 text-sm text-[var(--color-danger)]">
+        <p className="mb-3 border border-[var(--color-danger)] bg-[var(--panel-raised)] px-2 py-2 text-sm text-[var(--color-danger)]">
           {state.error}
         </p>
       )}

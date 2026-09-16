@@ -15,7 +15,7 @@ import { dateDisplay, money, phoneDisplay } from "@/lib/format";
 import type { Partnership } from "@/lib/types";
 
 const DUE_TONE: Record<string, string> = {
-  overdue: "border-[var(--color-danger)] bg-red-50 text-[var(--color-danger)]",
+  overdue: "border-[var(--color-danger)] bg-[var(--panel-raised)] text-[var(--color-danger)]",
   today: "border-[var(--color-warn)] text-[var(--color-warn)]",
   upcoming: "border-[var(--color-line)] text-[var(--color-muted)]",
   none: "border-[var(--color-line)] text-[var(--color-muted)]",

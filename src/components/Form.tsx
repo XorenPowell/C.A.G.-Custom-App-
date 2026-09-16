@@ -83,7 +83,7 @@ export function MoneyInput({
 }: BaseProps & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <Field label={label} hint={hint} className={className}>
-      <div className="flex items-center border border-[var(--color-line)] bg-white focus-within:border-[var(--color-accent)] focus-within:ring-1 focus-within:ring-[var(--color-accent)]">
+      <div className="flex items-center border border-[var(--color-line)] bg-[var(--color-surface)] focus-within:border-[var(--color-accent)] focus-within:ring-1 focus-within:ring-[var(--color-accent)]">
         <span className="px-2 text-[var(--color-muted)]">$</span>
         <input
           type="number"

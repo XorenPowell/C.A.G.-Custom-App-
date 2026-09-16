@@ -67,7 +67,7 @@ export default function CommsActions({
             ) : (
               <details className="relative">
                 <summary className="btn cursor-pointer list-none">Call entity POC</summary>
-                <div className="absolute z-10 mt-1 w-64 border border-[var(--color-line)] bg-white p-1">
+                <div className="absolute z-10 mt-1 w-64 border border-[var(--color-line)] bg-[var(--color-surface)] p-1">
                   {entityTargets.map((t, i) => (
                     <CallButton
                       key={i}
@@ -171,7 +171,7 @@ function MessageSheet({
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 md:items-center">
-      <div className="flex max-h-[90dvh] w-full max-w-lg flex-col border border-[var(--color-line)] bg-white">
+      <div className="flex max-h-[90dvh] w-full max-w-lg flex-col border border-[var(--color-line)] bg-[var(--color-surface)]">
         <div className="flex items-center gap-2 border-b border-[var(--color-line)] px-3 py-2">
           <h2 className="h2 flex-1">Text {mode.toLowerCase()}</h2>
           <button type="button" className="btn btn-sm" onClick={onClose}>

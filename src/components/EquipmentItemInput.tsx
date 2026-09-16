@@ -116,7 +116,7 @@ export default function EquipmentItemInput({
 
       {open && matches.length > 0 && (
         <ul
-          className="absolute z-30 mt-0.5 max-h-64 w-full overflow-y-auto border border-[var(--color-line)] bg-white shadow-lg"
+          className="absolute z-30 mt-0.5 max-h-64 w-full overflow-y-auto border border-[var(--color-line)] bg-[var(--color-surface)] shadow-lg"
           onMouseDown={() => {
             if (blurTimer.current) clearTimeout(blurTimer.current);
           }}
@@ -145,7 +145,7 @@ export default function EquipmentItemInput({
       )}
 
       {open && matches.length === 0 && value.trim() !== "" && (
-        <div className="absolute z-30 mt-0.5 w-full border border-[var(--color-line)] bg-white px-2 py-2 text-xs text-[var(--color-muted)]">
+        <div className="absolute z-30 mt-0.5 w-full border border-[var(--color-line)] bg-[var(--color-surface)] px-2 py-2 text-xs text-[var(--color-muted)]">
           No preset matches — it will be saved as typed.
         </div>
       )}

@@ -15,7 +15,7 @@ export default function StaleFlag({ updatedAt }: { updatedAt: string | null }) {
 
   return (
     <span
-      className="badge border-[var(--color-danger)] bg-red-50 text-[var(--color-danger)]"
+      className="badge border-[var(--color-danger)] bg-[var(--panel-raised)] text-[var(--color-danger)]"
       title={`Availability has not been updated in more than ${STALE_AVAILABILITY_DAYS} days.`}
     >
       ⚑ {label}
