@@ -16,6 +16,7 @@ export const EMPTY_LISTS: Lists = {
   vehicle_type: [],
   partnership_status: [],
   partnership_tier: [],
+  conversation_outcome: [],
 };
 
 /** Options offered for new selections. Archived values stay resolvable. */
