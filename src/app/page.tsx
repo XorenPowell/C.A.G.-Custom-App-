@@ -83,6 +83,18 @@ export default async function HomePage({
                 {money(data.totalCommission)}
               </div>
             </div>
+            <div className="rounded-[var(--radius-card)] border border-white/10 bg-white/[0.07] p-3">
+              <div className="text-xs text-white/70">New Inquiries</div>
+              <div className="font-heading mt-1 text-2xl font-semibold">
+                {data.inquiriesGenerated}
+              </div>
+            </div>
+            <div className="rounded-[var(--radius-card)] border border-white/10 bg-white/[0.07] p-3">
+              <div className="text-xs text-white/70">Developing Partnerships</div>
+              <div className="font-heading mt-1 text-2xl font-semibold">
+                {data.developingPartnerships}
+              </div>
+            </div>
           </div>
 
           <p className="mt-4 text-sm text-white/80">
