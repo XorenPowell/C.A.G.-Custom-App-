@@ -14,8 +14,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *     it arrives, not when it is invoiced
  *   - partnerships       -> every partnership counts, at whatever stage
  *     (Visited/Developing/Mature) it's currently at. Developing/Mature
- *     counts are a live snapshot, not scoped to the selected range — a
- *     partnership's stage has no date attached to it.
+ *     counts are scoped by developing_at/mature_at — stamped once, the
+ *     first time a partnership ever reached that stage — so a partnership
+ *     that has since moved on still counts toward the period it originally
+ *     got there. Cards/fliers dropped and the tier/stage breakdowns stay
+ *     live-snapshot running totals across the whole book, not range-scoped.
  */
 
 type JobRow = {
@@ -119,10 +122,14 @@ export async function getDashboard(
     tier_id: string | null;
     total_cards_dropped: number;
     total_fliers_dropped: number;
+    developing_at: string | null;
+    mature_at: string | null;
   }>((from, to) =>
     supabase
       .from("partnerships")
-      .select("id, status_id, last_contact, tier_id, total_cards_dropped, total_fliers_dropped")
+      .select(
+        "id, status_id, last_contact, tier_id, total_cards_dropped, total_fliers_dropped, developing_at, mature_at",
+      )
       .range(from, to),
   );
 
@@ -143,9 +150,6 @@ export async function getDashboard(
   const repeatCount = completed.filter(
     (j) => financials.get(j.id)?.repeat_customer,
   ).length;
-
-  const stageName = (p: { status_id: string | null }) =>
-    (p.status_id ? names.get(p.status_id) : "")?.toLowerCase() ?? "";
 
   return {
     jobsCompleted: completed.length,
@@ -174,8 +178,8 @@ export async function getDashboard(
       names,
     ),
 
-    developingPartnerships: partnerships.filter((p) => stageName(p) === "developing").length,
-    maturePartnerships: partnerships.filter((p) => stageName(p) === "mature").length,
+    developingPartnerships: partnerships.filter((p) => within(p.developing_at, range)).length,
+    maturePartnerships: partnerships.filter((p) => within(p.mature_at, range)).length,
     referralsProduced: created.filter((j) => j.partnership_id).length,
     // Running totals across the whole roster of partnerships, per spec.
     cardsDropped: partnerships.reduce((s, p) => s + (p.total_cards_dropped ?? 0), 0),

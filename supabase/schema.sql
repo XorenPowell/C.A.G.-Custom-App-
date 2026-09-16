@@ -29,6 +29,7 @@ drop sequence if exists job_number_seq    cascade;
 drop function if exists set_updated_at()  cascade;
 drop function if exists touch_entity_availability() cascade;
 drop function if exists next_job_id()     cascade;
+drop function if exists stamp_partnership_stage() cascade;
 
 create extension if not exists "pgcrypto";
 
@@ -248,12 +249,39 @@ create table partnerships (
   last_contact                date,          -- any outreach: call, email, visit
   follow_up_days              integer,       -- "follow up in N days" from last_contact
 
+  -- Stamped once, the first time status ever moves into that stage — never
+  -- overwritten afterward, even if the partnership later moves on to the
+  -- next stage. Lets "Developing this month" mean "reached Developing
+  -- sometime this month," not "is sitting at Developing right now."
+  developing_at                timestamptz,
+  mature_at                    timestamptz,
+
   notes                       text,
   created_at                  timestamptz not null default now(),
   updated_at                  timestamptz not null default now()
 );
 create trigger partnerships_updated_at before update on partnerships
   for each row execute function set_updated_at();
+
+-- Stamps developing_at / mature_at the moment status_id first enters that
+-- stage (matched by name, same pattern as PARTNERSHIP_REFERRAL in lists.ts).
+create function stamp_partnership_stage() returns trigger language plpgsql as $$
+declare
+  stage_name text;
+begin
+  if tg_op = 'INSERT' or new.status_id is distinct from old.status_id then
+    select lower(name) into stage_name from list_items where id = new.status_id;
+    if stage_name = 'developing' and new.developing_at is null then
+      new.developing_at = now();
+    elsif stage_name = 'mature' and new.mature_at is null then
+      new.mature_at = now();
+    end if;
+  end if;
+  return new;
+end $$;
+create trigger partnerships_stage_stamp before insert or update on partnerships
+  for each row execute function stamp_partnership_stage();
+
 create index partnerships_status_idx on partnerships (status_id);
 create index partnerships_tier_idx on partnerships (tier_id);
 create index partnerships_zone_idx on partnerships (zone_id);
