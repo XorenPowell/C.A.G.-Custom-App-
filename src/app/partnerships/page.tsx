@@ -158,7 +158,7 @@ export default async function PartnershipsPage({
             label="Sort by"
             value={filters.sort}
             options={PARTNERSHIP_SORTS.map((s) => ({ id: s.value, name: s.label }))}
-            allLabel="Follow-up due"
+            hideBlankOption
           />
         </FilterBar>
 
