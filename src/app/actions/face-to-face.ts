@@ -58,29 +58,36 @@ export async function deleteSession(id: string): Promise<ActionResult> {
   return ok();
 }
 
-/** Logs a conversation with its outcome, tied to the active session. */
+/** Logs a conversation with its outcome and intent level, tied to the active session. */
 export async function logConversation(
   sessionId: string,
   outcomeId: string,
+  intentLevel: number | string,
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("face_to_face_conversations")
-    .insert({ session_id: sessionId, outcome_id: outcomeId });
+  const { error } = await supabase.from("face_to_face_conversations").insert({
+    session_id: sessionId,
+    outcome_id: outcomeId,
+    intent_level: Math.min(10, Math.max(1, toInt(intentLevel, 5))),
+  });
   if (error) return fail(error.message);
 
   revalidatePath("/face-to-face", "layout");
   return ok();
 }
 
-export async function updateConversationOutcome(
+export async function updateConversation(
   id: string,
   outcomeId: string | null,
+  intentLevel: number | string,
 ): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase
     .from("face_to_face_conversations")
-    .update({ outcome_id: outcomeId })
+    .update({
+      outcome_id: outcomeId,
+      intent_level: Math.min(10, Math.max(1, toInt(intentLevel, 5))),
+    })
     .eq("id", id);
   if (error) return fail(error.message);
 

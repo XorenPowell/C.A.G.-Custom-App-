@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import TopBar from "@/components/TopBar";
-import ConversationOutcomeEditor from "@/components/ConversationOutcomeEditor";
+import ConversationEditor from "@/components/ConversationEditor";
 import DeleteConversationButton from "./DeleteConversationButton";
 import { getConversation } from "@/lib/face-to-face";
 import { getLists } from "@/lib/data";
@@ -35,9 +35,10 @@ export default async function ConversationDetailPage({
           Logged {dateLongDisplay(chicagoDateOf(conversation.occurred_at))} at {time}
         </p>
 
-        <ConversationOutcomeEditor
+        <ConversationEditor
           id={conversation.id}
           outcomeId={conversation.outcome_id}
+          intentLevel={conversation.intent_level}
           lists={lists}
         />
 

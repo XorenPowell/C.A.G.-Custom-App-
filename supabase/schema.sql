@@ -419,6 +419,9 @@ create table face_to_face_conversations (
   -- Settings-driven (conversation_outcome), same as every other dropdown.
   outcome_id   uuid references list_items(id) on delete set null,
 
+  -- 1-10 slider: how interested the dispatcher judged them to be.
+  intent_level integer not null default 5 check (intent_level between 1 and 10),
+
   created_at   timestamptz not null default now()
 );
 create index face_to_face_conversations_occurred_idx on face_to_face_conversations (occurred_at desc);

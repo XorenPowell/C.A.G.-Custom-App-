@@ -38,7 +38,12 @@ function ConversationList({
           className="card card-pad flex items-center justify-between gap-2"
         >
           <span className="font-bold">{lookup(names, c.outcome_id)}</span>
-          <span className="muted text-sm">{timeOf(c.occurred_at)}</span>
+          <span className="flex items-center gap-2">
+            <span className="badge border-[var(--pill-border)] bg-[var(--pill-bg)]">
+              {c.intent_level}/10
+            </span>
+            <span className="muted text-sm">{timeOf(c.occurred_at)}</span>
+          </span>
         </Link>
       ))}
     </div>

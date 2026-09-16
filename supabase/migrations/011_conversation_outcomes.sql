@@ -3,10 +3,11 @@
 --
 -- Contact details were useless in practice — an interested prospect just
 -- becomes a job directly. What matters is the outcome of the conversation
--- itself, so face_to_face_conversations is rebuilt down to just that:
--- an outcome (Settings-driven, like every other dropdown) at a moment in
--- time. Existing conversation data is dropped — the user has confirmed
--- that's fine, there isn't much of it and it's easy to redo.
+-- and how interested they seemed, so face_to_face_conversations is rebuilt
+-- down to that: an outcome (Settings-driven, like every other dropdown)
+-- and the 1-10 intent slider, at a moment in time. Existing conversation
+-- data is dropped — the user has confirmed that's fine, there isn't much
+-- of it and it's easy to redo.
 --
 -- Run once in the Supabase SQL Editor. Safe to re-run.
 -- =====================================================================
@@ -25,6 +26,7 @@ create table face_to_face_conversations (
   occurred_at  timestamptz not null default now(),
   session_id   uuid references face_to_face_sessions(id) on delete cascade,
   outcome_id   uuid references list_items(id) on delete set null,
+  intent_level integer not null default 5 check (intent_level between 1 and 10),
   created_at   timestamptz not null default now()
 );
 create index face_to_face_conversations_occurred_idx on face_to_face_conversations (occurred_at desc);

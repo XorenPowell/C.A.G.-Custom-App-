@@ -274,8 +274,9 @@ export type TimeEntry = {
 };
 
 /**
- * Just an outcome at a moment in time — no contact details. An interested
- * prospect becomes a job directly; there's nothing else worth capturing here.
+ * Just an outcome and an intent level at a moment in time — no contact
+ * details. An interested prospect becomes a job directly; there's nothing
+ * else worth capturing here.
  */
 export type FaceToFaceConversation = {
   id: string;
@@ -283,5 +284,7 @@ export type FaceToFaceConversation = {
   /** Null only for conversations logged before sessions existed. */
   session_id: string | null;
   outcome_id: string | null;
+  /** 1-10 slider: how interested the dispatcher judged them to be. */
+  intent_level: number;
   created_at: string;
 };

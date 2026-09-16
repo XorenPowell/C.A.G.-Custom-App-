@@ -17,12 +17,27 @@ export default function NewConversationButton({
   const router = useRouter();
   const [pending, start] = useGlobalTransition();
   const [open, setOpen] = useState(false);
+  const [outcomeId, setOutcomeId] = useState("");
+  const [intentLevel, setIntentLevel] = useState("5");
   const [error, setError] = useState<string | null>(null);
 
-  function pick(outcomeId: string) {
+  const options = active(outcomes);
+
+  function openDialog() {
+    setError(null);
+    setOutcomeId("");
+    setIntentLevel("5");
+    setOpen(true);
+  }
+
+  function submit() {
+    if (!outcomeId) {
+      setError("Pick an outcome.");
+      return;
+    }
     start(async () => {
       setError(null);
-      const res = await logConversation(sessionId, outcomeId);
+      const res = await logConversation(sessionId, outcomeId, intentLevel);
       if (!res.ok) {
         setError(res.error ?? "Could not log conversation.");
         return;
@@ -32,54 +47,70 @@ export default function NewConversationButton({
     });
   }
 
-  const options = active(outcomes);
-
   return (
     <>
-      <button
-        type="button"
-        className="btn btn-primary mb-4 w-full"
-        onClick={() => {
-          setError(null);
-          setOpen(true);
-        }}
-      >
+      <button type="button" className="btn btn-primary mb-4 w-full" onClick={openDialog}>
         + New Conversation
       </button>
 
       {open && (
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 md:items-center">
           <div className="w-full max-w-sm border border-[var(--color-line)] bg-[var(--color-surface)] p-4">
-            <h2 className="h2 mb-3">What was the outcome?</h2>
+            <h2 className="h2 mb-3">Log conversation</h2>
             {error && <p className="mb-2 text-sm text-[var(--color-danger)]">{error}</p>}
 
-            <div className="flex flex-col gap-2">
-              {options.map((o) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  className="btn"
-                  disabled={pending}
-                  onClick={() => pick(o.id)}
-                >
-                  {o.name}
-                </button>
-              ))}
+            <div className="field">
+              <label className="label">Outcome</label>
+              <select
+                className="select"
+                value={outcomeId}
+                onChange={(e) => setOutcomeId(e.target.value)}
+              >
+                <option value="">— select —</option>
+                {options.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
               {options.length === 0 && (
-                <p className="muted text-sm">
+                <p className="mt-1 text-xs text-[var(--color-muted)]">
                   No outcomes set up yet — add some in Settings → Conversation Outcomes.
                 </p>
               )}
             </div>
 
-            <button
-              type="button"
-              className="btn mt-3 w-full"
-              onClick={() => setOpen(false)}
-              disabled={pending}
-            >
-              Cancel
-            </button>
+            <div className="field">
+              <label className="label">Intent level — {intentLevel}/10</label>
+              <input
+                type="range"
+                min={1}
+                max={10}
+                step={1}
+                value={intentLevel}
+                onChange={(e) => setIntentLevel(e.target.value)}
+                className="w-full accent-[var(--color-accent)]"
+              />
+            </div>
+
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                className="btn flex-1"
+                onClick={() => setOpen(false)}
+                disabled={pending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary flex-1"
+                onClick={submit}
+                disabled={pending}
+              >
+                {pending ? "Saving…" : "Log Conversation"}
+              </button>
+            </div>
           </div>
         </div>
       )}
