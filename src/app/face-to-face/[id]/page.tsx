@@ -1,0 +1,37 @@
+import { notFound } from "next/navigation";
+import TopBar from "@/components/TopBar";
+import ConversationForm from "@/components/ConversationForm";
+import DeleteConversationButton from "./DeleteConversationButton";
+import { getConversation } from "@/lib/face-to-face";
+import { getLists } from "@/lib/data";
+import { dateLongDisplay } from "@/lib/format";
+
+export default async function ConversationDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const [conversation, lists] = await Promise.all([getConversation(id), getLists()]);
+  if (!conversation) notFound();
+
+  const time = new Date(conversation.occurred_at).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  return (
+    <>
+      <TopBar title="Conversation" back="/face-to-face" backLabel="Work Face to Face" />
+      <main className="page max-w-2xl">
+        <p className="muted mb-3 text-sm">
+          Started {dateLongDisplay(conversation.occurred_at.slice(0, 10))} at {time}
+        </p>
+
+        <ConversationForm conversation={conversation} lists={lists} />
+
+        <DeleteConversationButton id={conversation.id} />
+      </main>
+    </>
+  );
+}

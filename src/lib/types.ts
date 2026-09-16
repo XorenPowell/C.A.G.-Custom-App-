@@ -27,6 +27,9 @@ export type EntityStatus = (typeof ENTITY_STATUSES)[number];
 export const AUDIENCES = ["Customer", "Worker"] as const;
 export type Audience = (typeof AUDIENCES)[number];
 
+export const INQUIRY_FOR_OPTIONS = ["Themselves", "A Friend"] as const;
+export type InquiryFor = (typeof INQUIRY_FOR_OPTIONS)[number];
+
 export type ListItem = {
   id: string;
   kind: ListKind;
@@ -236,4 +239,23 @@ export type JobFinancials = {
   week_of: string | null;
   month: string | null;
   repeat_customer: boolean;
+};
+
+/**
+ * Work Face to Face: standalone in-person outreach log. Not read by any
+ * other screen yet — the dashboard/reports figures are untouched.
+ */
+export type FaceToFaceConversation = {
+  id: string;
+  occurred_at: string;
+  contact_name: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  inquiry_for: InquiryFor | null;
+  service_category_id: string | null;
+  zone_id: string | null;
+  cards_given: number;
+  intent_level: number;
+  notes: string | null;
+  created_at: string;
 };
