@@ -36,7 +36,6 @@ export type PartnershipPayload = {
   total_cards_dropped: number | string;
   fliers_dropped_last_visit: number | string;
   total_fliers_dropped: number | string;
-  date_signed: string | null;
   last_contact: string | null;
   follow_up_days: number | string | null;
   notes: string | null;
@@ -66,8 +65,6 @@ export async function savePartnership(
     total_cards_dropped: toInt(payload.total_cards_dropped),
     fliers_dropped_last_visit: toInt(payload.fliers_dropped_last_visit),
     total_fliers_dropped: toInt(payload.total_fliers_dropped),
-    // Null keeps this a lead; a date promotes it to a real partnership.
-    date_signed: payload.date_signed || null,
     // Visiting someone is contacting them, so a later visit date carries.
     last_contact: laterOf(payload.last_contact, payload.last_visit),
     follow_up_days: toNullableInt(payload.follow_up_days),

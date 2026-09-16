@@ -1,20 +1,9 @@
 import type { Partnership } from "@/lib/types";
 
 /**
- * Partnership pipeline helpers. Pure — no server imports — so the form, the
+ * Partnership follow-up helpers. Pure — no server imports — so the form, the
  * list and the dashboard all apply identical rules.
- *
- * `date_signed` is the single discriminator. Null means the row is still a
- * lead: visible in the list, invisible to every metric.
  */
-
-export function isLead(p: Pick<Partnership, "date_signed">): boolean {
-  return !p.date_signed;
-}
-
-export function isSigned(p: Pick<Partnership, "date_signed">): boolean {
-  return !!p.date_signed;
-}
 
 /**
  * Chicago's current calendar date, not the server process's. `Intl` is a

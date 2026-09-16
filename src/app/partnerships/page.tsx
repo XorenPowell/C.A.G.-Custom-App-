@@ -7,10 +7,10 @@ import {
   followUpState,
   getPartnerships,
   getReferralCounts,
-  isLead,
   PARTNERSHIP_SORTS,
 } from "@/lib/partnerships";
 import { active, getLists, lookup, nameMap } from "@/lib/data";
+import { partnershipStageId, stageTone } from "@/lib/lists";
 import { dateDisplay, money, phoneDisplay } from "@/lib/format";
 import type { Partnership } from "@/lib/types";
 
@@ -21,18 +21,20 @@ const DUE_TONE: Record<string, string> = {
   none: "border-[var(--color-line)] text-[var(--color-muted)]",
 };
 
+const STAGE_TONE: Record<string, string> = {
+  good: "border-[var(--color-good)] text-[var(--color-good)]",
+  warn: "border-[var(--color-warn)] text-[var(--color-warn)]",
+  muted: "border-[var(--color-line)] text-[var(--color-muted)]",
+};
+
 function FollowUp({ p }: { p: Partnership }) {
   const state = followUpState(p);
   if (state === "none") return <span className="muted">—</span>;
   return <span className={`badge ${DUE_TONE[state]}`}>{followUpLabel(p)}</span>;
 }
 
-function PipelineBadge({ p }: { p: Partnership }) {
-  return isLead(p) ? (
-    <span className="badge border-[var(--color-line)] text-[var(--color-muted)]">Lead</span>
-  ) : (
-    <span className="badge border-[var(--color-good)] text-[var(--color-good)]">Partner</span>
-  );
+function StageBadge({ name }: { name: string }) {
+  return <span className={`badge ${STAGE_TONE[stageTone(name)]}`}>{name || "—"}</span>;
 }
 
 export default async function PartnershipsPage({
@@ -50,7 +52,6 @@ export default async function PartnershipsPage({
 
   const filters = {
     q: sp.q ?? "",
-    pipeline: sp.pipeline ?? "",
     status: sp.status ?? "",
     tier: sp.tier ?? "",
     zone: sp.zone ?? "",
@@ -60,7 +61,6 @@ export default async function PartnershipsPage({
   const rows = filterPartnerships(all, filters);
   const anyFilter = [
     filters.q,
-    filters.pipeline,
     filters.status,
     filters.tier,
     filters.zone,
@@ -68,8 +68,12 @@ export default async function PartnershipsPage({
   ].some(Boolean);
 
   // Counts are always of the whole book, so the header does not move as you filter.
-  const leadCount = all.filter(isLead).length;
-  const partnerCount = all.length - leadCount;
+  const visitedId = partnershipStageId(lists, "Visited");
+  const developingId = partnershipStageId(lists, "Developing");
+  const matureId = partnershipStageId(lists, "Mature");
+  const visitedCount = all.filter((p) => p.status_id === visitedId).length;
+  const developingCount = all.filter((p) => p.status_id === developingId).length;
+  const matureCount = all.filter((p) => p.status_id === matureId).length;
   const dueCount = all.filter((p) => {
     const s = followUpState(p);
     return s === "overdue" || s === "today";
@@ -86,26 +90,38 @@ export default async function PartnershipsPage({
         }
       />
       <main className="page">
-        {/* Pipeline shortcuts — the common views without touching the filter form. */}
+        {/* Stage shortcuts — the common views without touching the filter form. */}
         <div className="mb-3 flex flex-wrap gap-1">
           <Link
             href="/partnerships"
-            className={`btn btn-sm ${!filters.pipeline && !filters.due ? "btn-primary" : ""}`}
+            className={`btn btn-sm ${!filters.status && !filters.due ? "btn-primary" : ""}`}
           >
             All ({all.length})
           </Link>
-          <Link
-            href="/partnerships?pipeline=lead"
-            className={`btn btn-sm ${filters.pipeline === "lead" ? "btn-primary" : ""}`}
-          >
-            Leads ({leadCount})
-          </Link>
-          <Link
-            href="/partnerships?pipeline=signed"
-            className={`btn btn-sm ${filters.pipeline === "signed" ? "btn-primary" : ""}`}
-          >
-            Partners ({partnerCount})
-          </Link>
+          {visitedId && (
+            <Link
+              href={`/partnerships?status=${visitedId}`}
+              className={`btn btn-sm ${filters.status === visitedId ? "btn-primary" : ""}`}
+            >
+              Visited ({visitedCount})
+            </Link>
+          )}
+          {developingId && (
+            <Link
+              href={`/partnerships?status=${developingId}`}
+              className={`btn btn-sm ${filters.status === developingId ? "btn-primary" : ""}`}
+            >
+              Developing ({developingCount})
+            </Link>
+          )}
+          {matureId && (
+            <Link
+              href={`/partnerships?status=${matureId}`}
+              className={`btn btn-sm ${filters.status === matureId ? "btn-primary" : ""}`}
+            >
+              Mature ({matureCount})
+            </Link>
+          )}
           <Link
             href="/partnerships?due=due"
             className={`btn btn-sm ${filters.due === "due" ? "btn-primary" : ""}`}
@@ -120,15 +136,6 @@ export default async function PartnershipsPage({
             label="Search"
             value={filters.q}
             placeholder="Business, contact, address"
-          />
-          <FilterSelect
-            name="pipeline"
-            label="Stage"
-            value={filters.pipeline}
-            options={[
-              { id: "lead", name: "Leads only" },
-              { id: "signed", name: "Signed partners only" },
-            ]}
           />
           <FilterSelect
             name="status"
@@ -178,12 +185,9 @@ export default async function PartnershipsPage({
               >
                 <div className="flex items-start justify-between gap-2">
                   <span className="font-bold">{p.business_name}</span>
-                  <PipelineBadge p={p} />
+                  <StageBadge name={lookup(names, p.status_id)} />
                 </div>
-                <div className="muted text-sm">
-                  {lookup(names, p.status_id)}
-                  {!isLead(p) && ` · ${lookup(names, p.tier_id)}`}
-                </div>
+                <div className="muted text-sm">{lookup(names, p.tier_id)}</div>
                 {p.poc_name && (
                   <div className="text-sm">
                     {p.poc_name}
@@ -194,12 +198,10 @@ export default async function PartnershipsPage({
                   <FollowUp p={p} />
                   <span className="muted">last contact {dateDisplay(p.last_contact)}</span>
                 </div>
-                {!isLead(p) && (
-                  <div className="mono mt-1 text-sm">
-                    {ref?.jobs ?? 0} referral{(ref?.jobs ?? 0) === 1 ? "" : "s"} ·{" "}
-                    {money(ref?.revenue ?? 0)}
-                  </div>
-                )}
+                <div className="mono mt-1 text-sm">
+                  {ref?.jobs ?? 0} referral{(ref?.jobs ?? 0) === 1 ? "" : "s"} ·{" "}
+                  {money(ref?.revenue ?? 0)}
+                </div>
               </Link>
             );
           })}
@@ -215,7 +217,6 @@ export default async function PartnershipsPage({
               <thead>
                 <tr>
                   <th>Business</th>
-                  <th>Stage</th>
                   <th>Status</th>
                   <th>Contact</th>
                   <th>Last contact</th>
@@ -228,7 +229,6 @@ export default async function PartnershipsPage({
               <tbody>
                 {rows.map((p) => {
                   const ref = referrals.get(p.id);
-                  const lead = isLead(p);
                   return (
                     <tr key={p.id}>
                       <td>
@@ -238,9 +238,8 @@ export default async function PartnershipsPage({
                         {p.address && <div className="muted text-xs">{p.address}</div>}
                       </td>
                       <td>
-                        <PipelineBadge p={p} />
+                        <StageBadge name={lookup(names, p.status_id)} />
                       </td>
-                      <td>{lookup(names, p.status_id)}</td>
                       <td className="whitespace-nowrap">
                         {p.poc_name}
                         {p.poc_phone && (
@@ -251,15 +250,15 @@ export default async function PartnershipsPage({
                       <td className="whitespace-nowrap">
                         <FollowUp p={p} />
                       </td>
-                      <td className="text-xs">{lead ? "—" : lookup(names, p.tier_id)}</td>
-                      <td className="mono">{lead ? "—" : (ref?.jobs ?? 0)}</td>
-                      <td className="mono">{lead ? "—" : money(ref?.revenue ?? 0)}</td>
+                      <td className="text-xs">{lookup(names, p.tier_id)}</td>
+                      <td className="mono">{ref?.jobs ?? 0}</td>
+                      <td className="mono">{money(ref?.revenue ?? 0)}</td>
                     </tr>
                   );
                 })}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="muted">
+                    <td colSpan={8} className="muted">
                       No partnerships match these filters.
                     </td>
                   </tr>
@@ -270,8 +269,8 @@ export default async function PartnershipsPage({
         </div>
 
         <p className="muted mt-3 text-xs">
-          A partnership counts as a lead until it has a signed date. Leads stay out of New
-          Partnerships, the tier breakdown and every other dashboard figure.
+          Status tracks where a partnership stands: Visited → Developing → Mature. Every
+          partnership counts toward the dashboard, at whatever stage it's at.
         </p>
       </main>
     </>

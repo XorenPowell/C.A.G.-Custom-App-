@@ -62,3 +62,26 @@ export function partnershipReferralId(lists: Lists): string | null {
     )?.id ?? null
   );
 }
+
+/**
+ * A partnership's stage in its lifecycle — Visited -> Developing -> Mature —
+ * lives in its Status field (partnership_status). Matched by name at read
+ * time, same pattern as PARTNERSHIP_REFERRAL, so renaming a stage in
+ * Settings doesn't need a code change.
+ */
+export const PARTNERSHIP_STAGES = ["Visited", "Developing", "Mature"] as const;
+
+export function partnershipStageId(lists: Lists, stage: string): string | null {
+  return (
+    lists.partnership_status.find((l) => l.name.trim().toLowerCase() === stage.toLowerCase())
+      ?.id ?? null
+  );
+}
+
+/** Badge color for a partnership's stage, by its Status name. */
+export function stageTone(name: string | null | undefined): "muted" | "warn" | "good" {
+  const n = (name ?? "").trim().toLowerCase();
+  if (n === "mature") return "good";
+  if (n === "developing") return "warn";
+  return "muted";
+}
