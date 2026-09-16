@@ -209,3 +209,14 @@ export async function resetThemeOverrides(): Promise<ActionResult> {
   revalidatePath("/", "layout");
   return ok();
 }
+
+export async function saveFaceToFaceGoal(dailyGoal: number | string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("settings")
+    .update({ face_to_face_daily_goal: Math.max(1, toInt(dailyGoal, 10)) })
+    .eq("id", true);
+  if (error) return fail(error.message);
+  revalidatePath("/", "layout");
+  return ok();
+}

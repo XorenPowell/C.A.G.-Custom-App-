@@ -50,6 +50,8 @@ export type Settings = {
   daily_partnerships_goal: number;
   /** 0=Sunday..6=Saturday. The home screen's "Next payout" sums commission from this weekday through today. */
   pay_period_start_day: number;
+  /** Work Face to Face: conversations-per-day target. Resets with the calendar day. */
+  face_to_face_daily_goal: number;
   /** Per-token color overrides from the Appearance settings screen. Empty object = shipped defaults. */
   theme_overrides: Record<string, string>;
 };
@@ -244,10 +246,26 @@ export type JobFinancials = {
 /**
  * Work Face to Face: standalone in-person outreach log. Not read by any
  * other screen yet — the dashboard/reports figures are untouched.
+ *
+ * A session is one outreach stretch (an afternoon of door-knocking, etc.).
+ * `ended_at` null means it's the active session — there is only ever one at
+ * a time.
  */
+export type FaceToFaceSession = {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  conversation_goal: number;
+  committed_hours: number;
+  zone_id: string | null;
+  created_at: string;
+};
+
 export type FaceToFaceConversation = {
   id: string;
   occurred_at: string;
+  /** Null only for the handful of conversations logged before sessions existed. */
+  session_id: string | null;
   contact_name: string | null;
   contact_phone: string | null;
   contact_email: string | null;

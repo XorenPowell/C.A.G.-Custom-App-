@@ -47,6 +47,7 @@ export async function getSettings(): Promise<Settings> {
       daily_inquiries_goal: 5,
       daily_partnerships_goal: 10,
       pay_period_start_day: 5,
+      face_to_face_daily_goal: 10,
       theme_overrides: {},
     }
   );

@@ -6,16 +6,72 @@ import { createClient } from "@/lib/supabase/server";
 import { fail, ok, orNull, toInt, type ActionResult } from "@/lib/persist";
 import type { InquiryFor } from "@/lib/types";
 
+export type StartSessionPayload = {
+  conversation_goal: number | string;
+  committed_hours: number | string;
+  zone_id: string | null;
+};
+
+/** Creates the session and routes straight to its (now active) page. */
+export async function startSession(payload: StartSessionPayload): Promise<void> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("face_to_face_sessions")
+    .insert({
+      conversation_goal: Math.max(1, toInt(payload.conversation_goal, 5)),
+      committed_hours: Number(payload.committed_hours) || 0,
+      zone_id: payload.zone_id || null,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/face-to-face", "layout");
+  redirect(`/face-to-face/sessions/${data.id}`);
+}
+
 /**
- * Inserts a bare row stamped with the current time, then routes straight to
- * its detail page. The point is capturing when the conversation actually
- * started — not whenever the dispatcher finishes filling in the form.
+ * Ends a session — used both by the explicit "End Session" button and by
+ * "End & start new" when a different session is already active.
  */
-export async function startConversation(): Promise<void> {
+export async function endSession(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("face_to_face_sessions")
+    .update({ ended_at: new Date().toISOString() })
+    .eq("id", id)
+    .is("ended_at", null);
+  if (error) return fail(error.message);
+  revalidatePath("/face-to-face", "layout");
+  return ok(id);
+}
+
+/**
+ * Deletes a session outright. Its conversations go with it (the DB foreign
+ * key is `on delete cascade`) — the confirm dialog on the button warns about
+ * this before calling in.
+ */
+export async function deleteSession(id: string): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("face_to_face_sessions").delete().eq("id", id);
+  if (error) return fail(error.message);
+  revalidatePath("/face-to-face", "layout");
+  return ok();
+}
+
+/**
+ * Inserts a bare conversation row tied to this session, stamped with the
+ * current time, then routes to it to fill in details — the timestamp needs
+ * to be the moment of the tap, not whenever the form eventually saves.
+ */
+export async function startConversationInSession(
+  sessionId: string,
+  zoneId: string | null,
+): Promise<void> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("face_to_face_conversations")
-    .insert({})
+    .insert({ session_id: sessionId, zone_id: zoneId })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
