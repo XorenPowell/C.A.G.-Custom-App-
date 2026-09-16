@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { followUpDue, followUpState, isLead, todayLocal } from "@/lib/follow-up";
+import { followUpDue, followUpState, todayLocal } from "@/lib/follow-up";
 import type { JobFinancials, Partnership } from "@/lib/types";
 
 export {
@@ -7,8 +7,6 @@ export {
   followUpDue,
   followUpLabel,
   followUpState,
-  isLead,
-  isSigned,
   type FollowUpState,
 } from "@/lib/follow-up";
 
@@ -33,8 +31,6 @@ export type PartnershipFilters = {
   status?: string;
   tier?: string;
   zone?: string;
-  /** "lead" = not yet signed, "signed" = a real partnership, "" = both. */
-  pipeline?: string;
   /** "due" = overdue or due today, "overdue" = overdue only. */
   due?: string;
   sort?: string;
@@ -44,7 +40,6 @@ export const PARTNERSHIP_SORTS = [
   { value: "follow_up", label: "Follow-up due" },
   { value: "business_name", label: "Business name" },
   { value: "last_contact", label: "Last contact" },
-  { value: "date_signed", label: "Date signed" },
   { value: "created_at", label: "Recently added" },
 ] as const;
 
@@ -56,8 +51,6 @@ export function filterPartnerships(
   const today = todayLocal();
 
   const filtered = rows.filter((p) => {
-    if (f.pipeline === "lead" && !isLead(p)) return false;
-    if (f.pipeline === "signed" && isLead(p)) return false;
     if (f.status && p.status_id !== f.status) return false;
     if (f.tier && p.tier_id !== f.tier) return false;
     if (f.zone && p.zone_id !== f.zone) return false;
@@ -100,10 +93,6 @@ function sortPartnerships(rows: Partnership[], sort?: string): Partnership[] {
       // Never contacted sorts last, not first.
       return out.sort(
         (a, b) => (b.last_contact ?? "").localeCompare(a.last_contact ?? "") || byName(a, b),
-      );
-    case "date_signed":
-      return out.sort(
-        (a, b) => (b.date_signed ?? "").localeCompare(a.date_signed ?? "") || byName(a, b),
       );
     case "created_at":
       return out.sort((a, b) => b.created_at.localeCompare(a.created_at));

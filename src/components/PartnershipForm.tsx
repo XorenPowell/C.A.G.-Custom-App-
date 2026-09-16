@@ -41,7 +41,6 @@ export default function PartnershipForm({
     total_cards_dropped: str(partnership?.total_cards_dropped ?? 0),
     fliers_dropped_last_visit: str(partnership?.fliers_dropped_last_visit ?? 0),
     total_fliers_dropped: str(partnership?.total_fliers_dropped ?? 0),
-    date_signed: partnership?.date_signed ?? "",
     last_contact: partnership?.last_contact ?? "",
     follow_up_days: str(partnership?.follow_up_days ?? ""),
     notes: partnership?.notes ?? "",
@@ -52,8 +51,6 @@ export default function PartnershipForm({
     setStatusMsg(null);
   }
 
-  // date_signed is the only thing that separates a lead from a partnership.
-  const isLeadNow = !form.date_signed;
   const followUpInput = {
     last_contact: form.last_contact || null,
     follow_up_days: form.follow_up_days === "" ? null : Number(form.follow_up_days),
@@ -109,6 +106,7 @@ export default function PartnershipForm({
             label="Status"
             value={form.status_id}
             onChange={(e) => patch({ status_id: e.target.value })}
+            hint="Where this relationship stands: Visited → Developing → Mature."
           >
             <option value="">— select —</option>
             {optionsFor(lists.partnership_status, form.status_id || null).map((s) => (
@@ -132,15 +130,8 @@ export default function PartnershipForm({
         </div>
       </Section>
 
-      <Section title="Pipeline">
+      <Section title="Follow-up">
         <div className="grid-form">
-          <TextInput
-            label="Date signed"
-            type="date"
-            value={form.date_signed}
-            onChange={(e) => patch({ date_signed: e.target.value })}
-            hint="Leave blank while this is still a lead."
-          />
           <TextInput
             label="Last contact"
             type="date"
@@ -167,36 +158,7 @@ export default function PartnershipForm({
           >
             Contacted today
           </button>
-          <button
-            type="button"
-            className="btn btn-sm"
-            onClick={() => patch({ date_signed: todayLocal() })}
-            disabled={!!form.date_signed}
-          >
-            Signed today
-          </button>
         </div>
-
-        <p
-          className={`mt-3 border p-2 text-sm ${
-            isLeadNow
-              ? "border-[var(--color-line)] bg-[var(--color-sunken)]"
-              : "border-[var(--color-good)] text-[var(--color-good)]"
-          }`}
-        >
-          {isLeadNow ? (
-            <>
-              <strong>Lead.</strong> Visible in your list, but excluded from New
-              Partnerships, the tier chart and every other figure until a signed date is
-              set.
-            </>
-          ) : (
-            <>
-              <strong>Signed partnership.</strong> Counts toward New Partnerships for{" "}
-              {dateLongDisplay(form.date_signed)} and appears in the tier breakdown.
-            </>
-          )}
-        </p>
 
         {due && (
           <p className="muted mt-2 text-sm">

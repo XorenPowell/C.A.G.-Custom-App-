@@ -4,14 +4,16 @@ import TopBar from "@/components/TopBar";
 import PartnershipForm from "@/components/PartnershipForm";
 import DeletePartnershipButton from "./DeletePartnershipButton";
 import { Empty, Stat, StatGrid } from "@/components/Detail";
-import {
-  followUpLabel,
-  getPartnership,
-  getPartnershipReferrals,
-  isLead,
-} from "@/lib/partnerships";
-import { getLists } from "@/lib/data";
+import { followUpLabel, getPartnership, getPartnershipReferrals } from "@/lib/partnerships";
+import { getLists, lookup, nameMap } from "@/lib/data";
+import { stageTone } from "@/lib/lists";
 import { dateDisplay, money } from "@/lib/format";
+
+const STAGE_TONE: Record<string, string> = {
+  good: "border-[var(--color-good)] text-[var(--color-good)]",
+  warn: "border-[var(--color-warn)] text-[var(--color-warn)]",
+  muted: "border-[var(--color-line)] text-[var(--color-muted)]",
+};
 
 export default async function PartnershipDetailPage({
   params,
@@ -26,9 +28,10 @@ export default async function PartnershipDetailPage({
   ]);
   if (!partnership) notFound();
 
+  const names = nameMap(lists);
   const revenue = referrals.reduce((s, r) => s + r.total_invoice_paid, 0);
   const completed = referrals.filter((r) => r.status === "Completed").length;
-  const lead = isLead(partnership);
+  const statusName = lookup(names, partnership.status_id);
 
   return (
     <>
@@ -39,43 +42,26 @@ export default async function PartnershipDetailPage({
       />
       <main className="page max-w-3xl">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          {lead ? (
-            <span className="badge border-[var(--color-line)] text-[var(--color-muted)]">
-              Lead
-            </span>
-          ) : (
-            <span className="badge border-[var(--color-good)] text-[var(--color-good)]">
-              Signed {dateDisplay(partnership.date_signed)}
-            </span>
-          )}
+          <span className={`badge ${STAGE_TONE[stageTone(statusName)]}`}>{statusName}</span>
           <span className="muted text-sm">
             Last contact {dateDisplay(partnership.last_contact)} · follow-up{" "}
             {followUpLabel(partnership)}
           </span>
         </div>
 
-        {lead ? (
-          <p className="card card-pad mb-3 text-sm">
-            This is still a lead, so it is excluded from New Partnerships, the tier
-            breakdown and every other dashboard figure. Setting a signed date below
-            promotes it.
-          </p>
-        ) : (
-          /* Derived: counted from jobs, never stored on the partnership row. */
-          <section className="card mb-3">
-            <div className="section-title">Referral Performance</div>
-            <div className="card-pad">
-              <StatGrid>
-                <Stat label="Jobs referred" value={String(referrals.length)} />
-                <Stat label="Completed" value={String(completed)} />
-                <Stat label="Revenue referred" value={money(revenue)} />
-                <Stat label="Last visit" value={dateDisplay(partnership.last_visit)} />
-              </StatGrid>
-            </div>
-          </section>
-        )}
+        {/* Derived: counted from jobs, never stored on the partnership row. */}
+        <section className="card mb-3">
+          <div className="section-title">Referral Performance</div>
+          <div className="card-pad">
+            <StatGrid>
+              <Stat label="Jobs referred" value={String(referrals.length)} />
+              <Stat label="Completed" value={String(completed)} />
+              <Stat label="Revenue referred" value={money(revenue)} />
+              <Stat label="Last visit" value={dateDisplay(partnership.last_visit)} />
+            </StatGrid>
+          </div>
+        </section>
 
-        {(!lead || referrals.length > 0) && (
         <section className="card mb-3">
           <div className="section-title">Referred Jobs ({referrals.length})</div>
           <div className="card-pad">
@@ -116,7 +102,6 @@ export default async function PartnershipDetailPage({
             )}
           </div>
         </section>
-        )}
 
         <PartnershipForm partnership={partnership} lists={lists} />
 

@@ -242,11 +242,9 @@ create table partnerships (
   fliers_dropped_last_visit   integer not null default 0,
   total_fliers_dropped        integer not null default 0,
 
-  -- Leads and real partnerships share this table. `date_signed` is the
-  -- discriminator: null means it is still a lead and it stays out of every
-  -- metric; set means it counts. When the lead was first written down is
-  -- already captured by created_at.
-  date_signed                 date,
+  -- No lead/signed switch: every partnership counts, at whatever stage it's
+  -- at. `status_id` is the pipeline itself — Visited -> Developing -> Mature
+  -- (partnership_status list_items) — not just a label.
   last_contact                date,          -- any outreach: call, email, visit
   follow_up_days              integer,       -- "follow up in N days" from last_contact
 
@@ -259,7 +257,6 @@ create trigger partnerships_updated_at before update on partnerships
 create index partnerships_status_idx on partnerships (status_id);
 create index partnerships_tier_idx on partnerships (tier_id);
 create index partnerships_zone_idx on partnerships (zone_id);
-create index partnerships_date_signed_idx on partnerships (date_signed);
 create index partnerships_last_contact_idx on partnerships (last_contact);
 
 -- =====================================================================

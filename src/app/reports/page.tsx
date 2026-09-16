@@ -136,9 +136,14 @@ export default async function ReportsPage({
         <Panel title="Partnerships">
           <StatGrid>
             <Stat
-              label="New partnerships"
-              value={num(data.newPartnerships, 0)}
-              sub="signed in range"
+              label="Developing"
+              value={num(data.developingPartnerships, 0)}
+              sub="right now, not range-scoped"
+            />
+            <Stat
+              label="Mature"
+              value={num(data.maturePartnerships, 0)}
+              sub="right now, not range-scoped"
             />
             <Stat label="Referrals produced" value={num(data.referralsProduced, 0)} />
             <Stat
@@ -152,6 +157,10 @@ export default async function ReportsPage({
               sub="running total"
             />
           </StatGrid>
+          <div className="mt-3">
+            <h3 className="label">Partnerships by stage</h3>
+            <BarChart data={data.partnershipsByStage} valueFormat={(n) => num(n, 0)} />
+          </div>
           <div className="mt-3">
             <h3 className="label">Partnerships by tier</h3>
             <BarChart data={data.partnershipsByTier} valueFormat={(n) => num(n, 0)} />

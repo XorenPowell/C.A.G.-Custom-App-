@@ -12,8 +12,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *     created_at, matching how the job_financials view derives week/month
  *   - demand generation  -> created_at, because an inquiry is generated when
  *     it arrives, not when it is invoiced
- *   - new partnerships   -> date_signed. A partnership with no signed date is
- *     still a lead and is excluded from every figure here.
+ *   - partnerships       -> every partnership counts, at whatever stage
+ *     (Visited/Developing/Mature) it's currently at. Developing/Mature
+ *     counts are a live snapshot, not scoped to the selected range — a
+ *     partnership's stage has no date attached to it.
  */
 
 type JobRow = {
@@ -88,11 +90,13 @@ export type DashboardData = {
   conversionRate: number;
   inquiriesBySource: { label: string; value: number }[];
 
-  newPartnerships: number;
+  developingPartnerships: number;
+  maturePartnerships: number;
   referralsProduced: number;
   cardsDropped: number;
   fliersDropped: number;
   partnershipsByTier: { label: string; value: number }[];
+  partnershipsByStage: { label: string; value: number }[];
 
   repeatCustomerRate: number;
 };
@@ -108,9 +112,9 @@ export async function getDashboard(
 
   const financials = await fetchFinancials(supabase, jobIds);
 
-  const allPartnerships = await pageAll<{
+  const partnerships = await pageAll<{
     id: string;
-    date_signed: string | null;
+    status_id: string | null;
     last_contact: string | null;
     tier_id: string | null;
     total_cards_dropped: number;
@@ -118,15 +122,9 @@ export async function getDashboard(
   }>((from, to) =>
     supabase
       .from("partnerships")
-      .select(
-        "id, date_signed, last_contact, tier_id, total_cards_dropped, total_fliers_dropped",
-      )
+      .select("id, status_id, last_contact, tier_id, total_cards_dropped, total_fliers_dropped")
       .range(from, to),
   );
-
-  // A partnership without a signed date is still a lead. Leads are excluded
-  // from every figure below — they exist only to be worked in the list.
-  const partnerships = allPartnerships.filter((p) => !!p.date_signed);
 
   // ---- volume, revenue, commission: scoped by activity date ---------------
   const activity = jobs.filter((j) => within(activityDate(j), range));
@@ -146,7 +144,8 @@ export async function getDashboard(
     (j) => financials.get(j.id)?.repeat_customer,
   ).length;
 
-  const inRangePartnerships = partnerships.filter((p) => within(p.date_signed, range));
+  const stageName = (p: { status_id: string | null }) =>
+    (p.status_id ? names.get(p.status_id) : "")?.toLowerCase() ?? "";
 
   return {
     jobsCompleted: completed.length,
@@ -175,13 +174,18 @@ export async function getDashboard(
       names,
     ),
 
-    newPartnerships: inRangePartnerships.length,
+    developingPartnerships: partnerships.filter((p) => stageName(p) === "developing").length,
+    maturePartnerships: partnerships.filter((p) => stageName(p) === "mature").length,
     referralsProduced: created.filter((j) => j.partnership_id).length,
     // Running totals across the whole roster of partnerships, per spec.
     cardsDropped: partnerships.reduce((s, p) => s + (p.total_cards_dropped ?? 0), 0),
     fliersDropped: partnerships.reduce((s, p) => s + (p.total_fliers_dropped ?? 0), 0),
     partnershipsByTier: tally(
       partnerships.map((p) => ({ key: p.tier_id, value: 1 })),
+      names,
+    ),
+    partnershipsByStage: tally(
+      partnerships.map((p) => ({ key: p.status_id, value: 1 })),
       names,
     ),
 
