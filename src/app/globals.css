@@ -36,6 +36,10 @@
   --hero-b: #29233a;
   --hero-c: #43203a;
 
+  /* Ticket-card perforation divider. Not in the editable token list (Part 3
+     only exposes the tokens above) — a plain constant, same as accent/etc. */
+  --ticket-divider: #3a3e44;
+
   /* ---- shape ---- */
   --radius-card: 10px;
   --radius-pill: 999px;

@@ -180,10 +180,7 @@ export default async function HomePage({
                       {t.address || "No address"}
                     </div>
                   </div>
-                  <div
-                    className="mt-2 flex h-10 items-center border-t border-dashed text-sm font-medium"
-                    style={{ borderColor: "#3a3e44" }}
-                  >
+                  <div className="mt-2 flex h-10 items-center border-t border-dashed border-[var(--ticket-divider)] text-sm font-medium">
                     {t.entityNames.length ? t.entityNames.join(", ") : "Unassigned"}
                   </div>
                 </Link>

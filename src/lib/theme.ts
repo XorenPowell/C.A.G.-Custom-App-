@@ -1,8 +1,14 @@
 /**
- * The editable theme tokens (Appearance settings). Mirrors the @theme block
- * in globals.css exactly — those are the shipped defaults; this file is the
- * single source of truth for which tokens are user-editable, their labels,
- * and their grouping in the Appearance screen.
+ * The editable theme tokens (Appearance settings). This file owns which
+ * tokens are user-editable, their labels and their grouping in the
+ * Appearance screen — globals.css's @theme block still owns the tokens
+ * themselves and is what actually renders app-wide.
+ *
+ * The `default` value on each token is a plain duplicate of that token's
+ * value in globals.css, needed here only so the Appearance screen has
+ * something to show/reset to before an override exists. **If you change a
+ * default in globals.css, change it here too** — same rule this codebase
+ * already applies to job_financials.sql vs calc.ts.
  *
  * Font family and radius tokens are deliberately not here — spec says only
  * colors are user-editable in this pass.
