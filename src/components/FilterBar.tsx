@@ -36,12 +36,15 @@ export function FilterSelect({
   value,
   options,
   allLabel = "All",
+  hideBlankOption = false,
 }: {
   name: string;
   label: string;
   value: string;
   options: { id: string; name: string }[];
   allLabel?: string;
+  /** Set when the field always resolves to one of `options` — never a blank/"all" state. */
+  hideBlankOption?: boolean;
 }) {
   return (
     <div className="field">
@@ -49,7 +52,7 @@ export function FilterSelect({
         {label}
       </label>
       <select id={`f-${name}`} name={name} defaultValue={value} className="select">
-        <option value="">{allLabel}</option>
+        {!hideBlankOption && <option value="">{allLabel}</option>}
         {options.map((o) => (
           <option key={o.id} value={o.id}>
             {o.name}

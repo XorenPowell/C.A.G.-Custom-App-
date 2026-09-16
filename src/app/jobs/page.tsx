@@ -125,17 +125,17 @@ export default async function JobsPage({
             label="Sort by"
             value={sort}
             options={SORT_FIELDS.map((s) => ({ id: s.value, name: s.label }))}
-            allLabel="Invoice date"
+            hideBlankOption
           />
           <FilterSelect
             name="dir"
             label="Direction"
             value={dir}
+            hideBlankOption
             options={[
               { id: "desc", name: "Descending" },
               { id: "asc", name: "Ascending" },
             ]}
-            allLabel="Descending"
           />
         </FilterBar>
 
