@@ -635,6 +635,7 @@ export default function JobForm({
             label={`Commission (${form.commission_percent || 0}%, capped at ${money(Number(form.commission_cap) || 0)})`}
             value={money(totals.commissionAmount)}
             strong
+            tone="good"
           />
         </dl>
 

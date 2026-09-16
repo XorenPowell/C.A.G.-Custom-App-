@@ -123,8 +123,16 @@ export default async function DashboardPage({
         <Panel title="Revenue & Commission">
           <StatGrid>
             <Stat label="Total revenue" value={money(data.totalRevenue)} />
-            <Stat label="Total commissions" value={money(data.totalCommission)} />
-            <Stat label="Avg commission / job" value={money(data.avgCommissionPerJob)} />
+            <Stat
+              label="Total commissions"
+              value={money(data.totalCommission)}
+              emphasis="good"
+            />
+            <Stat
+              label="Avg commission / job"
+              value={money(data.avgCommissionPerJob)}
+              emphasis="good"
+            />
           </StatGrid>
           <div className="mt-3">
             <h3 className="label">Revenue by service category</h3>
