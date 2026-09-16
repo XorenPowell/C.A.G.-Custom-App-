@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { endSession, startSession } from "@/app/actions/face-to-face";
 import { optionsFor, type Lists } from "@/lib/lists";
 import type { FaceToFaceSession } from "@/lib/types";
@@ -14,7 +15,7 @@ export default function NewSessionButton({
   lists: Lists;
 }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, start] = useGlobalTransition();
   const [mode, setMode] = useState<null | "resume-warning" | "start-form">(null);
   const [error, setError] = useState<string | null>(null);
 

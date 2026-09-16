@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import SaveBar from "@/components/SaveBar";
 import { resetThemeOverrides, saveThemeOverrides } from "@/app/actions/settings";
 import { THEME_DEFAULTS, THEME_TOKEN_GROUPS } from "@/lib/theme";
@@ -12,7 +13,7 @@ export default function AppearanceEditor({ overrides }: { overrides: Record<stri
     ...THEME_DEFAULTS,
     ...overrides,
   });
-  const [pending, start] = useTransition();
+  const [pending, start] = useGlobalTransition();
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 

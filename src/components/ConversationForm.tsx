@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import SaveBar from "@/components/SaveBar";
 import { Field, NumberInput, Section, Select, TextArea, TextInput } from "@/components/Form";
 import { saveConversation, type ConversationPayload } from "@/app/actions/face-to-face";
@@ -18,7 +19,7 @@ export default function ConversationForm({
   lists: Lists;
 }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, start] = useGlobalTransition();
   const [error, setError] = useState<string | null>(null);
   const [status, setStatusMsg] = useState<string | null>(null);
 

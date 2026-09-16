@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
+import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import Link from "next/link";
 import SaveBar from "@/components/SaveBar";
 import DispatchPicker from "@/components/DispatchPicker";
@@ -63,7 +64,7 @@ export default function JobForm({
   partnershipReferralId: string | null;
 }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, start] = useGlobalTransition();
   const [error, setError] = useState<string | null>(null);
   const [status, setStatusMsg] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);

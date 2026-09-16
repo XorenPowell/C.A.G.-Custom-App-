@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import SaveBar from "@/components/SaveBar";
 import { NumberInput, Section, Select, TextArea, TextInput } from "@/components/Form";
 import { savePartnership, type PartnershipPayload } from "@/app/actions/partnerships";
@@ -20,7 +21,7 @@ export default function PartnershipForm({
   lists: Lists;
 }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, start] = useGlobalTransition();
   const [error, setError] = useState<string | null>(null);
   const [status, setStatusMsg] = useState<string | null>(null);
 

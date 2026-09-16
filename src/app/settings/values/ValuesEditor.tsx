@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import SaveBar from "@/components/SaveBar";
 import { NumberInput, Select } from "@/components/Form";
 import { saveSettingsValues, type SettingsValues } from "@/app/actions/settings";
@@ -17,7 +18,7 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
     daily_partnerships_goal: settings.daily_partnerships_goal,
     pay_period_start_day: settings.pay_period_start_day,
   });
-  const [pending, start] = useTransition();
+  const [pending, start] = useGlobalTransition();
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 

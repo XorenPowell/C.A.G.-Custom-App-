@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
+import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import SaveBar from "@/components/SaveBar";
 import { deletePreset, savePresets, type PresetDraft } from "@/app/actions/equipment-presets";
 import type { EquipmentPreset } from "@/lib/types";
@@ -23,7 +24,7 @@ export default function PresetEditor({ presets }: { presets: EquipmentPreset[] }
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");
-  const [pending, start] = useTransition();
+  const [pending, start] = useGlobalTransition();
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 

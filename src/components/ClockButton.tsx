@@ -1,14 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { clockIn, clockOut } from "@/app/actions/time-clock";
 import SessionTimer from "@/components/SessionTimer";
 import type { TimeEntry } from "@/lib/types";
 
 export default function ClockButton({ activeEntry }: { activeEntry: TimeEntry | null }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pending, start] = useGlobalTransition();
   const [mode, setMode] = useState<null | "confirm-in" | "confirm-out" | "notes">(null);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
