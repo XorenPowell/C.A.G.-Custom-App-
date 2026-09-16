@@ -30,7 +30,7 @@ await step("google_credentials", () =>
 
 const lists = [
   ["service_category", ["Moving", "Cleaning", "Junk Removal", "Handyman", "Yard Work", "Tech Consultation", "Need-A-Guy"]],
-  ["lead_source", ["Craigslist", "Facebook", "Google Business Profile", "Yelp", "F2F", "Partnership Referral", "Repeat Customer"]],
+  ["inquiry_source", ["Craigslist", "Facebook", "Google Business Profile", "Yelp", "F2F", "Partnership Referral", "Repeat Customer"]],
   ["vehicle_type", ["Cargo Van", "Box Truck", "Pickup Truck", "SUV", "Sedan", "Trailer", "No Vehicle"]],
   ["partnership_status", ["Prospect", "Contacted", "Signed", "Inactive"]],
   ["partnership_tier", [

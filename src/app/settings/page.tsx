@@ -4,7 +4,7 @@ import { signOut } from "@/app/actions/auth";
 
 const SECTIONS = [
   { href: "/settings/lists/service_category", label: "Service Categories" },
-  { href: "/settings/lists/lead_source", label: "Lead Sources" },
+  { href: "/settings/lists/inquiry_source", label: "Inquiry Sources" },
   { href: "/settings/lists/zone", label: "Zones" },
   { href: "/settings/lists/vehicle_type", label: "Vehicle Types" },
   { href: "/settings/lists/partnership_status", label: "Partnership Statuses" },

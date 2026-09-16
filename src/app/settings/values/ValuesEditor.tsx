@@ -12,7 +12,7 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
     default_commission_percent: settings.default_commission_percent,
     default_commission_cap: settings.default_commission_cap,
     monthly_jobs_goal: settings.monthly_jobs_goal,
-    daily_leads_goal: settings.daily_leads_goal,
+    daily_inquiries_goal: settings.daily_inquiries_goal,
     daily_partnerships_goal: settings.daily_partnerships_goal,
   });
   const [pending, start] = useTransition();
@@ -71,10 +71,10 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
             onChange={(e) => patch({ monthly_jobs_goal: Number(e.target.value) })}
           />
           <NumberInput
-            label="Daily leads goal"
+            label="Daily inquiries goal"
             step="1"
-            value={values.daily_leads_goal}
-            onChange={(e) => patch({ daily_leads_goal: Number(e.target.value) })}
+            value={values.daily_inquiries_goal}
+            onChange={(e) => patch({ daily_inquiries_goal: Number(e.target.value) })}
           />
           <NumberInput
             label="Daily partnerships goal"

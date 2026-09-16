@@ -77,8 +77,8 @@ export async function listItemUsage(
       { label: "entity rate rows", table: "entity_rates", column: "service_category_id" },
       { label: "references", table: "entity_references", column: "service_category_id" },
     );
-  } else if (kind === "lead_source") {
-    checks.push({ label: "jobs", table: "jobs", column: "lead_source_id" });
+  } else if (kind === "inquiry_source") {
+    checks.push({ label: "jobs", table: "jobs", column: "inquiry_source_id" });
   } else if (kind === "zone") {
     checks.push(
       { label: "jobs", table: "jobs", column: "zone_id" },
@@ -116,7 +116,7 @@ export type SettingsValues = {
   default_commission_percent: number;
   default_commission_cap: number;
   monthly_jobs_goal: number;
-  daily_leads_goal: number;
+  daily_inquiries_goal: number;
   daily_partnerships_goal: number;
 };
 
@@ -129,7 +129,7 @@ export async function saveSettingsValues(values: SettingsValues): Promise<Action
       default_commission_percent: Number(values.default_commission_percent) || 0,
       default_commission_cap: Number(values.default_commission_cap) || 0,
       monthly_jobs_goal: toInt(values.monthly_jobs_goal),
-      daily_leads_goal: toInt(values.daily_leads_goal),
+      daily_inquiries_goal: toInt(values.daily_inquiries_goal),
       daily_partnerships_goal: toInt(values.daily_partnerships_goal),
     })
     .eq("id", true);

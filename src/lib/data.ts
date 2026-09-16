@@ -44,7 +44,7 @@ export async function getSettings(): Promise<Settings> {
       default_commission_percent: 5,
       default_commission_cap: 50,
       monthly_jobs_goal: 300,
-      daily_leads_goal: 5,
+      daily_inquiries_goal: 5,
       daily_partnerships_goal: 10,
     }
   );

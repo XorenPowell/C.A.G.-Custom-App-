@@ -103,9 +103,9 @@ export default async function JobsPage({
           />
           <FilterSelect
             name="source"
-            label="Lead source"
+            label="Inquiry source"
             value={sp.source ?? ""}
-            options={active(lists.lead_source)}
+            options={active(lists.inquiry_source)}
           />
           <FilterSelect name="zone" label="Zone" value={sp.zone ?? ""} options={active(lists.zone)} />
           <FilterSelect
@@ -231,7 +231,7 @@ export default async function JobsPage({
                         )}
                       </td>
                       <td>{lookup(names, j.service_category_id)}</td>
-                      <td>{lookup(names, j.lead_source_id)}</td>
+                      <td>{lookup(names, j.inquiry_source_id)}</td>
                       <td className="text-xs">
                         {result.entityNames.get(j.id)?.join(", ") || "—"}
                       </td>

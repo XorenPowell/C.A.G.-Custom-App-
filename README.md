@@ -78,7 +78,7 @@ node scripts/smoke-test.mjs .env.local   # end-to-end data test (burns job numbe
 ## Conventions
 
 - Every dropdown value comes from Settings. Never hardcode a service category,
-  lead source, zone, vehicle type, tier or status in a component — read it from
+  inquiry source, zone, vehicle type, tier or status in a component — read it from
   `getLists()`.
 - Pure helpers live in `src/lib/lists.ts` and `src/lib/entity-filters.ts` so client
   components can share them. Anything importing `@/lib/supabase/server` is

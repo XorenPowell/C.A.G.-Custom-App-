@@ -20,7 +20,7 @@ type JobRow = {
   id: string;
   status: string;
   service_category_id: string | null;
-  lead_source_id: string | null;
+  inquiry_source_id: string | null;
   partnership_id: string | null;
   date_of_invoice: string | null;
   arrival_date: string | null;
@@ -29,7 +29,7 @@ type JobRow = {
 };
 
 const JOB_COLUMNS =
-  "id, status, service_category_id, lead_source_id, partnership_id, date_of_invoice, arrival_date, created_at, total_invoice_paid";
+  "id, status, service_category_id, inquiry_source_id, partnership_id, date_of_invoice, arrival_date, created_at, total_invoice_paid";
 
 /** Reads every matching row, in pages, so nothing is silently truncated. */
 async function pageAll<T>(
@@ -171,7 +171,7 @@ export async function getDashboard(
     inquiriesGenerated,
     conversionRate: inquiriesGenerated ? (completed.length / inquiriesGenerated) * 100 : 0,
     inquiriesBySource: tally(
-      created.map((j) => ({ key: j.lead_source_id, value: 1 })),
+      created.map((j) => ({ key: j.inquiry_source_id, value: 1 })),
       names,
     ),
 
