@@ -13,6 +13,7 @@ const SECTIONS = [
   { href: "/settings/zones", label: "Zone Reference" },
   { href: "/settings/values", label: "Values & Goals" },
   { href: "/settings/templates", label: "Message Templates" },
+  { href: "/settings/face-to-face", label: "Work Face to Face" },
   { href: "/settings/calendar", label: "Google Calendar" },
   { href: "/settings/appearance", label: "Appearance" },
 ];

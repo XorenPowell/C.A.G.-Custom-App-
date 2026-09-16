@@ -8,6 +8,7 @@
 drop view   if exists job_financials      cascade;
 drop view   if exists job_worker_pay      cascade;
 drop table  if exists face_to_face_conversations cascade;
+drop table  if exists face_to_face_sessions cascade;
 drop table  if exists job_worker_fees     cascade;
 drop table  if exists job_workers         cascade;
 drop table  if exists jobs                cascade;
@@ -57,6 +58,9 @@ create table settings (
   -- CSS custom-property overrides from Settings -> Appearance. Empty means
   -- every token uses the shipped default in globals.css's @theme block.
   theme_overrides             jsonb        not null default '{}'::jsonb,
+  -- Work Face to Face: conversations-per-day target shown on that section's
+  -- home screen. Resets with the calendar day, not stored per-day.
+  face_to_face_daily_goal     integer      not null default 10,
   updated_at                  timestamptz  not null default now()
 );
 create trigger settings_updated_at before update on settings
@@ -351,14 +355,35 @@ create index job_worker_fees_worker_idx on job_worker_fees (job_worker_id);
 -- =====================================================================
 -- WORK FACE TO FACE
 -- Standalone outreach log — not read by any other screen yet (dashboard,
--- reports, etc. are untouched). One row per in-person conversation.
+-- reports, etc. are untouched). Conversations happen inside a session.
 -- =====================================================================
+
+-- One row per outreach session (an afternoon of door-knocking, etc.).
+-- `ended_at` null means the session is the active one — no separate status
+-- column, there is only ever at most one active session at a time.
+create table face_to_face_sessions (
+  id                 uuid primary key default gen_random_uuid(),
+  started_at         timestamptz not null default now(),
+  ended_at           timestamptz,
+  conversation_goal  integer not null default 5,
+  -- Informational only — shown next to the live timer, never enforced.
+  committed_hours    numeric(5,2) not null default 1,
+  zone_id            uuid references list_items(id) on delete set null,
+  created_at         timestamptz not null default now()
+);
+create index face_to_face_sessions_started_idx on face_to_face_sessions (started_at desc);
+create index face_to_face_sessions_active_idx on face_to_face_sessions (ended_at) where ended_at is null;
+
 create table face_to_face_conversations (
   id                  uuid primary key default gen_random_uuid(),
   -- Stamped the moment "+ New Conversation" is tapped, before any other
   -- field is filled in — the point of the field is exactly when the
   -- conversation started, not whenever the form happens to get saved.
   occurred_at         timestamptz not null default now(),
+
+  -- Nullable only so the handful of conversations logged before sessions
+  -- existed don't break — every conversation created from here on has one.
+  session_id          uuid references face_to_face_sessions(id) on delete cascade,
 
   contact_name        text,
   contact_phone       text,
@@ -383,6 +408,7 @@ create table face_to_face_conversations (
 create trigger face_to_face_conversations_updated_at before update on face_to_face_conversations
   for each row execute function set_updated_at();
 create index face_to_face_conversations_occurred_idx on face_to_face_conversations (occurred_at desc);
+create index face_to_face_conversations_session_idx on face_to_face_conversations (session_id);
 create index face_to_face_conversations_category_idx on face_to_face_conversations (service_category_id);
 create index face_to_face_conversations_zone_idx on face_to_face_conversations (zone_id);
 
@@ -486,6 +512,7 @@ alter table partnerships        enable row level security;
 alter table jobs                enable row level security;
 alter table job_workers         enable row level security;
 alter table job_worker_fees     enable row level security;
+alter table face_to_face_sessions enable row level security;
 alter table face_to_face_conversations enable row level security;
 alter table google_credentials  enable row level security;
 
@@ -495,7 +522,8 @@ begin
   foreach t in array array[
     'settings','list_items','message_templates','equipment_presets','entities','entity_references',
     'entity_rates','entity_fees','entity_equipment','entity_availability',
-    'partnerships','jobs','job_workers','job_worker_fees','face_to_face_conversations'
+    'partnerships','jobs','job_workers','job_worker_fees',
+    'face_to_face_sessions','face_to_face_conversations'
   ] loop
     execute format(
       'create policy %I on %I for all to authenticated using (true) with check (true)',

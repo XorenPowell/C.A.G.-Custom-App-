@@ -20,9 +20,14 @@ export default async function ConversationDetailPage({
     minute: "2-digit",
   });
 
+  const back = conversation.session_id
+    ? `/face-to-face/sessions/${conversation.session_id}`
+    : "/face-to-face";
+  const backLabel = conversation.session_id ? "Session" : "Work Face to Face";
+
   return (
     <>
-      <TopBar title="Conversation" back="/face-to-face" backLabel="Work Face to Face" />
+      <TopBar title="Conversation" back={back} backLabel={backLabel} />
       <main className="page max-w-2xl">
         <p className="muted mb-3 text-sm">
           Started {dateLongDisplay(conversation.occurred_at.slice(0, 10))} at {time}
