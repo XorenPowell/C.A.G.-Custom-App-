@@ -4,6 +4,7 @@ import ConversationForm from "@/components/ConversationForm";
 import DeleteConversationButton from "./DeleteConversationButton";
 import { getConversation } from "@/lib/face-to-face";
 import { getLists } from "@/lib/data";
+import { chicagoDateOf } from "@/lib/dates";
 import { dateLongDisplay } from "@/lib/format";
 
 export default async function ConversationDetailPage({
@@ -18,6 +19,7 @@ export default async function ConversationDetailPage({
   const time = new Date(conversation.occurred_at).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "America/Chicago",
   });
 
   const back = conversation.session_id
@@ -30,7 +32,7 @@ export default async function ConversationDetailPage({
       <TopBar title="Conversation" back={back} backLabel={backLabel} />
       <main className="page max-w-2xl">
         <p className="muted mb-3 text-sm">
-          Started {dateLongDisplay(conversation.occurred_at.slice(0, 10))} at {time}
+          Started {dateLongDisplay(chicagoDateOf(conversation.occurred_at))} at {time}
         </p>
 
         <ConversationForm conversation={conversation} lists={lists} />

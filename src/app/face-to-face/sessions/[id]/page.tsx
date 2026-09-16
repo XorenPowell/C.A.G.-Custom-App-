@@ -7,11 +7,16 @@ import DeleteSessionButton from "@/components/DeleteSessionButton";
 import { startConversationInSession } from "@/app/actions/face-to-face";
 import { getSession, getSessionConversations } from "@/lib/face-to-face";
 import { getLists, lookup, nameMap } from "@/lib/data";
+import { chicagoDateOf } from "@/lib/dates";
 import { dateDisplay, durationDisplay, phoneDisplay } from "@/lib/format";
 import type { FaceToFaceConversation } from "@/lib/types";
 
 function timeOf(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Chicago",
+  });
 }
 
 function ConversationList({
@@ -35,7 +40,7 @@ function ConversationList({
             </span>
           </div>
           <div className="muted text-sm">
-            {dateDisplay(c.occurred_at)} · {timeOf(c.occurred_at)}
+            {dateDisplay(chicagoDateOf(c.occurred_at))} · {timeOf(c.occurred_at)}
           </div>
           <div className="muted text-sm">
             {lookup(names, c.service_category_id)} · {lookup(names, c.zone_id)}
@@ -108,7 +113,7 @@ export default async function SessionDetailPage({
       <main className="page max-w-2xl">
         <div className="card card-pad mb-3">
           <p className="text-sm">
-            {dateDisplay(session.started_at)} · {timeOf(session.started_at)} –{" "}
+            {dateDisplay(chicagoDateOf(session.started_at))} · {timeOf(session.started_at)} –{" "}
             {session.ended_at ? timeOf(session.ended_at) : "—"}
           </p>
           <p className="mt-1 text-lg font-bold">{durationDisplay(minutes)}</p>
