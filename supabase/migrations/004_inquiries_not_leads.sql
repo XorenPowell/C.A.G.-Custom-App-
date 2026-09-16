@@ -44,11 +44,17 @@ begin
   end if;
 end $$;
 
--- The constraint must allow 'inquiry_source' *before* any row is updated to
--- use it — updating first would fail against the still-active old check.
+-- Adding a constraint validates it against every existing row immediately,
+-- so it has to accept BOTH values while rows still say 'lead_source' — the
+-- final, narrower constraint can only go on once the data is migrated.
+alter table list_items drop constraint if exists list_items_kind_check;
+alter table list_items add constraint list_items_kind_check check (kind in (
+  'service_category','lead_source','inquiry_source','zone',
+  'vehicle_type','partnership_status','partnership_tier'));
+
+update list_items set kind = 'inquiry_source' where kind = 'lead_source';
+
 alter table list_items drop constraint if exists list_items_kind_check;
 alter table list_items add constraint list_items_kind_check check (kind in (
   'service_category','inquiry_source','zone',
   'vehicle_type','partnership_status','partnership_tier'));
-
-update list_items set kind = 'inquiry_source' where kind = 'lead_source';
