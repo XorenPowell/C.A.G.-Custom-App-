@@ -42,7 +42,7 @@ export default async function HomePage({
 
   // Next payout is a fixed weekly cycle, not the selected range — the most
   // recent occurrence of the configured start day through today, inclusive.
-  const payPeriod = payPeriodRange(settings.pay_period_start_day);
+  const payPeriod = payPeriodRange(settings.pay_period_start_day ?? 5);
   const payoutData = await getDashboard(payPeriod, names);
 
   return (
