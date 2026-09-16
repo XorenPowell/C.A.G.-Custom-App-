@@ -2,7 +2,7 @@ import TopBar from "@/components/TopBar";
 import BarChart from "@/components/BarChart";
 import { Stat, StatGrid } from "@/components/Detail";
 import { getDashboard } from "@/lib/dashboard";
-import { getLists, getSettings, nameMap } from "@/lib/data";
+import { getLists, nameMap } from "@/lib/data";
 import { RANGE_PRESETS, rangeLabel, resolveRange, type RangePreset } from "@/lib/dates";
 import { money, num, percent } from "@/lib/format";
 
@@ -17,12 +17,8 @@ export default async function DashboardPage({
     : "This Month";
   const range = resolveRange(preset, sp.start, sp.end);
 
-  const [lists, settings] = await Promise.all([getLists(), getSettings()]);
+  const lists = await getLists();
   const data = await getDashboard(range, nameMap(lists));
-
-  const monthPct = settings.monthly_jobs_goal
-    ? (data.jobsThisMonth / settings.monthly_jobs_goal) * 100
-    : 0;
 
   return (
     <>
@@ -80,49 +76,9 @@ export default async function DashboardPage({
           <p className="muted mt-2 text-xs">Showing {rangeLabel(range)}.</p>
         </form>
 
-        {/* ---------- goals ---------- */}
-        <Panel title="Goals">
-          <StatGrid>
-            <Stat
-              label="Leads today"
-              value={`${data.leadsToday} / ${settings.daily_leads_goal}`}
-              emphasis={data.leadsToday >= settings.daily_leads_goal ? "good" : null}
-              sub="jobs created today"
-            />
-            <Stat
-              label="Partnerships today"
-              value={`${data.partnershipsToday} / ${settings.daily_partnerships_goal}`}
-              emphasis={
-                data.partnershipsToday >= settings.daily_partnerships_goal ? "good" : null
-              }
-              sub="contacted today"
-            />
-            <Stat
-              label="Jobs this month"
-              value={`${data.jobsThisMonth} / ${settings.monthly_jobs_goal}`}
-              emphasis={monthPct >= 100 ? "good" : null}
-              sub={`${percent(monthPct, 0)} complete`}
-            />
-          </StatGrid>
-          <p className="muted mt-2 text-xs">
-            Goals always read today and the current month — the range selector does not
-            apply to them.
-          </p>
-        </Panel>
-
-        {/* ---------- volume ---------- */}
-        <Panel title="Volume">
-          <StatGrid>
-            <Stat label="Jobs completed" value={num(data.jobsCompleted, 0)} />
-            <Stat label="Jobs booked" value={num(data.jobsBooked, 0)} />
-            <Stat label="Jobs cancelled" value={num(data.jobsCancelled, 0)} />
-          </StatGrid>
-        </Panel>
-
-        {/* ---------- revenue & commission ---------- */}
+        {/* ---------- commission, front and center ---------- */}
         <Panel title="Revenue & Commission">
           <StatGrid>
-            <Stat label="Total revenue" value={money(data.totalRevenue)} />
             <Stat
               label="Total commissions"
               value={money(data.totalCommission)}
@@ -134,10 +90,20 @@ export default async function DashboardPage({
               emphasis="good"
             />
           </StatGrid>
+          <p className="mt-2 text-sm">Total revenue: {money(data.totalRevenue)}</p>
           <div className="mt-3">
             <h3 className="label">Revenue by service category</h3>
             <BarChart data={data.revenueByCategory} valueFormat={money} />
           </div>
+        </Panel>
+
+        {/* ---------- volume ---------- */}
+        <Panel title="Volume">
+          <StatGrid>
+            <Stat label="Jobs completed" value={num(data.jobsCompleted, 0)} />
+            <Stat label="Jobs booked" value={num(data.jobsBooked, 0)} />
+            <Stat label="Jobs cancelled" value={num(data.jobsCancelled, 0)} />
+          </StatGrid>
         </Panel>
 
         {/* ---------- the two charts ---------- */}
@@ -145,8 +111,8 @@ export default async function DashboardPage({
           <Panel title="Completed Jobs by Category">
             <BarChart data={data.completedByCategory} valueFormat={(n) => num(n, 0)} />
           </Panel>
-          <Panel title="Leads by Source">
-            <BarChart data={data.leadsBySource} valueFormat={(n) => num(n, 0)} />
+          <Panel title="Inquiries by Source">
+            <BarChart data={data.inquiriesBySource} valueFormat={(n) => num(n, 0)} />
           </Panel>
         </div>
 
@@ -154,14 +120,14 @@ export default async function DashboardPage({
         <Panel title="Demand Generation">
           <StatGrid>
             <Stat
-              label="Leads generated"
-              value={num(data.leadsGenerated, 0)}
+              label="Inquiries generated"
+              value={num(data.inquiriesGenerated, 0)}
               sub="all jobs created in range"
             />
             <Stat
               label="Conversion rate"
               value={percent(data.conversionRate)}
-              sub="completed ÷ leads"
+              sub="completed ÷ inquiries"
             />
           </StatGrid>
         </Panel>
@@ -201,11 +167,12 @@ export default async function DashboardPage({
 
         <p className="muted mt-4 text-xs">
           Volume, revenue and commission are scoped by invoice date (falling back to
-          arrival date, then created date). Leads, conversion and referrals are scoped by
-          the date the job was created. New partnerships use their signed date — partnership
-          leads with no signed date are excluded from every figure on this screen. Cards and
-          fliers are lifetime running totals across signed partnerships. Commission is a flat
-          percent of worker payout capped in dollars per job — independent of the invoice.
+          arrival date, then created date). Inquiries, conversion and referrals are scoped
+          by the date the job was created. New partnerships use their signed date —
+          partnership leads with no signed date are excluded from every figure on this
+          screen. Cards and fliers are lifetime running totals across signed partnerships.
+          Commission is a flat percent of worker payout capped in dollars per job —
+          independent of the invoice.
         </p>
       </main>
     </>

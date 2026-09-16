@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import type { DateRange } from "@/lib/dates";
-import { monthStartISO, monthEndISO, todayISO } from "@/lib/dates";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
@@ -11,8 +10,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * labels which is which:
  *   - business activity  -> date_of_invoice, falling back to arrival_date then
  *     created_at, matching how the job_financials view derives week/month
- *   - demand generation  -> created_at, because a lead is generated when it
- *     arrives, not when it is invoiced
+ *   - demand generation  -> created_at, because an inquiry is generated when
+ *     it arrives, not when it is invoiced
  *   - new partnerships   -> date_signed. A partnership with no signed date is
  *     still a lead and is excluded from every figure here.
  */
@@ -85,9 +84,9 @@ export type DashboardData = {
   avgCommissionPerJob: number;
   revenueByCategory: { label: string; value: number }[];
 
-  leadsGenerated: number;
+  inquiriesGenerated: number;
   conversionRate: number;
-  leadsBySource: { label: string; value: number }[];
+  inquiriesBySource: { label: string; value: number }[];
 
   newPartnerships: number;
   referralsProduced: number;
@@ -96,10 +95,6 @@ export type DashboardData = {
   partnershipsByTier: { label: string; value: number }[];
 
   repeatCustomerRate: number;
-
-  leadsToday: number;
-  partnershipsToday: number;
-  jobsThisMonth: number;
 };
 
 export async function getDashboard(
@@ -145,25 +140,13 @@ export async function getDashboard(
 
   // ---- demand generation: scoped by created_at ----------------------------
   const created = jobs.filter((j) => within(j.created_at.slice(0, 10), range));
-  const leadsGenerated = created.length;
+  const inquiriesGenerated = created.length;
 
   const repeatCount = completed.filter(
     (j) => financials.get(j.id)?.repeat_customer,
   ).length;
 
   const inRangePartnerships = partnerships.filter((p) => within(p.date_signed, range));
-
-  const today = todayISO();
-  const [leadsToday, jobsThisMonth] = await Promise.all([
-    countJobsCreatedOn(supabase, today),
-    countJobsThisMonth(supabase),
-  ]);
-
-  // The daily partnership goal is an outreach target, so it counts businesses
-  // actually contacted today — leads included — not rows typed into the app.
-  const partnershipsToday = allPartnerships.filter(
-    (p) => p.last_contact?.slice(0, 10) === today,
-  ).length;
 
   return {
     jobsCompleted: completed.length,
@@ -185,9 +168,9 @@ export async function getDashboard(
       names,
     ),
 
-    leadsGenerated,
-    conversionRate: leadsGenerated ? (completed.length / leadsGenerated) * 100 : 0,
-    leadsBySource: tally(
+    inquiriesGenerated,
+    conversionRate: inquiriesGenerated ? (completed.length / inquiriesGenerated) * 100 : 0,
+    inquiriesBySource: tally(
       created.map((j) => ({ key: j.lead_source_id, value: 1 })),
       names,
     ),
@@ -203,10 +186,6 @@ export async function getDashboard(
     ),
 
     repeatCustomerRate: completed.length ? (repeatCount / completed.length) * 100 : 0,
-
-    leadsToday,
-    partnershipsToday,
-    jobsThisMonth,
   };
 }
 
@@ -275,22 +254,4 @@ async function fetchFinancials(
     }
   }
   return map;
-}
-
-async function countJobsCreatedOn(supabase: SupabaseClient, day: string): Promise<number> {
-  const { count } = await supabase
-    .from("jobs")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", day)
-    .lt("created_at", nextDay(day));
-  return count ?? 0;
-}
-
-async function countJobsThisMonth(supabase: SupabaseClient): Promise<number> {
-  const { count } = await supabase
-    .from("jobs")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", monthStartISO())
-    .lt("created_at", nextDay(monthEndISO()));
-  return count ?? 0;
 }

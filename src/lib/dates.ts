@@ -1,6 +1,7 @@
 /** Date-range helpers for the dashboard. All dates are YYYY-MM-DD strings. */
 
 export const RANGE_PRESETS = [
+  "Today",
   "This Week",
   "This Month",
   "Last Month",
@@ -33,6 +34,10 @@ export function resolveRange(
   const now = new Date();
 
   switch (preset) {
+    case "Today": {
+      const today = iso(now);
+      return { start: today, end: today };
+    }
     case "This Week": {
       const dow = now.getDay(); // 0 = Sunday
       const monday = new Date(now);
