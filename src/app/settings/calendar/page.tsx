@@ -53,7 +53,10 @@ export default async function CalendarSettingsPage({
                   </span>{" "}
                   {creds?.updated_at && (
                     <span className="muted">
-                      since {new Date(creds.updated_at).toLocaleString()}
+                      since{" "}
+                      {new Date(creds.updated_at).toLocaleString("en-US", {
+                        timeZone: "America/Chicago",
+                      })}
                     </span>
                   )}
                 </p>
