@@ -33,7 +33,7 @@ const cleanup = { entities: [], jobs: [], partnerships: [] };
 try {
   const { data: cats } = await db.from("list_items").select("id, name").eq("kind", "service_category");
   const { data: zones } = await db.from("list_items").select("id, name").eq("kind", "zone");
-  const { data: sources } = await db.from("list_items").select("id, name").eq("kind", "lead_source");
+  const { data: sources } = await db.from("list_items").select("id, name").eq("kind", "inquiry_source");
   const moving = cats.find((c) => c.name === "Moving");
   const chicago = zones[0];
   const referral = sources.find((s) => s.name === "Partnership Referral");
@@ -88,7 +88,7 @@ try {
       customer_phone: "(312) 555-9999",
       customer_type: "Residential",
       service_category_id: moving.id,
-      lead_source_id: referral.id,
+      inquiry_source_id: referral.id,
       partnership_id: partnership.id,
       zone_id: chicago.id,
       status: "Completed",

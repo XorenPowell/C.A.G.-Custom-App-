@@ -11,7 +11,7 @@ export type Lists = Record<ListKind, ListItem[]>;
 
 export const EMPTY_LISTS: Lists = {
   service_category: [],
-  lead_source: [],
+  inquiry_source: [],
   zone: [],
   vehicle_type: [],
   partnership_status: [],
@@ -50,14 +50,14 @@ export function lookup(map: Map<string, string>, id: string | null | undefined):
 }
 
 /**
- * The lead source that reveals the partnership picker on a job.
+ * The inquiry source that reveals the partnership picker on a job.
  * Matched by name at read time so the row can be renamed without a code change.
  */
 export const PARTNERSHIP_REFERRAL = "Partnership Referral";
 
 export function partnershipReferralId(lists: Lists): string | null {
   return (
-    lists.lead_source.find(
+    lists.inquiry_source.find(
       (l) => l.name.trim().toLowerCase() === PARTNERSHIP_REFERRAL.toLowerCase(),
     )?.id ?? null
   );

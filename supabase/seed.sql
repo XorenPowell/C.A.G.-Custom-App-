@@ -18,18 +18,18 @@ insert into list_items (kind, name, sort_order) values
   ('service_category','Need-A-Guy',        70)
 on conflict do nothing;
 
--- ---------- lead sources ----------------------------------------------
+-- ---------- inquiry sources ---------------------------------------------
 -- 'Partnership Referral' is special-cased in the job form: selecting it
 -- reveals the partnership picker. Renaming it in Settings is fine — the app
 -- matches on the row's id, which is looked up by this exact name at seed time.
 insert into list_items (kind, name, sort_order) values
-  ('lead_source','Craigslist',              10),
-  ('lead_source','Facebook',                20),
-  ('lead_source','Google Business Profile', 30),
-  ('lead_source','Yelp',                    40),
-  ('lead_source','F2F',                     50),
-  ('lead_source','Partnership Referral',    60),
-  ('lead_source','Repeat Customer',         70)
+  ('inquiry_source','Craigslist',              10),
+  ('inquiry_source','Facebook',                20),
+  ('inquiry_source','Google Business Profile', 30),
+  ('inquiry_source','Yelp',                    40),
+  ('inquiry_source','F2F',                     50),
+  ('inquiry_source','Partnership Referral',    60),
+  ('inquiry_source','Repeat Customer',         70)
 on conflict do nothing;
 
 -- ---------- zones -------------------------------------------------------

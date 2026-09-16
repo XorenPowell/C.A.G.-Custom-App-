@@ -16,11 +16,23 @@ export function isSigned(p: Pick<Partnership, "date_signed">): boolean {
   return !!p.date_signed;
 }
 
-/** Local YYYY-MM-DD. Never routed through UTC, which shifts the day. */
+/**
+ * Chicago's current calendar date, not the server process's. `Intl` is a
+ * plain JS global (available in both the browser and Node), so this stays
+ * import-free while still being correct when this runs server-side on a
+ * host whose own clock isn't set to Chicago time (Vercel's Node runtime
+ * defaults to UTC) — a `new Date()` read with local getters would silently
+ * return the wrong calendar day for part of every evening.
+ */
 export function todayLocal(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 export function addDaysISO(iso: string, days: number): string {

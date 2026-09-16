@@ -13,7 +13,7 @@ const META: Record<
     withDescription: false,
     descriptionLabel: "",
   },
-  lead_source: { title: "Lead Sources", withDescription: false, descriptionLabel: "" },
+  inquiry_source: { title: "Inquiry Sources", withDescription: false, descriptionLabel: "" },
   zone: {
     title: "Zones",
     withDescription: true,

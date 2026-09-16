@@ -59,7 +59,7 @@ export type JobListRow = {
   customer_phone: string | null;
   status: string;
   service_category_id: string | null;
-  lead_source_id: string | null;
+  inquiry_source_id: string | null;
   zone_id: string | null;
   partnership_id: string | null;
   date_of_invoice: string | null;
@@ -113,7 +113,7 @@ export async function getJobList(f: JobFilters): Promise<JobListResult> {
   let query = supabase
     .from("jobs")
     .select(
-      "id, job_id, customer_name, customer_phone, status, service_category_id, lead_source_id, zone_id, partnership_id, date_of_invoice, arrival_date, arrival_time, total_invoice_paid, created_at",
+      "id, job_id, customer_name, customer_phone, status, service_category_id, inquiry_source_id, zone_id, partnership_id, date_of_invoice, arrival_date, arrival_time, total_invoice_paid, created_at",
       { count: "exact" },
     );
 
@@ -122,7 +122,7 @@ export async function getJobList(f: JobFilters): Promise<JobListResult> {
   const status = f.status === undefined ? "Booked" : f.status;
   if (status) query = query.eq("status", status);
   if (f.category) query = query.eq("service_category_id", f.category);
-  if (f.source) query = query.eq("lead_source_id", f.source);
+  if (f.source) query = query.eq("inquiry_source_id", f.source);
   if (f.zone) query = query.eq("zone_id", f.zone);
   if (f.partnership) query = query.eq("partnership_id", f.partnership);
   if (f.from) query = query.gte("date_of_invoice", f.from);

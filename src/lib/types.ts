@@ -2,7 +2,7 @@
 
 export type ListKind =
   | "service_category"
-  | "lead_source"
+  | "inquiry_source"
   | "zone"
   | "vehicle_type"
   | "partnership_status"
@@ -43,8 +43,12 @@ export type Settings = {
   default_commission_percent: number;
   default_commission_cap: number;
   monthly_jobs_goal: number;
-  daily_leads_goal: number;
+  daily_inquiries_goal: number;
   daily_partnerships_goal: number;
+  /** 0=Sunday..6=Saturday. The home screen's "Next payout" sums commission from this weekday through today. */
+  pay_period_start_day: number;
+  /** Per-token color overrides from the Appearance settings screen. Empty object = shipped defaults. */
+  theme_overrides: Record<string, string>;
 };
 
 export type MessageTemplate = {
@@ -171,7 +175,7 @@ export type Job = {
   customer_phone: string | null;
   customer_type: CustomerType | null;
   service_category_id: string | null;
-  lead_source_id: string | null;
+  inquiry_source_id: string | null;
   partnership_id: string | null;
   zone_id: string | null;
   status: JobStatus;

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { fail, ok, orNull, toInt, type ActionResult } from "@/lib/persist";
+import { sanitizeThemeOverrides } from "@/lib/theme";
 import type { Audience, ListKind } from "@/lib/types";
 
 export type ListItemDraft = {
@@ -77,8 +78,8 @@ export async function listItemUsage(
       { label: "entity rate rows", table: "entity_rates", column: "service_category_id" },
       { label: "references", table: "entity_references", column: "service_category_id" },
     );
-  } else if (kind === "lead_source") {
-    checks.push({ label: "jobs", table: "jobs", column: "lead_source_id" });
+  } else if (kind === "inquiry_source") {
+    checks.push({ label: "jobs", table: "jobs", column: "inquiry_source_id" });
   } else if (kind === "zone") {
     checks.push(
       { label: "jobs", table: "jobs", column: "zone_id" },
@@ -116,8 +117,9 @@ export type SettingsValues = {
   default_commission_percent: number;
   default_commission_cap: number;
   monthly_jobs_goal: number;
-  daily_leads_goal: number;
+  daily_inquiries_goal: number;
   daily_partnerships_goal: number;
+  pay_period_start_day: number;
 };
 
 export async function saveSettingsValues(values: SettingsValues): Promise<ActionResult> {
@@ -129,8 +131,9 @@ export async function saveSettingsValues(values: SettingsValues): Promise<Action
       default_commission_percent: Number(values.default_commission_percent) || 0,
       default_commission_cap: Number(values.default_commission_cap) || 0,
       monthly_jobs_goal: toInt(values.monthly_jobs_goal),
-      daily_leads_goal: toInt(values.daily_leads_goal),
+      daily_inquiries_goal: toInt(values.daily_inquiries_goal),
       daily_partnerships_goal: toInt(values.daily_partnerships_goal),
+      pay_period_start_day: toInt(values.pay_period_start_day, 5),
     })
     .eq("id", true);
 
@@ -170,6 +173,38 @@ export async function saveTemplates(drafts: TemplateDraft[]): Promise<ActionResu
 export async function deleteTemplate(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("message_templates").delete().eq("id", id);
+  if (error) return fail(error.message);
+  revalidatePath("/", "layout");
+  return ok();
+}
+
+/**
+ * Only known tokens with valid hex values are written — anything else is
+ * silently dropped rather than failing the save, since the color inputs on
+ * the Appearance screen can't produce anything invalid anyway.
+ */
+export async function saveThemeOverrides(
+  overrides: Record<string, string>,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const clean = sanitizeThemeOverrides(overrides);
+  const { error } = await supabase
+    .from("settings")
+    .update({ theme_overrides: clean })
+    .eq("id", true);
+  if (error) return fail(error.message);
+  // The root layout reads theme_overrides on every request, so invalidating
+  // it here is what makes a saved color apply live, everywhere, immediately.
+  revalidatePath("/", "layout");
+  return ok();
+}
+
+export async function resetThemeOverrides(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("settings")
+    .update({ theme_overrides: {} })
+    .eq("id", true);
   if (error) return fail(error.message);
   revalidatePath("/", "layout");
   return ok();

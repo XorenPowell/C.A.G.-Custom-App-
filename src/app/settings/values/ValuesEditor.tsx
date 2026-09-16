@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import SaveBar from "@/components/SaveBar";
-import { NumberInput } from "@/components/Form";
+import { NumberInput, Select } from "@/components/Form";
 import { saveSettingsValues, type SettingsValues } from "@/app/actions/settings";
+import { WEEKDAY_NAMES } from "@/lib/dates";
 import type { Settings } from "@/lib/types";
 
 export default function ValuesEditor({ settings }: { settings: Settings }) {
@@ -12,8 +13,9 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
     default_commission_percent: settings.default_commission_percent,
     default_commission_cap: settings.default_commission_cap,
     monthly_jobs_goal: settings.monthly_jobs_goal,
-    daily_leads_goal: settings.daily_leads_goal,
+    daily_inquiries_goal: settings.daily_inquiries_goal,
     daily_partnerships_goal: settings.daily_partnerships_goal,
+    pay_period_start_day: settings.pay_period_start_day,
   });
   const [pending, start] = useTransition();
   const [status, setStatus] = useState<string | null>(null);
@@ -71,10 +73,10 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
             onChange={(e) => patch({ monthly_jobs_goal: Number(e.target.value) })}
           />
           <NumberInput
-            label="Daily leads goal"
+            label="Daily inquiries goal"
             step="1"
-            value={values.daily_leads_goal}
-            onChange={(e) => patch({ daily_leads_goal: Number(e.target.value) })}
+            value={values.daily_inquiries_goal}
+            onChange={(e) => patch({ daily_inquiries_goal: Number(e.target.value) })}
           />
           <NumberInput
             label="Daily partnerships goal"
@@ -84,6 +86,18 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
               patch({ daily_partnerships_goal: Number(e.target.value) })
             }
           />
+          <Select
+            label="Pay period starts on"
+            value={values.pay_period_start_day}
+            onChange={(e) => patch({ pay_period_start_day: Number(e.target.value) })}
+            hint="The home screen's Next Payout sums commission from this weekday through today."
+          >
+            {WEEKDAY_NAMES.map((name, i) => (
+              <option key={name} value={i}>
+                {name}
+              </option>
+            ))}
+          </Select>
         </div>
       </div>
 

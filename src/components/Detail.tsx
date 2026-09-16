@@ -35,7 +35,7 @@ export function Stat({
         ? "text-[var(--color-danger)]"
         : "";
   return (
-    <div className="border border-[var(--color-line)] bg-white p-2">
+    <div className="border border-[var(--color-line)] bg-[var(--color-surface)] p-2">
       <div className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">
         {label}
       </div>

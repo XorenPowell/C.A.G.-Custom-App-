@@ -4,7 +4,7 @@ import { signOut } from "@/app/actions/auth";
 
 const SECTIONS = [
   { href: "/settings/lists/service_category", label: "Service Categories" },
-  { href: "/settings/lists/lead_source", label: "Lead Sources" },
+  { href: "/settings/lists/inquiry_source", label: "Inquiry Sources" },
   { href: "/settings/lists/zone", label: "Zones" },
   { href: "/settings/lists/vehicle_type", label: "Vehicle Types" },
   { href: "/settings/lists/partnership_status", label: "Partnership Statuses" },
@@ -14,6 +14,7 @@ const SECTIONS = [
   { href: "/settings/values", label: "Values & Goals" },
   { href: "/settings/templates", label: "Message Templates" },
   { href: "/settings/calendar", label: "Google Calendar" },
+  { href: "/settings/appearance", label: "Appearance" },
 ];
 
 export default function SettingsPage() {

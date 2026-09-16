@@ -81,7 +81,7 @@ export default async function PartnershipDetailPage({
           <div className="card-pad">
             {referrals.length === 0 ? (
               <Empty>
-                No jobs credited yet. A job counts here once its lead source is set to
+                No jobs credited yet. A job counts here once its inquiry source is set to
                 Partnership Referral and this business is selected.
               </Empty>
             ) : (

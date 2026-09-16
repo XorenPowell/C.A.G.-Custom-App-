@@ -49,8 +49,13 @@ create table settings (
   default_commission_percent  numeric(6,3)  not null default 5.0,
   default_commission_cap      numeric(12,2) not null default 50.0,
   monthly_jobs_goal           integer      not null default 300,
-  daily_leads_goal            integer      not null default 5,
+  daily_inquiries_goal        integer      not null default 5,
   daily_partnerships_goal     integer      not null default 10,
+  -- 0=Sunday..6=Saturday. Drives the home screen's Next Payout window.
+  pay_period_start_day        integer      not null default 5,
+  -- CSS custom-property overrides from Settings -> Appearance. Empty means
+  -- every token uses the shipped default in globals.css's @theme block.
+  theme_overrides             jsonb        not null default '{}'::jsonb,
   updated_at                  timestamptz  not null default now()
 );
 create trigger settings_updated_at before update on settings
@@ -61,7 +66,7 @@ create trigger settings_updated_at before update on settings
 create table list_items (
   id          uuid primary key default gen_random_uuid(),
   kind        text not null check (kind in (
-                'service_category','lead_source','zone',
+                'service_category','inquiry_source','zone',
                 'vehicle_type','partnership_status','partnership_tier')),
   name        text not null,
   description text,                       -- used by zones for the reference screen
@@ -272,7 +277,7 @@ create table jobs (
   customer_type       text check (customer_type in ('Residential','Commercial')),
 
   service_category_id uuid references list_items(id) on delete set null,
-  lead_source_id      uuid references list_items(id) on delete set null,
+  inquiry_source_id   uuid references list_items(id) on delete set null,
   partnership_id      uuid references partnerships(id) on delete set null,
   zone_id             uuid references list_items(id) on delete set null,
   status              text not null default 'Inquiry'
@@ -309,7 +314,7 @@ create index jobs_status_idx on jobs (status);
 create index jobs_arrival_idx on jobs (arrival_date);
 create index jobs_invoice_date_idx on jobs (date_of_invoice);
 create index jobs_category_idx on jobs (service_category_id);
-create index jobs_lead_source_idx on jobs (lead_source_id);
+create index jobs_inquiry_source_idx on jobs (inquiry_source_id);
 create index jobs_partnership_idx on jobs (partnership_id);
 create index jobs_zone_idx on jobs (zone_id);
 create index jobs_phone_idx on jobs (regexp_replace(coalesce(customer_phone,''), '\D', '', 'g'));

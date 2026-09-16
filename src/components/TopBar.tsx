@@ -2,13 +2,13 @@ import Link from "next/link";
 import { signOut } from "@/app/actions/auth";
 
 /**
- * Compact header. Every screen other than the menu gets a back link, so the
- * menu is always one tap away on a phone.
+ * Compact header. Every screen other than Home gets a back link, so Home is
+ * always one tap away on a phone.
  */
 export default function TopBar({
   title,
   back = "/",
-  backLabel = "Menu",
+  backLabel = "Home",
   action,
 }: {
   title: string;
@@ -17,7 +17,7 @@ export default function TopBar({
   action?: React.ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-20 border-b border-[var(--color-line)] bg-white">
+    <header className="sticky top-0 z-20 border-b border-[var(--color-line)] bg-[var(--color-surface)]">
       <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-3 py-2 md:px-6">
         {back && (
           <Link href={back} className="btn btn-sm shrink-0">

@@ -73,7 +73,7 @@ export default function JobForm({
     customer_phone: job?.customer_phone ?? "",
     customer_type: (job?.customer_type ?? "") as CustomerType | "",
     service_category_id: job?.service_category_id ?? "",
-    lead_source_id: job?.lead_source_id ?? "",
+    inquiry_source_id: job?.inquiry_source_id ?? "",
     partnership_id: job?.partnership_id ?? "",
     zone_id: job?.zone_id ?? "",
     status: (job?.status ?? "Inquiry") as JobStatus,
@@ -121,13 +121,13 @@ export default function JobForm({
     setStatusMsg(null);
   }
 
-  /** Partnership only applies to the Partnership Referral lead source. */
+  /** Partnership only applies to the Partnership Referral inquiry source. */
   const showPartnership =
-    !!partnershipReferralId && form.lead_source_id === partnershipReferralId;
+    !!partnershipReferralId && form.inquiry_source_id === partnershipReferralId;
 
-  function setLeadSource(id: string) {
+  function setInquirySource(id: string) {
     patch({
-      lead_source_id: id,
+      inquiry_source_id: id,
       partnership_id: id === partnershipReferralId ? form.partnership_id : "",
     });
   }
@@ -196,7 +196,7 @@ export default function JobForm({
         customer_phone: form.customer_phone,
         customer_type: form.customer_type || null,
         service_category_id: form.service_category_id || null,
-        lead_source_id: form.lead_source_id || null,
+        inquiry_source_id: form.inquiry_source_id || null,
         partnership_id: showPartnership ? form.partnership_id || null : null,
         zone_id: form.zone_id || null,
         status: form.status,
@@ -298,12 +298,12 @@ export default function JobForm({
           </Select>
 
           <Select
-            label="Lead source"
-            value={form.lead_source_id}
-            onChange={(e) => setLeadSource(e.target.value)}
+            label="Inquiry source"
+            value={form.inquiry_source_id}
+            onChange={(e) => setInquirySource(e.target.value)}
           >
             <option value="">— select —</option>
-            {optionsFor(lists.lead_source, form.lead_source_id || null).map((c) => (
+            {optionsFor(lists.inquiry_source, form.inquiry_source_id || null).map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
@@ -315,7 +315,7 @@ export default function JobForm({
               label="Partnership"
               value={form.partnership_id}
               onChange={(e) => patch({ partnership_id: e.target.value })}
-              hint="Shown because the lead source is Partnership Referral."
+              hint="Shown because the inquiry source is Partnership Referral."
             >
               <option value="">— select —</option>
               {partnerships.map((p) => (

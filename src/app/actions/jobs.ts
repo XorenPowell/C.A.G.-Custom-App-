@@ -31,7 +31,7 @@ export type JobPayload = {
   customer_phone: string | null;
   customer_type: CustomerType | null;
   service_category_id: string | null;
-  lead_source_id: string | null;
+  inquiry_source_id: string | null;
   partnership_id: string | null;
   zone_id: string | null;
   status: JobStatus;
@@ -61,8 +61,8 @@ export async function saveJob(payload: JobPayload): Promise<JobSaveResult> {
     customer_phone: orNull(payload.customer_phone),
     customer_type: payload.customer_type || null,
     service_category_id: payload.service_category_id || null,
-    lead_source_id: payload.lead_source_id || null,
-    // Nulled unless the lead source is Partnership Referral — enforced in the form.
+    inquiry_source_id: payload.inquiry_source_id || null,
+    // Nulled unless the inquiry source is Partnership Referral — enforced in the form.
     partnership_id: payload.partnership_id || null,
     zone_id: payload.zone_id || null,
     status: payload.status,
@@ -140,7 +140,8 @@ export async function saveJob(payload: JobPayload): Promise<JobSaveResult> {
 
   revalidatePath("/jobs", "layout");
   revalidatePath("/roster", "layout");
-  revalidatePath("/dashboard");
+  revalidatePath("/reports");
+  revalidatePath("/");
   return { ok: true, id: jobId, warning };
 }
 

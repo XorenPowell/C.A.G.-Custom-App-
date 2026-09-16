@@ -17,7 +17,7 @@ export default function SaveBar({
   label?: string;
 }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-line)] bg-white">
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-line)] bg-[var(--color-surface)]">
       <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-3 py-2 md:px-6">
         <div className="min-w-0 flex-1 truncate text-sm">
           {error ? (
