@@ -10,17 +10,39 @@ export const RANGE_PRESETS = [
 ] as const;
 export type RangePreset = (typeof RANGE_PRESETS)[number];
 
-export function todayISO(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
+/** The business is Chicago-based; "today" always means Chicago's calendar day. */
+const TIME_ZONE = "America/Chicago";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
 }
 
+/**
+ * Chicago's current wall-clock date, carried as a UTC-midnight Date so every
+ * getter/setter below can consistently use the UTC variants and get the
+ * right answer regardless of what timezone the server process itself runs
+ * in (Vercel's Node runtime defaults to UTC, which is NOT Chicago — reading
+ * a plain `new Date()` with local getters silently returns the wrong
+ * calendar day for roughly five hours every evening).
+ */
+function chicagoNow(): Date {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  return new Date(Date.UTC(get("year"), get("month") - 1, get("day")));
+}
+
+/** UTC getters throughout — `d` is always one of our UTC-midnight date-carriers. */
 function iso(d: Date): string {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+}
+
+export function todayISO(): string {
+  return iso(chicagoNow());
 }
 
 export type DateRange = { start: string | null; end: string | null };
@@ -31,7 +53,7 @@ export function resolveRange(
   customStart?: string | null,
   customEnd?: string | null,
 ): DateRange {
-  const now = new Date();
+  const now = chicagoNow();
 
   switch (preset) {
     case "Today": {
@@ -39,22 +61,22 @@ export function resolveRange(
       return { start: today, end: today };
     }
     case "This Week": {
-      const dow = now.getDay(); // 0 = Sunday
+      const dow = now.getUTCDay(); // 0 = Sunday
       const monday = new Date(now);
-      monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
+      monday.setUTCDate(now.getUTCDate() - (dow === 0 ? 6 : dow - 1));
       const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6);
+      sunday.setUTCDate(monday.getUTCDate() + 6);
       return { start: iso(monday), end: iso(sunday) };
     }
     case "This Month":
       return {
-        start: iso(new Date(now.getFullYear(), now.getMonth(), 1)),
-        end: iso(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+        start: iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))),
+        end: iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0))),
       };
     case "Last Month":
       return {
-        start: iso(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
-        end: iso(new Date(now.getFullYear(), now.getMonth(), 0)),
+        start: iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))),
+        end: iso(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0))),
       };
     case "All Time":
       return { start: null, end: null };
@@ -64,13 +86,13 @@ export function resolveRange(
 }
 
 export function monthStartISO(): string {
-  const d = new Date();
-  return iso(new Date(d.getFullYear(), d.getMonth(), 1));
+  const d = chicagoNow();
+  return iso(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)));
 }
 
 export function monthEndISO(): string {
-  const d = new Date();
-  return iso(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+  const d = chicagoNow();
+  return iso(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)));
 }
 
 export const WEEKDAY_NAMES = [
@@ -88,11 +110,11 @@ export const WEEKDAY_NAMES = [
  * (0=Sunday..6=Saturday) on or before today, through today — inclusive on
  * both ends. If today itself is `startDay`, the period is just today.
  */
-export function payPeriodRange(startDay: number, today = new Date()): DateRange {
-  const dow = today.getDay();
+export function payPeriodRange(startDay: number, today = chicagoNow()): DateRange {
+  const dow = today.getUTCDay();
   const diff = (dow - startDay + 7) % 7;
   const start = new Date(today);
-  start.setDate(today.getDate() - diff);
+  start.setUTCDate(today.getUTCDate() - diff);
   return { start: iso(start), end: iso(today) };
 }
 
