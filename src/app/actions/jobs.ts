@@ -45,6 +45,9 @@ export type JobPayload = {
   date_of_invoice: string | null;
   /** Up to three, in slot order. Windows with no date are dropped on save. */
   arrival_windows: ArrivalWindowPayload[];
+  /** The dispatcher's specific, confirmed schedule once the job is Booked. */
+  confirmed_arrival_date: string | null;
+  confirmed_arrival_time: string | null;
   estimated_duration_minutes: number | string | null;
   addresses: string[];
   total_invoice_paid: number | string;
@@ -75,6 +78,8 @@ export async function saveJob(payload: JobPayload): Promise<JobSaveResult> {
     zone_id: payload.zone_id || null,
     status: payload.status,
     date_of_invoice: payload.date_of_invoice || null,
+    confirmed_arrival_date: payload.confirmed_arrival_date || null,
+    confirmed_arrival_time: payload.confirmed_arrival_time || null,
     estimated_duration_minutes:
       payload.estimated_duration_minutes === "" ||
       payload.estimated_duration_minutes === null

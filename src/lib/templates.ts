@@ -8,10 +8,12 @@ export const TEMPLATE_VARS: { token: string; description: string }[] = [
   { token: "service_category", description: "e.g. Moving" },
   {
     token: "arrival_window_1",
-    description: "e.g. Mon, Aug 10, 2026, 6:00 AM – 8:00 AM",
+    description: "e.g. Mon, Aug 10, 2026, 6:00 AM – 8:00 AM (offered before booking)",
   },
   { token: "arrival_window_2", description: "Second arrival window, same format" },
   { token: "arrival_window_3", description: "Third arrival window, same format" },
+  { token: "arrival_date", description: "Confirmed arrival date, once Booked" },
+  { token: "arrival_time", description: "Confirmed arrival time, once Booked" },
   { token: "estimated_duration", description: "e.g. 2h 30m" },
   { token: "address_1", description: "First stop" },
   { token: "address_2", description: "Second stop" },
@@ -36,6 +38,8 @@ export type TemplateContext = {
   arrival_window_1: string;
   arrival_window_2: string;
   arrival_window_3: string;
+  arrival_date: string;
+  arrival_time: string;
   estimated_duration: string;
   address_1: string;
   address_2: string;
@@ -64,6 +68,9 @@ export type TemplateJob = {
   customer_phone: string | null;
   /** Up to three, in slot order. A window with no date resolves to an empty variable. */
   arrival_windows: TemplateArrivalWindow[];
+  /** The dispatcher's specific, confirmed schedule once the job is Booked. */
+  confirmed_arrival_date: string | null;
+  confirmed_arrival_time: string | null;
   estimated_duration_minutes: number | null;
   addresses: string[];
   details: string | null;
@@ -120,6 +127,8 @@ export function buildContext(
     arrival_window_1: formatArrivalWindow(windows[0]),
     arrival_window_2: formatArrivalWindow(windows[1]),
     arrival_window_3: formatArrivalWindow(windows[2]),
+    arrival_date: job.confirmed_arrival_date ? dateLongDisplay(job.confirmed_arrival_date) : "",
+    arrival_time: job.confirmed_arrival_time ? timeDisplay(job.confirmed_arrival_time) : "",
     estimated_duration:
       job.estimated_duration_minutes != null
         ? durationDisplay(job.estimated_duration_minutes)

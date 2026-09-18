@@ -322,10 +322,15 @@ create table jobs (
                       check (status in ('Inquiry','Quoted','Booked','Completed','Cancelled','Lost')),
 
   date_of_invoice     date,
-  -- Trigger-maintained mirror of the lowest-sort_order populated row in
-  -- job_arrival_windows (see below) — never written directly by app code.
+  -- Trigger-maintained mirror of confirmed_arrival_date/time (once Booked
+  -- and set) or else the lowest-sort_order row in job_arrival_windows (see
+  -- below) — never written directly by app code.
   arrival_date        date,
   arrival_time        time,
+  -- The dispatcher's specific, confirmed schedule once the job is Booked —
+  -- distinct from the candidate arrival_windows offered beforehand.
+  confirmed_arrival_date date,
+  confirmed_arrival_time time,
   estimated_duration_minutes integer,
   addresses           text[] not null default '{}',   -- any number of stops
 
@@ -411,32 +416,61 @@ create table job_arrival_windows (
 create index job_arrival_windows_job_idx on job_arrival_windows (job_id);
 create index job_arrival_windows_date_idx on job_arrival_windows (date);
 
--- Keeps jobs.arrival_date/arrival_time mirroring the lowest-sort_order
--- populated window (or null if none), so every "primary arrival date"
--- consumer (Jobs list sort/column, Home's Booked Today, the dashboard's
--- activity-date fallback, Google Calendar sync) reads it like any other
--- job column, with no awareness of arrival windows.
+-- Keeps jobs.arrival_date/arrival_time mirroring the confirmed arrival
+-- time (once status = Booked and it's set), else the lowest-sort_order
+-- populated window, so every "primary arrival date" consumer (Jobs list
+-- sort/column, Home's Booked Today, the dashboard's activity-date
+-- fallback, Google Calendar sync) reads it like any other job column,
+-- with no awareness of windows or the Booked/confirmed distinction.
+-- Shared by a trigger on job_arrival_windows (window edits) and one on
+-- jobs itself (status/confirmed-time edits).
 create function sync_job_primary_arrival() returns trigger language plpgsql as $$
 declare
-  jid uuid := coalesce(new.job_id, old.job_id);
-  primary_row record;
+  jid uuid;
+  job_status text;
+  confirmed_date date;
+  confirmed_time time;
+  primary_date date;
+  primary_time time;
 begin
-  select date, start_time into primary_row
-  from job_arrival_windows
-  where job_id = jid
-  order by sort_order
-  limit 1;
+  if tg_table_name = 'jobs' then
+    jid := new.id;
+    job_status := new.status;
+    confirmed_date := new.confirmed_arrival_date;
+    confirmed_time := new.confirmed_arrival_time;
+  else
+    jid := coalesce(new.job_id, old.job_id);
+    select status, confirmed_arrival_date, confirmed_arrival_time
+      into job_status, confirmed_date, confirmed_time
+      from jobs where id = jid;
+  end if;
+
+  if job_status = 'Booked' and confirmed_date is not null then
+    primary_date := confirmed_date;
+    primary_time := confirmed_time;
+  else
+    select date, start_time into primary_date, primary_time
+    from job_arrival_windows
+    where job_id = jid
+    order by sort_order
+    limit 1;
+  end if;
 
   update jobs
-     set arrival_date = primary_row.date,
-         arrival_time = primary_row.start_time
-   where id = jid;
+     set arrival_date = primary_date,
+         arrival_time = primary_time
+   where id = jid
+     and (arrival_date is distinct from primary_date or arrival_time is distinct from primary_time);
 
   return coalesce(new, old);
 end $$;
 
 create trigger job_arrival_windows_sync
   after insert or update or delete on job_arrival_windows
+  for each row execute function sync_job_primary_arrival();
+
+create trigger jobs_primary_arrival_sync
+  after insert or update of status, confirmed_arrival_date, confirmed_arrival_time on jobs
   for each row execute function sync_job_primary_arrival();
 
 -- =====================================================================

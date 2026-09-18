@@ -186,9 +186,12 @@ export type Job = {
   zone_id: string | null;
   status: JobStatus;
   date_of_invoice: string | null;
-  /** Trigger-maintained mirror of the lowest-sort_order job_arrival_windows row. */
+  /** Trigger-maintained mirror of confirmed_arrival_date/time (once Booked) or the earliest arrival window. */
   arrival_date: string | null;
   arrival_time: string | null;
+  /** The dispatcher's specific, confirmed schedule once the job is Booked. */
+  confirmed_arrival_date: string | null;
+  confirmed_arrival_time: string | null;
   estimated_duration_minutes: number | null;
   addresses: string[];
   total_invoice_paid: number;

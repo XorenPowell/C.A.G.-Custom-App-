@@ -84,6 +84,8 @@ export default async function JobDetailPage({
                   start_time: w.start_time,
                   end_time: w.end_time,
                 })),
+                confirmed_arrival_date: job.confirmed_arrival_date,
+                confirmed_arrival_time: job.confirmed_arrival_time,
                 estimated_duration_minutes: job.estimated_duration_minutes,
                 addresses: job.addresses,
                 details: job.details,
