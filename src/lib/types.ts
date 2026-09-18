@@ -33,6 +33,8 @@ export type ListItem = {
   kind: ListKind;
   name: string;
   description: string | null;
+  /** conversation_outcome only: pre-fills a conversation's intent level when this outcome is picked. */
+  default_intent_level: number | null;
   sort_order: number;
   archived: boolean;
 };

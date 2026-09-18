@@ -68,7 +68,7 @@ export async function logConversation(
   const { error } = await supabase.from("face_to_face_conversations").insert({
     session_id: sessionId,
     outcome_id: outcomeId,
-    intent_level: Math.min(10, Math.max(1, toInt(intentLevel, 5))),
+    intent_level: Math.min(10, Math.max(0, toInt(intentLevel, 5))),
   });
   if (error) return fail(error.message);
 
@@ -86,7 +86,7 @@ export async function updateConversation(
     .from("face_to_face_conversations")
     .update({
       outcome_id: outcomeId,
-      intent_level: Math.min(10, Math.max(1, toInt(intentLevel, 5))),
+      intent_level: Math.min(10, Math.max(0, toInt(intentLevel, 5))),
     })
     .eq("id", id);
   if (error) return fail(error.message);

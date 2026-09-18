@@ -6,7 +6,12 @@ import ListEditor from "./ListEditor";
 
 const META: Record<
   ListKind,
-  { title: string; withDescription: boolean; descriptionLabel: string }
+  {
+    title: string;
+    withDescription: boolean;
+    descriptionLabel: string;
+    withIntentLevel?: boolean;
+  }
 > = {
   service_category: {
     title: "Service Categories",
@@ -34,6 +39,7 @@ const META: Record<
     title: "Conversation Outcomes",
     withDescription: false,
     descriptionLabel: "",
+    withIntentLevel: true,
   },
 };
 
@@ -58,6 +64,7 @@ export default async function ListPage({
           items={items}
           withDescription={meta.withDescription}
           descriptionLabel={meta.descriptionLabel}
+          withIntentLevel={meta.withIntentLevel ?? false}
         />
       </main>
     </>
