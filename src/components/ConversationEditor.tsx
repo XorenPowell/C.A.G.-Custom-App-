@@ -27,6 +27,15 @@ export default function ConversationEditor({
     setStatus(null);
   }
 
+  function handleOutcomeChange(next: string) {
+    setOutcome(next);
+    patch();
+    const picked = lists.conversation_outcome.find((o) => o.id === next);
+    if (picked?.default_intent_level != null) {
+      setIntent(String(picked.default_intent_level));
+    }
+  }
+
   function save() {
     start(async () => {
       setError(null);
@@ -47,10 +56,7 @@ export default function ConversationEditor({
           <select
             className="select"
             value={outcome}
-            onChange={(e) => {
-              setOutcome(e.target.value);
-              patch();
-            }}
+            onChange={(e) => handleOutcomeChange(e.target.value)}
           >
             <option value="">— select —</option>
             {optionsFor(lists.conversation_outcome, outcome || null).map((o) => (
@@ -65,7 +71,7 @@ export default function ConversationEditor({
           <span className="label">Intent level — {intent}/10</span>
           <input
             type="range"
-            min={1}
+            min={0}
             max={10}
             step={1}
             value={intent}

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { fail, ok, orNull, toInt, type ActionResult } from "@/lib/persist";
+import { fail, ok, orNull, toInt, toNullableNum, type ActionResult } from "@/lib/persist";
 import { sanitizeThemeOverrides } from "@/lib/theme";
 import type { Audience, ListKind } from "@/lib/types";
 
@@ -10,6 +10,8 @@ export type ListItemDraft = {
   id: string | null;
   name: string;
   description: string | null;
+  /** conversation_outcome only. Blank stays blank — a missing default is not 0. */
+  default_intent_level: number | string | null;
   sort_order: number;
   archived: boolean;
 };
@@ -32,10 +34,13 @@ export async function saveList(
   }
 
   for (const [index, item] of named.entries()) {
+    const intentLevel = toNullableNum(item.default_intent_level);
     const row = {
       kind,
       name: item.name.trim(),
       description: orNull(item.description),
+      default_intent_level:
+        intentLevel === null ? null : Math.min(10, Math.max(0, intentLevel)),
       sort_order: (index + 1) * 10,
       archived: item.archived,
     };

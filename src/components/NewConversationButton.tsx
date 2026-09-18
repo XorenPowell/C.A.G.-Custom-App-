@@ -30,6 +30,14 @@ export default function NewConversationButton({
     setOpen(true);
   }
 
+  function handleOutcomeChange(id: string) {
+    setOutcomeId(id);
+    const picked = options.find((o) => o.id === id);
+    if (picked?.default_intent_level != null) {
+      setIntentLevel(String(picked.default_intent_level));
+    }
+  }
+
   function submit() {
     if (!outcomeId) {
       setError("Pick an outcome.");
@@ -64,7 +72,7 @@ export default function NewConversationButton({
               <select
                 className="select"
                 value={outcomeId}
-                onChange={(e) => setOutcomeId(e.target.value)}
+                onChange={(e) => handleOutcomeChange(e.target.value)}
               >
                 <option value="">— select —</option>
                 {options.map((o) => (
@@ -84,7 +92,7 @@ export default function NewConversationButton({
               <label className="label">Intent level — {intentLevel}/10</label>
               <input
                 type="range"
-                min={1}
+                min={0}
                 max={10}
                 step={1}
                 value={intentLevel}

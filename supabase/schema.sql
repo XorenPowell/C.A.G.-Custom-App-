@@ -78,6 +78,10 @@ create table list_items (
                 'conversation_outcome')),
   name        text not null,
   description text,                       -- used by zones for the reference screen
+  -- Used by conversation_outcome: pre-fills a conversation's intent level
+  -- when that outcome is picked (e.g. Visitor -> 0). Null means no default.
+  default_intent_level integer check (default_intent_level is null
+                or default_intent_level between 0 and 10),
   sort_order  integer not null default 0,
   archived    boolean not null default false,
   created_at  timestamptz not null default now()
@@ -419,8 +423,9 @@ create table face_to_face_conversations (
   -- Settings-driven (conversation_outcome), same as every other dropdown.
   outcome_id   uuid references list_items(id) on delete set null,
 
-  -- 1-10 slider: how interested the dispatcher judged them to be.
-  intent_level integer not null default 5 check (intent_level between 1 and 10),
+  -- 0-10: how interested the dispatcher judged them to be. 0 is a real
+  -- value here (e.g. Visitor, who isn't a prospect at all), not "unset".
+  intent_level integer not null default 5 check (intent_level between 0 and 10),
 
   created_at   timestamptz not null default now()
 );
