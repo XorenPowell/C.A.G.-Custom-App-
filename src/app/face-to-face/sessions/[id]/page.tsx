@@ -5,7 +5,8 @@ import SessionTimer from "@/components/SessionTimer";
 import NewConversationButton from "@/components/NewConversationButton";
 import EndSessionButton from "@/components/EndSessionButton";
 import DeleteSessionButton from "@/components/DeleteSessionButton";
-import { getSession, getSessionConversations } from "@/lib/face-to-face";
+import OutcomeBreakdown from "@/components/OutcomeBreakdown";
+import { getSession, getSessionConversations, outcomeBreakdown } from "@/lib/face-to-face";
 import { getLists, lookup, nameMap } from "@/lib/data";
 import { chicagoDateOf } from "@/lib/dates";
 import { dateDisplay, durationDisplay } from "@/lib/format";
@@ -64,6 +65,7 @@ export default async function SessionDetailPage({
   if (!session) notFound();
   const names = nameMap(lists);
   const isActive = session.ended_at === null;
+  const breakdown = outcomeBreakdown(conversations, names);
 
   if (isActive) {
     return (
@@ -80,6 +82,8 @@ export default async function SessionDetailPage({
           <p className="mb-3 text-center text-lg font-bold">
             {conversations.length} / {session.conversation_goal} conversations
           </p>
+
+          <OutcomeBreakdown data={breakdown} />
 
           <NewConversationButton sessionId={session.id} outcomes={lists.conversation_outcome} />
 
@@ -115,6 +119,8 @@ export default async function SessionDetailPage({
             {lookup(names, session.zone_id)}
           </p>
         </div>
+
+        <OutcomeBreakdown data={breakdown} />
 
         <ConversationList conversations={conversations} names={names} />
 

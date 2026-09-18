@@ -90,3 +90,26 @@ export async function getSessionConversations(
   if (error) throw new Error(error.message);
   return (data ?? []) as FaceToFaceConversation[];
 }
+
+export type OutcomeBreakdown = { label: string; count: number; percent: number };
+
+/**
+ * Outcome mix as percentages, computed on read from whatever conversations
+ * are handed in — a session's, a date range's, the whole book. Never
+ * stored: recomputing is cheap and storing a percentage would go stale the
+ * moment another conversation is logged.
+ */
+export function outcomeBreakdown(
+  conversations: Pick<FaceToFaceConversation, "outcome_id">[],
+  names: Map<string, string>,
+): OutcomeBreakdown[] {
+  const total = conversations.length;
+  const counts = new Map<string, number>();
+  for (const c of conversations) {
+    const label = c.outcome_id ? (names.get(c.outcome_id) ?? "Unknown") : "No outcome";
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([label, count]) => ({ label, count, percent: total ? (count / total) * 100 : 0 }))
+    .sort((a, b) => b.count - a.count);
+}
