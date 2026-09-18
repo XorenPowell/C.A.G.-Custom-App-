@@ -10,6 +10,10 @@ export const TEMPLATE_VARS: { token: string; description: string }[] = [
   { token: "arrival_time", description: "e.g. 9:00 AM" },
   { token: "estimated_duration", description: "e.g. 2h 30m" },
   { token: "address_1", description: "First stop" },
+  { token: "address_2", description: "Second stop" },
+  { token: "address_3", description: "Third stop" },
+  { token: "address_4", description: "Fourth stop" },
+  { token: "address_5", description: "Fifth stop" },
   { token: "all_addresses", description: "Every stop, comma separated" },
   { token: "entity_names", description: "Assigned entities, comma separated" },
   { token: "poc_name", description: "Entity point of contact" },
@@ -29,6 +33,10 @@ export type TemplateContext = {
   arrival_time: string;
   estimated_duration: string;
   address_1: string;
+  address_2: string;
+  address_3: string;
+  address_4: string;
+  address_5: string;
   all_addresses: string;
   entity_names: string;
   poc_name: string;
@@ -88,6 +96,10 @@ export function buildContext(
         ? durationDisplay(job.estimated_duration_minutes)
         : "",
     address_1: addresses[0] ?? "",
+    address_2: addresses[1] ?? "",
+    address_3: addresses[2] ?? "",
+    address_4: addresses[3] ?? "",
+    address_5: addresses[4] ?? "",
     all_addresses: addresses.join(", "),
     entity_names: entities.map((e) => e.entity_name).join(", "),
     poc_name: poc?.poc_name ?? "",
