@@ -37,6 +37,7 @@ export default async function JobDetailPage({
         entity_name: e.entity_name,
         poc_name: e.poc_name,
         poc_phone: e.poc_phone,
+        is_leader: w.is_leader,
         pay: effectiveWorkerPay({
           regular_hours: w.regular_hours,
           regular_rate: w.regular_rate,

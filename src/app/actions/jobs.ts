@@ -22,6 +22,7 @@ export type JobWorkerPayload = {
   other_hours: number | string;
   other_rate: number | string;
   total_pay_override: number | string | null;
+  is_leader: boolean;
   fees: { description: string | null; amount: number | string }[];
 };
 
@@ -116,6 +117,7 @@ export async function saveJob(payload: JobPayload): Promise<JobSaveResult> {
         other_hours: toNum(w.other_hours),
         other_rate: toNum(w.other_rate),
         total_pay_override: toNullableNum(w.total_pay_override),
+        is_leader: w.is_leader,
         sort_order: index,
       })
       .select("id")
