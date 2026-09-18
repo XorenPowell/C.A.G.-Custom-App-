@@ -1,4 +1,4 @@
-import { dateLongDisplay, durationDisplay, phoneDisplay, timeDisplay } from "@/lib/format";
+import { dateLongDisplay, durationDisplay, money, phoneDisplay, timeDisplay } from "@/lib/format";
 
 /** Every variable the dispatcher can put in a message body (spec section 6). */
 export const TEMPLATE_VARS: { token: string; description: string }[] = [
@@ -15,6 +15,9 @@ export const TEMPLATE_VARS: { token: string; description: string }[] = [
   { token: "poc_name", description: "Entity point of contact" },
   { token: "poc_phone", description: "Entity POC phone, formatted" },
   { token: "zone", description: "Job zone" },
+  { token: "pay", description: "The recipient worker's pay for this job, e.g. $117.50" },
+  { token: "details", description: "Job details (parking, gate codes, etc.)" },
+  { token: "notes", description: "Job notes" },
 ];
 
 export type TemplateContext = {
@@ -31,6 +34,9 @@ export type TemplateContext = {
   poc_name: string;
   poc_phone: string;
   zone: string;
+  pay: string;
+  details: string;
+  notes: string;
 };
 
 export type TemplateJob = {
@@ -41,12 +47,16 @@ export type TemplateJob = {
   arrival_time: string | null;
   estimated_duration_minutes: number | null;
   addresses: string[];
+  details: string | null;
+  notes: string | null;
 };
 
 export type TemplateEntity = {
   entity_name: string;
   poc_name: string | null;
   poc_phone: string | null;
+  /** This entity's effective pay for the job being messaged about (override if set, else calculated). */
+  pay: number | null;
 };
 
 /**
@@ -83,6 +93,9 @@ export function buildContext(
     poc_name: poc?.poc_name ?? "",
     poc_phone: poc?.poc_phone ? phoneDisplay(poc.poc_phone) : "",
     zone: zone === "—" ? "" : zone,
+    pay: poc?.pay != null ? money(poc.pay) : "",
+    details: job.details ?? "",
+    notes: job.notes ?? "",
   };
 }
 

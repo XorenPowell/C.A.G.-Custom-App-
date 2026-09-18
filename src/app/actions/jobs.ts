@@ -48,6 +48,7 @@ export type JobPayload = {
   total_worker_payout_override: number | string | null;
   invoice_ref: string | null;
   notes: string | null;
+  details: string | null;
   workers: JobWorkerPayload[];
 };
 
@@ -83,6 +84,7 @@ export async function saveJob(payload: JobPayload): Promise<JobSaveResult> {
     total_worker_payout_override: toNullableNum(payload.total_worker_payout_override),
     invoice_ref: orNull(payload.invoice_ref),
     notes: orNull(payload.notes),
+    details: orNull(payload.details),
   };
 
   let jobId = payload.id;

@@ -90,6 +90,7 @@ export default function JobForm({
     total_worker_payout_override: str(job?.total_worker_payout_override),
     invoice_ref: job?.invoice_ref ?? "",
     notes: job?.notes ?? "",
+    details: job?.details ?? "",
   });
 
   const [addresses, setAddresses] = useState<string[]>(
@@ -214,6 +215,7 @@ export default function JobForm({
         total_worker_payout_override: form.total_worker_payout_override || null,
         invoice_ref: form.invoice_ref,
         notes: form.notes,
+        details: form.details,
         workers: workers.map((w) => ({
           entity_id: w.entity_id,
           regular_hours: w.regular_hours,
@@ -659,6 +661,15 @@ export default function JobForm({
             Reset to auto
           </button>
         </div>
+      </Section>
+
+      {/* ---------- details ---------- */}
+      <Section title="Details">
+        <TextArea
+          value={form.details}
+          onChange={(e) => patch({ details: e.target.value })}
+          placeholder="Parking, gate codes, access instructions — anything worth texting to the customer or worker."
+        />
       </Section>
 
       {/* ---------- notes ---------- */}
