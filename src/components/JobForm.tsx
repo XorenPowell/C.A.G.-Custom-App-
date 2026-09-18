@@ -470,8 +470,7 @@ export default function JobForm({
                   onChange={(e) => setLeader(i, e.target.checked)}
                   className="size-4 accent-[var(--color-accent)]"
                 />
-                Leader — this worker's phone is used for {"{{poc_name}}"}/{"{{poc_phone}}"} in
-                templates
+                Leader
               </label>
 
               <div className="grid grid-cols-2 gap-x-3">
