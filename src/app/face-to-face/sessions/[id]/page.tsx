@@ -5,10 +5,16 @@ import SessionTimer from "@/components/SessionTimer";
 import NewConversationButton from "@/components/NewConversationButton";
 import EndSessionButton from "@/components/EndSessionButton";
 import DeleteSessionButton from "@/components/DeleteSessionButton";
-import { getSession, getSessionConversations } from "@/lib/face-to-face";
+import OutcomeBreakdown from "@/components/OutcomeBreakdown";
+import {
+  averageIntentLevel,
+  getSession,
+  getSessionConversations,
+  outcomeBreakdown,
+} from "@/lib/face-to-face";
 import { getLists, lookup, nameMap } from "@/lib/data";
 import { chicagoDateOf } from "@/lib/dates";
-import { dateDisplay, durationDisplay } from "@/lib/format";
+import { dateDisplay, durationDisplay, num } from "@/lib/format";
 import type { FaceToFaceConversation } from "@/lib/types";
 
 function timeOf(iso: string): string {
@@ -64,6 +70,8 @@ export default async function SessionDetailPage({
   if (!session) notFound();
   const names = nameMap(lists);
   const isActive = session.ended_at === null;
+  const breakdown = outcomeBreakdown(conversations, names);
+  const avgIntent = averageIntentLevel(conversations);
 
   if (isActive) {
     return (
@@ -77,9 +85,16 @@ export default async function SessionDetailPage({
             </span>
           </div>
 
-          <p className="mb-3 text-center text-lg font-bold">
-            {conversations.length} / {session.conversation_goal} conversations
-          </p>
+          <div className="mb-3 text-center">
+            <p className="text-lg font-bold">
+              {conversations.length} / {session.conversation_goal} conversations
+            </p>
+            {conversations.length > 0 && (
+              <p className="muted text-sm">Avg intent {num(avgIntent, 1)}/10</p>
+            )}
+          </div>
+
+          <OutcomeBreakdown data={breakdown} />
 
           <NewConversationButton sessionId={session.id} outcomes={lists.conversation_outcome} />
 
@@ -113,8 +128,11 @@ export default async function SessionDetailPage({
           <p className="muted text-sm">
             {conversations.length} / {session.conversation_goal} conversations ·{" "}
             {lookup(names, session.zone_id)}
+            {conversations.length > 0 && <> · avg intent {num(avgIntent, 1)}/10</>}
           </p>
         </div>
+
+        <OutcomeBreakdown data={breakdown} />
 
         <ConversationList conversations={conversations} names={names} />
 
