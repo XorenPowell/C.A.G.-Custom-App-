@@ -30,6 +30,11 @@ const META: Record<
     withDescription: true,
     descriptionLabel: "What this tier means (optional)",
   },
+  conversation_outcome: {
+    title: "Conversation Outcomes",
+    withDescription: false,
+    descriptionLabel: "",
+  },
 };
 
 export default async function ListPage({

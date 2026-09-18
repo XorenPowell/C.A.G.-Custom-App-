@@ -6,7 +6,8 @@ export type ListKind =
   | "zone"
   | "vehicle_type"
   | "partnership_status"
-  | "partnership_tier";
+  | "partnership_tier"
+  | "conversation_outcome";
 
 export const JOB_STATUSES = [
   "Inquiry",
@@ -26,9 +27,6 @@ export type EntityStatus = (typeof ENTITY_STATUSES)[number];
 
 export const AUDIENCES = ["Customer", "Worker"] as const;
 export type Audience = (typeof AUDIENCES)[number];
-
-export const INQUIRY_FOR_OPTIONS = ["Themselves", "A Friend"] as const;
-export type InquiryFor = (typeof INQUIRY_FOR_OPTIONS)[number];
 
 export type ListItem = {
   id: string;
@@ -275,19 +273,18 @@ export type TimeEntry = {
   created_at: string;
 };
 
+/**
+ * Just an outcome and an intent level at a moment in time — no contact
+ * details. An interested prospect becomes a job directly; there's nothing
+ * else worth capturing here.
+ */
 export type FaceToFaceConversation = {
   id: string;
   occurred_at: string;
-  /** Null only for the handful of conversations logged before sessions existed. */
+  /** Null only for conversations logged before sessions existed. */
   session_id: string | null;
-  contact_name: string | null;
-  contact_phone: string | null;
-  contact_email: string | null;
-  inquiry_for: InquiryFor | null;
-  service_category_id: string | null;
-  zone_id: string | null;
-  cards_given: number;
+  outcome_id: string | null;
+  /** 1-10 slider: how interested the dispatcher judged them to be. */
   intent_level: number;
-  notes: string | null;
   created_at: string;
 };

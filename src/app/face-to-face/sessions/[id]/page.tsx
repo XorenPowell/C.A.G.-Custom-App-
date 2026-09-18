@@ -2,13 +2,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import TopBar from "@/components/TopBar";
 import SessionTimer from "@/components/SessionTimer";
+import NewConversationButton from "@/components/NewConversationButton";
 import EndSessionButton from "@/components/EndSessionButton";
 import DeleteSessionButton from "@/components/DeleteSessionButton";
-import { startConversationInSession } from "@/app/actions/face-to-face";
 import { getSession, getSessionConversations } from "@/lib/face-to-face";
 import { getLists, lookup, nameMap } from "@/lib/data";
 import { chicagoDateOf } from "@/lib/dates";
-import { dateDisplay, durationDisplay, phoneDisplay } from "@/lib/format";
+import { dateDisplay, durationDisplay } from "@/lib/format";
 import type { FaceToFaceConversation } from "@/lib/types";
 
 function timeOf(iso: string): string {
@@ -32,21 +32,18 @@ function ConversationList({
   return (
     <div className="flex flex-col gap-2">
       {conversations.map((c) => (
-        <Link key={c.id} href={`/face-to-face/${c.id}`} className="card card-pad block">
-          <div className="flex items-start justify-between gap-2">
-            <span className="font-bold">{c.contact_name || "Unnamed contact"}</span>
+        <Link
+          key={c.id}
+          href={`/face-to-face/${c.id}`}
+          className="card card-pad flex items-center justify-between gap-2"
+        >
+          <span className="font-bold">{lookup(names, c.outcome_id)}</span>
+          <span className="flex items-center gap-2">
             <span className="badge border-[var(--pill-border)] bg-[var(--pill-bg)]">
               {c.intent_level}/10
             </span>
-          </div>
-          <div className="muted text-sm">
-            {dateDisplay(chicagoDateOf(c.occurred_at))} · {timeOf(c.occurred_at)}
-          </div>
-          <div className="muted text-sm">
-            {lookup(names, c.service_category_id)} · {lookup(names, c.zone_id)}
-          </div>
-          {c.contact_phone && <div className="text-sm">{phoneDisplay(c.contact_phone)}</div>}
-          <div className="muted mt-1 text-xs">{c.cards_given} card(s) given</div>
+            <span className="muted text-sm">{timeOf(c.occurred_at)}</span>
+          </span>
         </Link>
       ))}
     </div>
@@ -84,11 +81,7 @@ export default async function SessionDetailPage({
             {conversations.length} / {session.conversation_goal} conversations
           </p>
 
-          <form action={startConversationInSession.bind(null, session.id, session.zone_id)}>
-            <button type="submit" className="btn btn-primary mb-4 w-full">
-              + New Conversation
-            </button>
-          </form>
+          <NewConversationButton sessionId={session.id} outcomes={lists.conversation_outcome} />
 
           <ConversationList conversations={conversations} names={names} />
 

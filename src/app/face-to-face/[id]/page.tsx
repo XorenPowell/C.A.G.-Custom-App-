@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import TopBar from "@/components/TopBar";
-import ConversationForm from "@/components/ConversationForm";
+import ConversationEditor from "@/components/ConversationEditor";
 import DeleteConversationButton from "./DeleteConversationButton";
 import { getConversation } from "@/lib/face-to-face";
 import { getLists } from "@/lib/data";
@@ -32,10 +32,15 @@ export default async function ConversationDetailPage({
       <TopBar title="Conversation" back={back} backLabel={backLabel} />
       <main className="page max-w-2xl">
         <p className="muted mb-3 text-sm">
-          Started {dateLongDisplay(chicagoDateOf(conversation.occurred_at))} at {time}
+          Logged {dateLongDisplay(chicagoDateOf(conversation.occurred_at))} at {time}
         </p>
 
-        <ConversationForm conversation={conversation} lists={lists} />
+        <ConversationEditor
+          id={conversation.id}
+          outcomeId={conversation.outcome_id}
+          intentLevel={conversation.intent_level}
+          lists={lists}
+        />
 
         <DeleteConversationButton id={conversation.id} />
       </main>

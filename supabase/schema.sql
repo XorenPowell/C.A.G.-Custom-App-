@@ -74,7 +74,8 @@ create table list_items (
   id          uuid primary key default gen_random_uuid(),
   kind        text not null check (kind in (
                 'service_category','inquiry_source','zone',
-                'vehicle_type','partnership_status','partnership_tier')),
+                'vehicle_type','partnership_status','partnership_tier',
+                'conversation_outcome')),
   name        text not null,
   description text,                       -- used by zones for the reference screen
   sort_order  integer not null default 0,
@@ -400,43 +401,32 @@ create table face_to_face_sessions (
 create index face_to_face_sessions_started_idx on face_to_face_sessions (started_at desc);
 create index face_to_face_sessions_active_idx on face_to_face_sessions (ended_at) where ended_at is null;
 
+-- A conversation is just "an outcome, at a moment in time" — no contact
+-- details. An interested prospect becomes a job directly; there's nothing
+-- else worth capturing here yet.
 create table face_to_face_conversations (
-  id                  uuid primary key default gen_random_uuid(),
-  -- Stamped the moment "+ New Conversation" is tapped, before any other
-  -- field is filled in — the point of the field is exactly when the
-  -- conversation started, not whenever the form happens to get saved.
-  occurred_at         timestamptz not null default now(),
+  id           uuid primary key default gen_random_uuid(),
+  -- Stamped the moment an outcome is picked — the point of the field is
+  -- exactly when the conversation happened, not whenever anything else
+  -- about it might get edited later.
+  occurred_at  timestamptz not null default now(),
 
-  -- Nullable only so the handful of conversations logged before sessions
-  -- existed don't break — every conversation created from here on has one.
-  session_id          uuid references face_to_face_sessions(id) on delete cascade,
+  -- Nullable only so any conversations logged before sessions existed
+  -- don't break — every conversation created from here on has one.
+  session_id   uuid references face_to_face_sessions(id) on delete cascade,
 
-  contact_name        text,
-  contact_phone       text,
-  contact_email       text,
-  -- Who the service would be for: the person in front of the dispatcher, or
-  -- someone they're inquiring on behalf of. Fixed pair, not Settings-driven
-  -- — same treatment as a job's customer_type.
-  inquiry_for         text check (inquiry_for in ('Themselves','A Friend')),
+  -- Visited / Interested for myself / Hold for someone else, etc. —
+  -- Settings-driven (conversation_outcome), same as every other dropdown.
+  outcome_id   uuid references list_items(id) on delete set null,
 
-  service_category_id uuid references list_items(id) on delete set null,
-  zone_id             uuid references list_items(id) on delete set null,
-
-  cards_given         integer not null default 0,
   -- 1-10 slider: how interested the dispatcher judged them to be.
-  intent_level        integer not null default 5 check (intent_level between 1 and 10),
+  intent_level integer not null default 5 check (intent_level between 1 and 10),
 
-  notes               text,
-
-  created_at          timestamptz not null default now(),
-  updated_at          timestamptz not null default now()
+  created_at   timestamptz not null default now()
 );
-create trigger face_to_face_conversations_updated_at before update on face_to_face_conversations
-  for each row execute function set_updated_at();
 create index face_to_face_conversations_occurred_idx on face_to_face_conversations (occurred_at desc);
 create index face_to_face_conversations_session_idx on face_to_face_conversations (session_id);
-create index face_to_face_conversations_category_idx on face_to_face_conversations (service_category_id);
-create index face_to_face_conversations_zone_idx on face_to_face_conversations (zone_id);
+create index face_to_face_conversations_outcome_idx on face_to_face_conversations (outcome_id);
 
 -- =====================================================================
 -- TIME CLOCK

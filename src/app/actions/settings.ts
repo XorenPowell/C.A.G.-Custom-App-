@@ -90,6 +90,12 @@ export async function listItemUsage(
     checks.push({ label: "partnerships", table: "partnerships", column: "status_id" });
   } else if (kind === "partnership_tier") {
     checks.push({ label: "partnerships", table: "partnerships", column: "tier_id" });
+  } else if (kind === "conversation_outcome") {
+    checks.push({
+      label: "conversations",
+      table: "face_to_face_conversations",
+      column: "outcome_id",
+    });
   }
 
   const out: { label: string; count: number }[] = [];
