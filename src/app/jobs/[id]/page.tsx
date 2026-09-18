@@ -7,6 +7,7 @@ import { getJob, getJobFinancialsOne } from "@/lib/jobs";
 import { getEntitiesFull } from "@/lib/entities";
 import { getPartnerships } from "@/lib/partnerships";
 import { getLists, getSettings, getTemplates, lookup, nameMap, partnershipReferralId } from "@/lib/data";
+import { effectiveWorkerPay } from "@/lib/calc";
 
 export default async function JobDetailPage({
   params,
@@ -29,13 +30,26 @@ export default async function JobDetailPage({
 
   const names = nameMap(lists);
   const assigned = job.job_workers
-    .map((w) => entities.find((e) => e.id === w.entity_id))
-    .filter(Boolean)
-    .map((e) => ({
-      entity_name: e!.entity_name,
-      poc_name: e!.poc_name,
-      poc_phone: e!.poc_phone,
-    }));
+    .map((w) => {
+      const e = entities.find((entity) => entity.id === w.entity_id);
+      if (!e) return null;
+      return {
+        entity_name: e.entity_name,
+        poc_name: e.poc_name,
+        poc_phone: e.poc_phone,
+        pay: effectiveWorkerPay({
+          regular_hours: w.regular_hours,
+          regular_rate: w.regular_rate,
+          travel_hours: w.travel_hours,
+          travel_rate: w.travel_rate,
+          other_hours: w.other_hours,
+          other_rate: w.other_rate,
+          total_pay_override: w.total_pay_override,
+          fees: w.job_worker_fees,
+        }),
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
 
   return (
     <>
@@ -68,6 +82,8 @@ export default async function JobDetailPage({
                 arrival_time: job.arrival_time,
                 estimated_duration_minutes: job.estimated_duration_minutes,
                 addresses: job.addresses,
+                details: job.details,
+                notes: job.notes,
               }}
               serviceCategory={lookup(names, job.service_category_id)}
               zone={lookup(names, job.zone_id)}

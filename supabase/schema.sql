@@ -339,6 +339,10 @@ create table jobs (
 
   invoice_ref         text,
   notes               text,
+  -- Separate from notes: meant to be dropped into message templates via
+  -- {{details}} (parking instructions, gate codes, etc.), not just kept
+  -- internal.
+  details             text,
   google_calendar_event_id text,              -- hidden from the UI
 
   created_at          timestamptz not null default now(),

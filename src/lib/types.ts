@@ -199,6 +199,8 @@ export type Job = {
   total_worker_payout_override: number | null;
   invoice_ref: string | null;
   notes: string | null;
+  /** Separate from notes — meant for message templates via {{details}}. */
+  details: string | null;
   google_calendar_event_id: string | null;
   created_at: string;
 };
