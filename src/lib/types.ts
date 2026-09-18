@@ -186,6 +186,7 @@ export type Job = {
   zone_id: string | null;
   status: JobStatus;
   date_of_invoice: string | null;
+  /** Trigger-maintained mirror of the lowest-sort_order job_arrival_windows row. */
   arrival_date: string | null;
   arrival_time: string | null;
   estimated_duration_minutes: number | null;
@@ -230,8 +231,19 @@ export type JobWorker = {
   job_worker_fees: JobWorkerFee[];
 };
 
+/** Up to three per job. Only populated windows have a row — sort_order is the slot (0,1,2). */
+export type JobArrivalWindow = {
+  id: string;
+  job_id: string;
+  sort_order: number;
+  date: string;
+  start_time: string | null;
+  end_time: string | null;
+};
+
 export type JobFull = Job & {
   job_workers: JobWorker[];
+  job_arrival_windows: JobArrivalWindow[];
 };
 
 /** Rows from the `job_financials` view. */

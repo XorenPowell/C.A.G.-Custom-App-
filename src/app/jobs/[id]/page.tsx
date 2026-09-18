@@ -79,8 +79,11 @@ export default async function JobDetailPage({
                 job_id: job.job_id,
                 customer_name: job.customer_name,
                 customer_phone: job.customer_phone,
-                arrival_date: job.arrival_date,
-                arrival_time: job.arrival_time,
+                arrival_windows: job.job_arrival_windows.map((w) => ({
+                  date: w.date,
+                  start_time: w.start_time,
+                  end_time: w.end_time,
+                })),
                 estimated_duration_minutes: job.estimated_duration_minutes,
                 addresses: job.addresses,
                 details: job.details,

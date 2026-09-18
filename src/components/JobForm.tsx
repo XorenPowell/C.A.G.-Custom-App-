@@ -32,6 +32,8 @@ import {
 
 type FeeState = { description: string; amount: string };
 
+type WindowState = { date: string; start_time: string; end_time: string };
+
 type WorkerState = {
   key: string;
   entity_id: string | null;
@@ -80,8 +82,6 @@ export default function JobForm({
     zone_id: job?.zone_id ?? "",
     status: (job?.status ?? "Inquiry") as JobStatus,
     date_of_invoice: job?.date_of_invoice ?? "",
-    arrival_date: job?.arrival_date ?? "",
-    arrival_time: job?.arrival_time?.slice(0, 5) ?? "",
     estimated_duration_minutes: str(job?.estimated_duration_minutes),
     total_invoice_paid: str(job?.total_invoice_paid ?? 0),
     pos_fee_percent: str(job?.pos_fee_percent ?? settings.default_pos_fee_percent),
@@ -97,6 +97,22 @@ export default function JobForm({
   const [addresses, setAddresses] = useState<string[]>(
     job?.addresses?.length ? job.addresses : [""],
   );
+
+  const [windows, setWindows] = useState<WindowState[]>(
+    [0, 1, 2].map((i) => {
+      const w = job?.job_arrival_windows.find((x) => x.sort_order === i);
+      return {
+        date: w?.date ?? "",
+        start_time: w?.start_time?.slice(0, 5) ?? "",
+        end_time: w?.end_time?.slice(0, 5) ?? "",
+      };
+    }),
+  );
+
+  function patchWindow(index: number, next: Partial<WindowState>) {
+    setWindows((prev) => prev.map((w, i) => (i === index ? { ...w, ...next } : w)));
+    setStatusMsg(null);
+  }
 
   const [workers, setWorkers] = useState<WorkerState[]>(
     (job?.job_workers ?? []).map((w, i) => ({
@@ -212,8 +228,11 @@ export default function JobForm({
         zone_id: form.zone_id || null,
         status: form.status,
         date_of_invoice: form.date_of_invoice || null,
-        arrival_date: form.arrival_date || null,
-        arrival_time: form.arrival_time || null,
+        arrival_windows: windows.map((w) => ({
+          date: w.date || null,
+          start_time: w.start_time || null,
+          end_time: w.end_time || null,
+        })),
         estimated_duration_minutes: form.estimated_duration_minutes || null,
         addresses,
         total_invoice_paid: form.total_invoice_paid,
@@ -376,18 +395,6 @@ export default function JobForm({
             onChange={(e) => patch({ date_of_invoice: e.target.value })}
             hint="Drives week/month grouping and the dashboard date range."
           />
-          <TextInput
-            label="Arrival date"
-            type="date"
-            value={form.arrival_date}
-            onChange={(e) => patch({ arrival_date: e.target.value })}
-          />
-          <TextInput
-            label="Arrival time"
-            type="time"
-            value={form.arrival_time}
-            onChange={(e) => patch({ arrival_time: e.target.value })}
-          />
           <NumberInput
             label="Estimated duration (minutes)"
             step="15"
@@ -395,6 +402,37 @@ export default function JobForm({
             value={form.estimated_duration_minutes}
             onChange={(e) => patch({ estimated_duration_minutes: e.target.value })}
           />
+        </div>
+
+        <p className="muted mb-2 text-xs">
+          Up to three optional arrival windows — fill in what you know.
+        </p>
+        <div className="flex flex-col gap-3">
+          {windows.map((w, i) => (
+            <div key={i} className="border border-[var(--color-line)] p-2">
+              <div className="label mb-1">Arrival window {i + 1}</div>
+              <div className="grid-form">
+                <TextInput
+                  label="Date"
+                  type="date"
+                  value={w.date}
+                  onChange={(e) => patchWindow(i, { date: e.target.value })}
+                />
+                <TextInput
+                  label="Start time"
+                  type="time"
+                  value={w.start_time}
+                  onChange={(e) => patchWindow(i, { start_time: e.target.value })}
+                />
+                <TextInput
+                  label="End time"
+                  type="time"
+                  value={w.end_time}
+                  onChange={(e) => patchWindow(i, { end_time: e.target.value })}
+                />
+              </div>
+            </div>
+          ))}
         </div>
 
         <span className="label">Addresses / stops</span>
@@ -706,7 +744,7 @@ export default function JobForm({
           entities={entities}
           serviceCategoryId={form.service_category_id || null}
           zoneId={form.zone_id || null}
-          arrivalDate={form.arrival_date || null}
+          arrivalDates={windows.map((w) => w.date).filter(Boolean)}
           alreadyPicked={workers.map((w) => w.entity_id).filter(Boolean) as string[]}
           names={namesRecord}
           onPick={addWorker}

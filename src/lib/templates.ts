@@ -6,8 +6,12 @@ export const TEMPLATE_VARS: { token: string; description: string }[] = [
   { token: "customer_name", description: "Customer's name" },
   { token: "customer_phone", description: "Customer's phone, formatted" },
   { token: "service_category", description: "e.g. Moving" },
-  { token: "arrival_date", description: "e.g. Mon, Aug 10, 2026" },
-  { token: "arrival_time", description: "e.g. 9:00 AM" },
+  {
+    token: "arrival_window_1",
+    description: "e.g. Mon, Aug 10, 2026, 6:00 AM – 8:00 AM",
+  },
+  { token: "arrival_window_2", description: "Second arrival window, same format" },
+  { token: "arrival_window_3", description: "Third arrival window, same format" },
   { token: "estimated_duration", description: "e.g. 2h 30m" },
   { token: "address_1", description: "First stop" },
   { token: "address_2", description: "Second stop" },
@@ -29,8 +33,9 @@ export type TemplateContext = {
   customer_name: string;
   customer_phone: string;
   service_category: string;
-  arrival_date: string;
-  arrival_time: string;
+  arrival_window_1: string;
+  arrival_window_2: string;
+  arrival_window_3: string;
   estimated_duration: string;
   address_1: string;
   address_2: string;
@@ -47,12 +52,18 @@ export type TemplateContext = {
   notes: string;
 };
 
+export type TemplateArrivalWindow = {
+  date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+};
+
 export type TemplateJob = {
   job_id: string;
   customer_name: string | null;
   customer_phone: string | null;
-  arrival_date: string | null;
-  arrival_time: string | null;
+  /** Up to three, in slot order. A window with no date resolves to an empty variable. */
+  arrival_windows: TemplateArrivalWindow[];
   estimated_duration_minutes: number | null;
   addresses: string[];
   details: string | null;
@@ -68,6 +79,18 @@ export type TemplateEntity = {
   /** Whose phone/name represents the job when no specific recipient is targeted. At most one per job. */
   is_leader?: boolean;
 };
+
+/** "Mon, Aug 10, 2026, 6:00 AM – 8:00 AM" — or just the date, or "" if unset. */
+function formatArrivalWindow(w: TemplateArrivalWindow | undefined): string {
+  if (!w?.date) return "";
+  const parts = [dateLongDisplay(w.date)];
+  if (w.start_time) {
+    parts.push(
+      w.end_time ? `${timeDisplay(w.start_time)} – ${timeDisplay(w.end_time)}` : timeDisplay(w.start_time),
+    );
+  }
+  return parts.join(", ");
+}
 
 /**
  * Builds the substitution context for a job.
@@ -87,14 +110,16 @@ export function buildContext(
 ): TemplateContext {
   const poc = target ?? entities.find((e) => e.is_leader) ?? entities[0] ?? null;
   const addresses = (job.addresses ?? []).filter((a) => a && a.trim() !== "");
+  const windows = job.arrival_windows ?? [];
 
   return {
     job_id: job.job_id ?? "",
     customer_name: job.customer_name ?? "",
     customer_phone: job.customer_phone ? phoneDisplay(job.customer_phone) : "",
     service_category: serviceCategory === "—" ? "" : serviceCategory,
-    arrival_date: job.arrival_date ? dateLongDisplay(job.arrival_date) : "",
-    arrival_time: job.arrival_time ? timeDisplay(job.arrival_time) : "",
+    arrival_window_1: formatArrivalWindow(windows[0]),
+    arrival_window_2: formatArrivalWindow(windows[1]),
+    arrival_window_3: formatArrivalWindow(windows[2]),
     estimated_duration:
       job.estimated_duration_minutes != null
         ? durationDisplay(job.estimated_duration_minutes)
