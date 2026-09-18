@@ -113,3 +113,12 @@ export function outcomeBreakdown(
     .map(([label, count]) => ({ label, count, percent: total ? (count / total) * 100 : 0 }))
     .sort((a, b) => b.count - a.count);
 }
+
+/** Same on-read approach as outcomeBreakdown — average over whatever's handed in. */
+export function averageIntentLevel(
+  conversations: Pick<FaceToFaceConversation, "intent_level">[],
+): number {
+  if (conversations.length === 0) return 0;
+  const total = conversations.reduce((s, c) => s + c.intent_level, 0);
+  return total / conversations.length;
+}
