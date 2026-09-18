@@ -372,11 +372,16 @@ create table job_workers (
   other_rate     numeric(12,2) not null default 0,
   -- Section 4 exception: dispatcher may type over this worker's calculated pay.
   total_pay_override numeric(12,2),
+  -- Whose phone number represents the job when a template resolves
+  -- {{poc_name}}/{{poc_phone}} without a specific texted recipient (e.g. a
+  -- customer-facing message). At most one per job — enforced below.
+  is_leader      boolean not null default false,
   sort_order     integer not null default 0,
   created_at     timestamptz not null default now()
 );
 create index job_workers_job_idx on job_workers (job_id);
 create index job_workers_entity_idx on job_workers (entity_id);
+create unique index job_workers_leader_idx on job_workers (job_id) where is_leader;
 
 create table job_worker_fees (
   id            uuid primary key default gen_random_uuid(),

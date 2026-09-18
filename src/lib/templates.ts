@@ -65,14 +65,18 @@ export type TemplateEntity = {
   poc_phone: string | null;
   /** This entity's effective pay for the job being messaged about (override if set, else calculated). */
   pay: number | null;
+  /** Whose phone/name represents the job when no specific recipient is targeted. At most one per job. */
+  is_leader?: boolean;
 };
 
 /**
  * Builds the substitution context for a job.
  *
  * `target` is the entity being messaged, when the action is aimed at one
- * specific entity's POC. Without it, POC fields fall back to the first
- * assigned entity so customer-facing templates still resolve.
+ * specific entity's POC — takes priority. Without it, POC fields use
+ * whichever assigned entity is marked as the job's leader, falling back to
+ * the first assigned entity if none is, so customer-facing templates still
+ * resolve on older jobs with no leader set.
  */
 export function buildContext(
   job: TemplateJob,
@@ -81,7 +85,7 @@ export function buildContext(
   entities: TemplateEntity[],
   target?: TemplateEntity | null,
 ): TemplateContext {
-  const poc = target ?? entities[0] ?? null;
+  const poc = target ?? entities.find((e) => e.is_leader) ?? entities[0] ?? null;
   const addresses = (job.addresses ?? []).filter((a) => a && a.trim() !== "");
 
   return {

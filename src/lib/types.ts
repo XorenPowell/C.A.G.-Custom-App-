@@ -224,6 +224,8 @@ export type JobWorker = {
   other_hours: number;
   other_rate: number;
   total_pay_override: number | null;
+  /** Whose phone/name a template uses for {{poc_name}}/{{poc_phone}} when no specific recipient is targeted. */
+  is_leader: boolean;
   sort_order: number;
   job_worker_fees: JobWorkerFee[];
 };

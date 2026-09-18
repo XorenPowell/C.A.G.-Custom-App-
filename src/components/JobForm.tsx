@@ -43,6 +43,7 @@ type WorkerState = {
   other_hours: string;
   other_rate: string;
   total_pay_override: string;
+  is_leader: boolean;
   fees: FeeState[];
 };
 
@@ -111,6 +112,7 @@ export default function JobForm({
       other_hours: str(w.other_hours),
       other_rate: str(w.other_rate),
       total_pay_override: str(w.total_pay_override),
+      is_leader: w.is_leader,
       fees: (w.job_worker_fees ?? []).map((f) => ({
         description: f.description ?? "",
         amount: str(f.amount),
@@ -154,6 +156,7 @@ export default function JobForm({
         other_hours: "", // per-job catch-all, always blank on autofill
         other_rate: str(rate?.other_rate ?? ""),
         total_pay_override: "",
+        is_leader: false,
         fees: entity.entity_fees.map((f) => ({
           description: f.fee_name ?? f.description ?? "",
           amount: str(f.amount),
@@ -166,6 +169,12 @@ export default function JobForm({
 
   function patchWorker(index: number, next: Partial<WorkerState>) {
     setWorkers((prev) => prev.map((w, i) => (i === index ? { ...w, ...next } : w)));
+    setStatusMsg(null);
+  }
+
+  /** At most one leader per job — checking one clears the others. */
+  function setLeader(index: number, isLeader: boolean) {
+    setWorkers((prev) => prev.map((w, i) => ({ ...w, is_leader: i === index && isLeader })));
     setStatusMsg(null);
   }
 
@@ -225,6 +234,7 @@ export default function JobForm({
           other_hours: w.other_hours,
           other_rate: w.other_rate,
           total_pay_override: w.total_pay_override || null,
+          is_leader: w.is_leader,
           fees: w.fees,
         })),
       };
@@ -452,6 +462,16 @@ export default function JobForm({
                   Remove
                 </button>
               </div>
+
+              <label className="mb-2 flex items-center gap-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={w.is_leader}
+                  onChange={(e) => setLeader(i, e.target.checked)}
+                  className="size-4 accent-[var(--color-accent)]"
+                />
+                Leader
+              </label>
 
               <div className="grid grid-cols-2 gap-x-3">
                 <NumberInput
