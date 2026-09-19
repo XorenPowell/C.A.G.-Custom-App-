@@ -129,11 +129,12 @@ export function jobTotals(
   const totalWorkerPayout =
     nullableNum(job.total_worker_payout_override) ?? calculatedWorkerPayout;
 
-  const posFeeAmount = round2((totalWorkerPayout * n(job.pos_fee_percent)) / 100);
-  const commissionTarget = round2(
-    (totalWorkerPayout * n(settings.default_commission_percent)) / 100,
-  );
+  // CAG is added to worker payout first — commission % and POS fee % both
+  // compute off that combined base, not off worker payout alone.
   const cagTarget = CAG_FLAT_FEE;
+  const percentBase = totalWorkerPayout + cagTarget;
+  const posFeeAmount = round2((percentBase * n(job.pos_fee_percent)) / 100);
+  const commissionTarget = round2((percentBase * n(settings.default_commission_percent)) / 100);
   const targetTotalInvoice = round2(
     totalWorkerPayout + commissionTarget + posFeeAmount + cagTarget,
   );

@@ -2,8 +2,9 @@
 -- 016 — Money model rebuild
 --
 -- Rebuilds job financials to match how money actually moves, bottom-up:
---   worker payout (gross, billed) -> + commission (fixed %, from Settings)
---   -> + POS fee % -> + CAG (flat $5, hard-coded) -> target invoice.
+--   worker payout (gross, billed) + CAG (flat $5, hard-coded) form the base
+--   that commission % and POS fee % both compute from -> + commission
+--   (fixed %, from Settings) -> + POS fee % -> target invoice.
 --
 -- jobs.total_invoice_paid is still the real, editable number the customer
 -- was actually charged (typically from Square) — the app auto-fills it
@@ -69,12 +70,14 @@ cross join lateral (
   with base as (
     select coalesce(j.total_worker_payout_override, p.payout, 0) as total_worker_payout
   ),
+  -- CAG is added to worker payout first — commission % and POS fee % both
+  -- compute off that combined base, not off worker payout alone.
   fees as (
     select
       b.total_worker_payout,
-      round(b.total_worker_payout * j.pos_fee_percent / 100.0, 2)            as pos_fee_amount,
-      round(b.total_worker_payout * s.default_commission_percent / 100.0, 2) as commission_target,
-      5.0                                                                    as cag_target -- hard-coded, not settings-driven
+      5.0                                                                              as cag_target, -- hard-coded, not settings-driven
+      round((b.total_worker_payout + 5.0) * j.pos_fee_percent / 100.0, 2)              as pos_fee_amount,
+      round((b.total_worker_payout + 5.0) * s.default_commission_percent / 100.0, 2)   as commission_target
     from base b
   ),
   totals as (
