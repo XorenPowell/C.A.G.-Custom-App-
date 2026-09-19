@@ -115,7 +115,8 @@ export type JobTotals = {
  * commissionAmount/cagAmount are the REAL take, computed from whatever
  * total_invoice_paid actually is. Worker payout and the POS fee are never
  * touched — a shortfall against the target is absorbed first by commission
- * (down to $0), then by CAG (which can go negative); a surplus flows to CAG.
+ * (down to $0), then by CAG (which is protected until commission is fully
+ * depleted, then can go negative); a surplus flows entirely to CAG.
  */
 export function jobTotals(
   job: JobMoneyInput,
@@ -135,8 +136,11 @@ export function jobTotals(
     totalWorkerPayout + commissionTarget + posFeeAmount + cagTarget,
   );
 
+  // Commission absorbs a shortfall first (down to $0); CAG is protected at
+  // its full target until commission is fully depleted, then absorbs the
+  // rest (and can go negative). A surplus flows entirely to CAG.
   const remaining = round2(n(job.total_invoice_paid) - totalWorkerPayout - posFeeAmount);
-  const commissionAmount = Math.min(Math.max(remaining, 0), commissionTarget);
+  const commissionAmount = Math.min(Math.max(remaining - cagTarget, 0), commissionTarget);
   const cagAmount = round2(remaining - commissionAmount);
 
   return {

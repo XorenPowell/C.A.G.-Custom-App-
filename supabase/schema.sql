@@ -595,8 +595,9 @@ left join lateral (
 -- total_invoice_paid actually is. Worker payout and the POS fee are never
 -- touched — if the real invoice falls short of target_total_invoice, the
 -- shortfall is absorbed first by commission (down to $0), then by CAG
--- (which can go negative). If the real invoice exceeds target, CAG absorbs
--- the surplus. commission_amount never exceeds commission_target.
+-- (protected at its full target until commission is fully depleted, then
+-- can go negative). If the real invoice exceeds target, CAG absorbs the
+-- surplus. commission_amount never exceeds commission_target.
 create view job_financials as
 select
   j.id as job_id,
@@ -646,14 +647,14 @@ cross join lateral (
     from fees f
   )
   select
-    coalesce(p.payout, 0)                                                          as calculated_worker_payout,
+    coalesce(p.payout, 0)                                                                        as calculated_worker_payout,
     t.total_worker_payout,
     t.pos_fee_amount,
     t.commission_target,
     t.cag_target,
     t.target_total_invoice,
-    least(greatest(t.remaining, 0), t.commission_target)                           as commission_amount,
-    t.remaining - least(greatest(t.remaining, 0), t.commission_target)             as cag_amount
+    least(greatest(t.remaining - t.cag_target, 0), t.commission_target)                           as commission_amount,
+    t.remaining - least(greatest(t.remaining - t.cag_target, 0), t.commission_target)              as cag_amount
   from totals t
 ) fin;
 

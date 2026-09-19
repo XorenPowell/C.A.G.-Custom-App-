@@ -770,11 +770,6 @@ export default function JobForm({
             value={money(totals.commissionAmount)}
             strong
             tone="good"
-            note={
-              totals.commissionAmount < totals.commissionTarget
-                ? `target ${money(totals.commissionTarget)}`
-                : undefined
-            }
           />
           <SummaryRow
             label="CAG"

@@ -10,7 +10,8 @@
 -- from the target invoice formula, but the dispatcher can type over it.
 --
 -- If the real invoice falls short of the target, the shortfall is
--- absorbed first by commission (down to $0), then by CAG (which can go
+-- absorbed first by commission (down to $0), then by CAG (protected at
+-- its full target until commission is fully depleted, then can go
 -- negative) — worker payout and the POS fee are never touched. If the
 -- real invoice exceeds target, CAG absorbs the surplus.
 --
@@ -83,14 +84,14 @@ cross join lateral (
     from fees f
   )
   select
-    coalesce(p.payout, 0)                                                          as calculated_worker_payout,
+    coalesce(p.payout, 0)                                                                        as calculated_worker_payout,
     t.total_worker_payout,
     t.pos_fee_amount,
     t.commission_target,
     t.cag_target,
     t.target_total_invoice,
-    least(greatest(t.remaining, 0), t.commission_target)                           as commission_amount,
-    t.remaining - least(greatest(t.remaining, 0), t.commission_target)             as cag_amount
+    least(greatest(t.remaining - t.cag_target, 0), t.commission_target)                           as commission_amount,
+    t.remaining - least(greatest(t.remaining - t.cag_target, 0), t.commission_target)              as cag_amount
   from totals t
 ) fin;
 
