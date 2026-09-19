@@ -102,7 +102,7 @@ export default async function HomePage({
               Next payout: <span className="font-heading font-semibold text-white">{money(payoutData.totalCommission)}</span>
             </span>
             <span>
-              Total rev: <span className="font-heading font-semibold text-white">{money(payoutData.totalRevenue)}</span>
+              Total rev: <span className="font-heading font-semibold text-white">{money(data.totalRevenue)}</span>
             </span>
           </p>
         </div>
