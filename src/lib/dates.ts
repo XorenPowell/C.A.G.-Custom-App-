@@ -57,6 +57,49 @@ export function todayISO(): string {
   return iso(chicagoNow());
 }
 
+/** UTC instant -> "YYYY-MM-DDTHH:mm" in Chicago wall time, for a <input type="datetime-local"> value. */
+export function chicagoDateTimeInputValue(instant: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(instant));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour") === "24" ? "00" : get("hour")}:${get("minute")}`;
+}
+
+/** "YYYY-MM-DDTHH:mm" Chicago wall time -> UTC ISO instant. */
+export function chicagoLocalToUTCISO(local: string): string {
+  // Parsed as if it were already UTC — just a fixed reference point to
+  // measure Chicago's offset from; corrected below.
+  const naiveUTC = new Date(`${local}:00Z`);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(naiveUTC);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const asIfUTC = Date.UTC(
+    get("year"),
+    get("month") - 1,
+    get("day"),
+    get("hour") === 24 ? 0 : get("hour"),
+    get("minute"),
+    get("second"),
+  );
+  const offsetMs = asIfUTC - naiveUTC.getTime();
+  return new Date(naiveUTC.getTime() - offsetMs).toISOString();
+}
+
 export type DateRange = { start: string | null; end: string | null };
 
 /** `null` on either bound means unbounded (used by All Time). */

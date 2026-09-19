@@ -1,17 +1,10 @@
 import TopBar from "@/components/TopBar";
 import ClockButton from "@/components/ClockButton";
+import TimeEntryRow from "@/components/TimeEntryRow";
 import { getActiveEntry, getEntries, entryMinutes } from "@/lib/time-clock";
 import { chicagoDateOf, inRange, resolveRange } from "@/lib/dates";
 import { dateLongDisplay, durationDisplay } from "@/lib/format";
 import type { TimeEntry } from "@/lib/types";
-
-function timeOf(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/Chicago",
-  });
-}
 
 export default async function TimeClockPage() {
   const [activeEntry, entries] = await Promise.all([getActiveEntry(), getEntries()]);
@@ -52,16 +45,7 @@ export default async function TimeClockPage() {
               </div>
               <div className="flex flex-col gap-2">
                 {dayEntries.map((e) => (
-                  <div
-                    key={e.id}
-                    className="border-t border-[var(--color-line)] pt-2 first:border-0 first:pt-0"
-                  >
-                    <div className="text-sm">
-                      {timeOf(e.clocked_in_at)} –{" "}
-                      {e.clocked_out_at ? timeOf(e.clocked_out_at) : "In progress"}
-                    </div>
-                    {e.notes && <p className="muted mt-1 text-sm">{e.notes}</p>}
-                  </div>
+                  <TimeEntryRow key={e.id} entry={e} />
                 ))}
               </div>
             </div>
