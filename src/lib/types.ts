@@ -186,8 +186,12 @@ export type Job = {
   zone_id: string | null;
   status: JobStatus;
   date_of_invoice: string | null;
+  /** Trigger-maintained mirror of confirmed_arrival_date/time (once Booked) or the earliest arrival window. */
   arrival_date: string | null;
   arrival_time: string | null;
+  /** The dispatcher's specific, confirmed schedule once the job is Booked. */
+  confirmed_arrival_date: string | null;
+  confirmed_arrival_time: string | null;
   estimated_duration_minutes: number | null;
   addresses: string[];
   total_invoice_paid: number;
@@ -230,8 +234,19 @@ export type JobWorker = {
   job_worker_fees: JobWorkerFee[];
 };
 
+/** Up to three per job. Only populated windows have a row — sort_order is the slot (0,1,2). */
+export type JobArrivalWindow = {
+  id: string;
+  job_id: string;
+  sort_order: number;
+  date: string;
+  start_time: string | null;
+  end_time: string | null;
+};
+
 export type JobFull = Job & {
   job_workers: JobWorker[];
+  job_arrival_windows: JobArrivalWindow[];
 };
 
 /** Rows from the `job_financials` view. */

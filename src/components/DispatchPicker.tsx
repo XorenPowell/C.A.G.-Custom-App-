@@ -16,7 +16,7 @@ export default function DispatchPicker({
   entities,
   serviceCategoryId,
   zoneId,
-  arrivalDate,
+  arrivalDates,
   alreadyPicked,
   names,
   onPick,
@@ -25,7 +25,8 @@ export default function DispatchPicker({
   entities: EntityFull[];
   serviceCategoryId: string | null;
   zoneId: string | null;
-  arrivalDate: string | null;
+  /** Every populated arrival window date on the job. */
+  arrivalDates: string[];
   alreadyPicked: string[];
   names: Record<string, string>;
   onPick: (entity: EntityFull) => void;
@@ -42,7 +43,9 @@ export default function DispatchPicker({
       if (e.status !== "Active") why.push("inactive");
       if (serviceCategoryId && !canPerform(e, serviceCategoryId)) why.push("no rate for service");
       if (zoneId && e.zone_id !== zoneId) why.push("different zone");
-      if (arrivalDate && !coversDate(e, arrivalDate)) why.push("not available that day");
+      if (arrivalDates.length && !arrivalDates.every((d) => coversDate(e, d))) {
+        why.push(arrivalDates.length > 1 ? "not available every arrival window" : "not available that day");
+      }
       reasons.set(e.id, why);
 
       if (q && !matchesText(e, q)) return false;
@@ -50,13 +53,13 @@ export default function DispatchPicker({
     });
 
     return { matching, reasons };
-  }, [entities, serviceCategoryId, zoneId, arrivalDate, strict, q]);
+  }, [entities, serviceCategoryId, zoneId, arrivalDates, strict, q]);
 
   const criteria = [
     "Active",
     serviceCategoryId ? `priced for ${names[serviceCategoryId] ?? "this service"}` : null,
     zoneId ? `in ${names[zoneId] ?? "this zone"}` : null,
-    arrivalDate ? `available ${arrivalDate}` : null,
+    arrivalDates.length ? `available ${arrivalDates.join(", ")}` : null,
   ].filter(Boolean);
 
   return (

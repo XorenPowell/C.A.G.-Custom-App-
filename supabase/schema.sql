@@ -10,6 +10,7 @@ drop view   if exists job_worker_pay      cascade;
 drop table  if exists face_to_face_conversations cascade;
 drop table  if exists face_to_face_sessions cascade;
 drop table  if exists time_entries          cascade;
+drop table  if exists job_arrival_windows cascade;
 drop table  if exists job_worker_fees     cascade;
 drop table  if exists job_workers         cascade;
 drop table  if exists jobs                cascade;
@@ -30,6 +31,7 @@ drop function if exists set_updated_at()  cascade;
 drop function if exists touch_entity_availability() cascade;
 drop function if exists next_job_id()     cascade;
 drop function if exists stamp_partnership_stage() cascade;
+drop function if exists sync_job_primary_arrival() cascade;
 
 create extension if not exists "pgcrypto";
 
@@ -320,8 +322,15 @@ create table jobs (
                       check (status in ('Inquiry','Quoted','Booked','Completed','Cancelled','Lost')),
 
   date_of_invoice     date,
+  -- Trigger-maintained mirror of confirmed_arrival_date/time (once Booked
+  -- and set) or else the lowest-sort_order row in job_arrival_windows (see
+  -- below) — never written directly by app code.
   arrival_date        date,
   arrival_time        time,
+  -- The dispatcher's specific, confirmed schedule once the job is Booked —
+  -- distinct from the candidate arrival_windows offered beforehand.
+  confirmed_arrival_date date,
+  confirmed_arrival_time time,
   estimated_duration_minutes integer,
   addresses           text[] not null default '{}',   -- any number of stops
 
@@ -391,6 +400,78 @@ create table job_worker_fees (
   sort_order    integer not null default 0
 );
 create index job_worker_fees_worker_idx on job_worker_fees (job_worker_id);
+
+-- Up to three optional arrival windows per job (a date plus an optional
+-- start-end time range each), individually exposed as
+-- {{arrival_window_1}}/{{arrival_window_2}}/{{arrival_window_3}}. Only
+-- populated windows get a row — sort_order is the window slot (0,1,2).
+create table job_arrival_windows (
+  id         uuid primary key default gen_random_uuid(),
+  job_id     uuid not null references jobs(id) on delete cascade,
+  sort_order integer not null,
+  date       date not null,
+  start_time time,
+  end_time   time
+);
+create index job_arrival_windows_job_idx on job_arrival_windows (job_id);
+create index job_arrival_windows_date_idx on job_arrival_windows (date);
+
+-- Keeps jobs.arrival_date/arrival_time mirroring the confirmed arrival
+-- time (once status = Booked and it's set), else the lowest-sort_order
+-- populated window, so every "primary arrival date" consumer (Jobs list
+-- sort/column, Home's Booked Today, the dashboard's activity-date
+-- fallback, Google Calendar sync) reads it like any other job column,
+-- with no awareness of windows or the Booked/confirmed distinction.
+-- Shared by a trigger on job_arrival_windows (window edits) and one on
+-- jobs itself (status/confirmed-time edits).
+create function sync_job_primary_arrival() returns trigger language plpgsql as $$
+declare
+  jid uuid;
+  job_status text;
+  confirmed_date date;
+  confirmed_time time;
+  primary_date date;
+  primary_time time;
+begin
+  if tg_table_name = 'jobs' then
+    jid := new.id;
+    job_status := new.status;
+    confirmed_date := new.confirmed_arrival_date;
+    confirmed_time := new.confirmed_arrival_time;
+  else
+    jid := coalesce(new.job_id, old.job_id);
+    select status, confirmed_arrival_date, confirmed_arrival_time
+      into job_status, confirmed_date, confirmed_time
+      from jobs where id = jid;
+  end if;
+
+  if job_status = 'Booked' and confirmed_date is not null then
+    primary_date := confirmed_date;
+    primary_time := confirmed_time;
+  else
+    select date, start_time into primary_date, primary_time
+    from job_arrival_windows
+    where job_id = jid
+    order by sort_order
+    limit 1;
+  end if;
+
+  update jobs
+     set arrival_date = primary_date,
+         arrival_time = primary_time
+   where id = jid
+     and (arrival_date is distinct from primary_date or arrival_time is distinct from primary_time);
+
+  return coalesce(new, old);
+end $$;
+
+create trigger job_arrival_windows_sync
+  after insert or update or delete on job_arrival_windows
+  for each row execute function sync_job_primary_arrival();
+
+create trigger jobs_primary_arrival_sync
+  after insert or update of status, confirmed_arrival_date, confirmed_arrival_time on jobs
+  for each row execute function sync_job_primary_arrival();
 
 -- =====================================================================
 -- WORK FACE TO FACE
@@ -558,6 +639,7 @@ alter table partnerships        enable row level security;
 alter table jobs                enable row level security;
 alter table job_workers         enable row level security;
 alter table job_worker_fees     enable row level security;
+alter table job_arrival_windows enable row level security;
 alter table face_to_face_sessions enable row level security;
 alter table face_to_face_conversations enable row level security;
 alter table time_entries        enable row level security;
@@ -569,7 +651,7 @@ begin
   foreach t in array array[
     'settings','list_items','message_templates','equipment_presets','entities','entity_references',
     'entity_rates','entity_fees','entity_equipment','entity_availability',
-    'partnerships','jobs','job_workers','job_worker_fees',
+    'partnerships','jobs','job_workers','job_worker_fees','job_arrival_windows',
     'face_to_face_sessions','face_to_face_conversations','time_entries'
   ] loop
     execute format(

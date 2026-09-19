@@ -26,6 +26,12 @@ export type JobWorkerPayload = {
   fees: { description: string | null; amount: number | string }[];
 };
 
+export type ArrivalWindowPayload = {
+  date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+};
+
 export type JobPayload = {
   id: string | null;
   customer_name: string | null;
@@ -37,8 +43,11 @@ export type JobPayload = {
   zone_id: string | null;
   status: JobStatus;
   date_of_invoice: string | null;
-  arrival_date: string | null;
-  arrival_time: string | null;
+  /** Up to three, in slot order. Windows with no date are dropped on save. */
+  arrival_windows: ArrivalWindowPayload[];
+  /** The dispatcher's specific, confirmed schedule once the job is Booked. */
+  confirmed_arrival_date: string | null;
+  confirmed_arrival_time: string | null;
   estimated_duration_minutes: number | string | null;
   addresses: string[];
   total_invoice_paid: number | string;
@@ -69,8 +78,8 @@ export async function saveJob(payload: JobPayload): Promise<JobSaveResult> {
     zone_id: payload.zone_id || null,
     status: payload.status,
     date_of_invoice: payload.date_of_invoice || null,
-    arrival_date: payload.arrival_date || null,
-    arrival_time: payload.arrival_time || null,
+    confirmed_arrival_date: payload.confirmed_arrival_date || null,
+    confirmed_arrival_time: payload.confirmed_arrival_time || null,
     estimated_duration_minutes:
       payload.estimated_duration_minutes === "" ||
       payload.estimated_duration_minutes === null
@@ -137,6 +146,30 @@ export async function saveJob(payload: JobPayload): Promise<JobSaveResult> {
       );
       if (feeError) return fail(feeError.message);
     }
+  }
+
+  // Arrival windows are rewritten wholesale, same pattern as workers. A
+  // trigger on job_arrival_windows keeps jobs.arrival_date/arrival_time
+  // mirroring the earliest populated window, so this must run before the
+  // calendar sync below.
+  const delWindows = await supabase.from("job_arrival_windows").delete().eq("job_id", jobId);
+  if (delWindows.error) return fail(delWindows.error.message);
+
+  const windows = payload.arrival_windows
+    .map((w, i) => ({ ...w, sort_order: i }))
+    .filter((w) => orNull(w.date));
+
+  if (windows.length) {
+    const { error: windowError } = await supabase.from("job_arrival_windows").insert(
+      windows.map((w) => ({
+        job_id: jobId,
+        sort_order: w.sort_order,
+        date: w.date,
+        start_time: w.start_time || null,
+        end_time: w.end_time || null,
+      })),
+    );
+    if (windowError) return fail(windowError.message);
   }
 
   // Calendar is best-effort: a failure here surfaces as a warning, never a block.

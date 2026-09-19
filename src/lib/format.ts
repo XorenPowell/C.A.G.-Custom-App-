@@ -63,6 +63,18 @@ export function dateLongDisplay(iso: string | null | undefined): string {
   });
 }
 
+/** Same as dateLongDisplay but without the year — e.g. arrival windows, where it's redundant next to a time range. */
+export function dateLongDisplayNoYear(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  if (!y || !m || !d) return "—";
+  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 /** "14:30:00" -> "2:30 PM" */
 export function timeDisplay(t: string | null | undefined): string {
   if (!t) return "—";
