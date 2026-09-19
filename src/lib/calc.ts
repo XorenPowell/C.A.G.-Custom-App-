@@ -28,9 +28,11 @@ export type JobMoneyInput = {
 /** Ad-hoc job-level cost (parking, supplies, etc.) — a description and an amount. */
 export type OtherCostInput = { amount: number | string | null };
 
-/** The one money constant that comes from Settings, not the job. */
+/** The money constants that come from Settings, not the job. */
 export type JobFormulaSettings = {
   default_commission_percent: number | string | null;
+  /** Real-world deduction (e.g. card processing) taken before the invoice amount is actually deposited. */
+  deposit_fee_percent: number | string | null;
 };
 
 /** Flat admin fee folded into the target invoice alongside commission and the POS fee. */
@@ -109,26 +111,30 @@ export type JobTotals = {
   cagTarget: number;
   /** worker payout + commissionTarget + posFeeAmount + cagTarget — what Total Invoice Paid auto-fills to. */
   targetTotalInvoice: number;
-  /** Real commission after the shortfall waterfall. Never exceeds commissionTarget; floors at 0. */
+  /**
+   * Real commission: what's actually deposited (total_invoice_paid, net of
+   * the real deposit fee) minus gross worker payout, other job costs and
+   * the flat CAG fee. Uncapped — it's the honest residual, and goes
+   * negative if a job lost money.
+   */
   commissionAmount: number;
-  /** Real CAG after the shortfall waterfall. Can go negative. */
+  /** Always the flat CAG fee — real CAG never fluctuates; commission absorbs the difference instead. */
   cagAmount: number;
 };
 
 /**
- * The invoice builds bottom-up: worker payout + other job costs + CAG
- * together form the base that commission % and POS fee % both compute
+ * The target invoice builds bottom-up: worker payout + other job costs +
+ * CAG together form the base that commission % and POS fee % both compute
  * from -> + commission -> + POS fee -> targetTotalInvoice. That target is
  * what auto-fills Total Invoice Paid in the form, but the dispatcher can
  * type over it.
  *
- * commissionAmount/cagAmount are the REAL take, computed from whatever
- * total_invoice_paid actually is. Worker payout, other job costs and the
- * POS fee are never touched. CAG is protected at exactly its flat target
- * as long as there's enough left to cover it; a shortfall below that eats
- * into CAG itself (which can go negative). Commission gets whatever's left
- * after CAG's target is covered — uncapped, so it absorbs any shortfall
- * down to $0 and any surplus above target with no ceiling.
+ * commissionAmount is the REAL take: (total_invoice_paid, net of the real
+ * deposit fee) minus gross worker payout, other job costs and CAG. Worker
+ * payout, other job costs and CAG are never touched — commission alone
+ * absorbs the difference between the target and what actually came in,
+ * whether that's a shortfall (commission drops, even negative) or a
+ * surplus (commission rises, uncapped).
  */
 export function jobTotals(
   job: JobMoneyInput,
@@ -151,13 +157,12 @@ export function jobTotals(
     totalWorkerPayout + otherCostsTotal + commissionTarget + posFeeAmount + cagTarget,
   );
 
-  // CAG is protected at exactly its flat target first; commission gets
-  // whatever's left, uncapped in either direction.
-  const remaining = round2(
-    n(job.total_invoice_paid) - totalWorkerPayout - otherCostsTotal - posFeeAmount,
-  );
-  const commissionAmount = round2(Math.max(remaining - cagTarget, 0));
-  const cagAmount = round2(remaining - commissionAmount);
+  // What's actually deposited, net of the real deposit fee — separate from
+  // (and not necessarily equal to) the POS fee % shown on the target
+  // invoice above.
+  const deposited = n(job.total_invoice_paid) * (1 - n(settings.deposit_fee_percent) / 100);
+  const cagAmount = cagTarget;
+  const commissionAmount = round2(deposited - totalWorkerPayout - otherCostsTotal - cagAmount);
 
   return {
     calculatedWorkerPayout,

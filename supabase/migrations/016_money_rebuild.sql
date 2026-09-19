@@ -1,37 +1,36 @@
 -- =====================================================================
 -- 016 — Money model rebuild
 --
--- Rebuilds job financials to match how money actually moves, bottom-up:
---   worker payout (gross, billed) + other job costs + CAG (flat $5,
---   hard-coded) form the base that commission % and POS fee % both
---   compute from -> + commission (fixed %, from Settings) -> + POS fee %
---   -> target invoice.
+-- Target invoice builds bottom-up: worker payout (gross, billed) + other
+-- job costs + CAG (flat $5, hard-coded) form the base that commission %
+-- and POS fee % both compute from -> + commission (fixed %, from
+-- Settings) -> + POS fee % -> target invoice. That target auto-fills
+-- jobs.total_invoice_paid, but the dispatcher can type over it with the
+-- real number.
 --
--- jobs.total_invoice_paid is still the real, editable number the customer
--- was actually charged (typically from Square) — the app auto-fills it
--- from the target invoice formula, but the dispatcher can type over it.
---
--- CAG is protected at exactly its flat target as long as there's enough
--- left to cover it — worker payout, other job costs and the POS fee are
--- never touched. Commission gets whatever's left after CAG's target is
--- covered, uncapped: it absorbs a shortfall down to $0, and any surplus
--- above target with no ceiling. Only once a shortfall exceeds commission
--- (commission at $0) does CAG itself start shrinking below target — it
--- can go negative.
+-- commission_amount is the REAL take: total_invoice_paid, net of the real
+-- deposit fee (settings.deposit_fee_percent — a real-world deduction like
+-- card processing, separate from the POS fee % shown on the target
+-- invoice), minus gross worker payout, other job costs and the flat CAG
+-- fee. Worker payout, other job costs and CAG are never touched —
+-- commission alone absorbs the difference between the target and what
+-- actually came in, uncapped in either direction (it goes negative if a
+-- job lost money). cag_amount is always the flat CAG fee.
 --
 -- Per-job commission_percent/commission_cap are dropped: commission is
 -- now a single fixed rate from Settings. The old flat other_job_costs
 -- column is replaced by a job_costs table (description + amount per row,
--- like job_worker_fees) so a job can carry any number of ad-hoc costs.
--- A new Settings field, transfer_fee_percent, tracks the cost of
+-- like job_worker_fees) so a job can carry any number of ad-hoc costs. A
+-- new Settings field, transfer_fee_percent, tracks the cost of
 -- transferring money to a worker (their calculated pay minus this rate is
 -- what they actually receive) — purely a payroll figure, it never touches
--- the invoice.
+-- the invoice or the commission calculation, which always uses gross pay.
 --
 -- Run once in the Supabase SQL Editor. Safe to re-run.
 -- =====================================================================
 
 alter table settings add column if not exists transfer_fee_percent numeric(6,3) not null default 2.0;
+alter table settings add column if not exists deposit_fee_percent numeric(6,3) not null default 2.5;
 alter table settings drop column if exists default_commission_cap;
 
 -- Must drop the old view before dropping the jobs columns it depends on.
@@ -106,19 +105,21 @@ cross join lateral (
     select
       f.*,
       round(f.total_worker_payout + f.other_costs_total + f.commission_target + f.pos_fee_amount + f.cag_target, 2) as target_total_invoice,
-      (j.total_invoice_paid - f.total_worker_payout - f.other_costs_total - f.pos_fee_amount) as remaining
+      -- What's actually deposited, net of the real deposit fee — separate
+      -- from (and not necessarily equal to) the POS fee % above.
+      j.total_invoice_paid * (1 - s.deposit_fee_percent / 100.0) as deposited
     from fees f
   )
   select
-    coalesce(p.payout, 0)                                                                        as calculated_worker_payout,
+    coalesce(p.payout, 0)                                                        as calculated_worker_payout,
     t.total_worker_payout,
     t.other_costs_total,
     t.pos_fee_amount,
     t.commission_target,
     t.cag_target,
     t.target_total_invoice,
-    greatest(t.remaining - t.cag_target, 0)                                                       as commission_amount,
-    t.remaining - greatest(t.remaining - t.cag_target, 0)                                          as cag_amount
+    round(t.deposited - t.total_worker_payout - t.other_costs_total - t.cag_target, 2) as commission_amount,
+    t.cag_target                                                                 as cag_amount
   from totals t
 ) fin;
 

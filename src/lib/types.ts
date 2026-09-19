@@ -46,6 +46,8 @@ export type Settings = {
   default_commission_percent: number;
   /** Percent held back when transferring a worker's calculated pay to them — the real cost of moving the money. */
   transfer_fee_percent: number;
+  /** Real-world deduction (e.g. card processing) taken before an invoice amount is actually deposited — feeds the real commission calculation. */
+  deposit_fee_percent: number;
   monthly_jobs_goal: number;
   daily_inquiries_goal: number;
   daily_partnerships_goal: number;

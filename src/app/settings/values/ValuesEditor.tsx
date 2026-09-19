@@ -13,6 +13,7 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
     default_pos_fee_percent: settings.default_pos_fee_percent,
     default_commission_percent: settings.default_commission_percent,
     transfer_fee_percent: settings.transfer_fee_percent,
+    deposit_fee_percent: settings.deposit_fee_percent,
     monthly_jobs_goal: settings.monthly_jobs_goal,
     daily_inquiries_goal: settings.daily_inquiries_goal,
     daily_partnerships_goal: settings.daily_partnerships_goal,
@@ -64,6 +65,13 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
             value={values.transfer_fee_percent}
             onChange={(e) => patch({ transfer_fee_percent: Number(e.target.value) })}
             hint="Held back when transferring a worker's pay to them — the real cost of moving the money. Never affects the invoice."
+          />
+          <NumberInput
+            label="Deposit fee %"
+            step="0.1"
+            value={values.deposit_fee_percent}
+            onChange={(e) => patch({ deposit_fee_percent: Number(e.target.value) })}
+            hint="The real percent taken before an invoice is actually deposited (e.g. card processing). Feeds the real commission figure — separate from the POS fee % shown on the target invoice."
           />
           <NumberInput
             label="Monthly jobs goal"

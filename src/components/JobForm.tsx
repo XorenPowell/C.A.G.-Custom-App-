@@ -231,9 +231,12 @@ export default function JobForm({
         },
         workers.map((w) => ({ ...w, fees: w.fees })),
         otherCosts,
-        { default_commission_percent: settings.default_commission_percent },
+        {
+          default_commission_percent: settings.default_commission_percent,
+          deposit_fee_percent: settings.deposit_fee_percent,
+        },
       ),
-    [form, workers, otherCosts, settings.default_commission_percent],
+    [form, workers, otherCosts, settings.default_commission_percent, settings.deposit_fee_percent],
   );
 
   // Total Invoice Paid auto-fills from the target invoice until the
@@ -825,14 +828,9 @@ export default function JobForm({
             label="Commission"
             value={money(totals.commissionAmount)}
             strong
-            tone="good"
+            tone={totals.commissionAmount < 0 ? "bad" : "good"}
           />
-          <SummaryRow
-            label="CAG"
-            value={money(totals.cagAmount)}
-            strong
-            tone={totals.cagAmount < 0 ? "bad" : "good"}
-          />
+          <SummaryRow label="CAG" value={money(totals.cagAmount)} strong tone="good" />
           <SummaryRow
             label={`Total worker payout (${settings.transfer_fee_percent}% adjusted)`}
             value={money(netTotalWorkerPayout)}
