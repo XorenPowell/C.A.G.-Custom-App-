@@ -326,7 +326,7 @@ export default function JobForm({
       <Section title="Customer">
         <div className="grid-form">
           <TextInput
-            label="Customer name"
+            label="Name"
             value={form.customer_name}
             onChange={(e) => patch({ customer_name: e.target.value })}
           />
@@ -338,7 +338,7 @@ export default function JobForm({
             onChange={(e) => patch({ customer_phone: e.target.value })}
           />
           <Select
-            label="Customer type"
+            label="Type"
             value={form.customer_type}
             onChange={(e) => patch({ customer_type: e.target.value as CustomerType | "" })}
           >
