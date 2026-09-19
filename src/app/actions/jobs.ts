@@ -32,6 +32,8 @@ export type ArrivalWindowPayload = {
   end_time: string | null;
 };
 
+export type JobCostPayload = { description: string | null; amount: number | string };
+
 export type JobPayload = {
   id: string | null;
   customer_name: string | null;
@@ -57,6 +59,7 @@ export type JobPayload = {
   notes: string | null;
   details: string | null;
   workers: JobWorkerPayload[];
+  other_costs: JobCostPayload[];
 };
 
 export type JobSaveResult = ActionResult & { warning?: string | null };
@@ -164,6 +167,25 @@ export async function saveJob(payload: JobPayload): Promise<JobSaveResult> {
       })),
     );
     if (windowError) return fail(windowError.message);
+  }
+
+  // Other job costs are rewritten wholesale, same pattern as workers.
+  const delCosts = await supabase.from("job_costs").delete().eq("job_id", jobId);
+  if (delCosts.error) return fail(delCosts.error.message);
+
+  const otherCosts = payload.other_costs.filter(
+    (c) => orNull(c.description) || toNum(c.amount) !== 0,
+  );
+  if (otherCosts.length) {
+    const { error: costError } = await supabase.from("job_costs").insert(
+      otherCosts.map((c, i) => ({
+        job_id: jobId,
+        description: orNull(c.description),
+        amount: toNum(c.amount),
+        sort_order: i,
+      })),
+    );
+    if (costError) return fail(costError.message);
   }
 
   // Calendar is best-effort: a failure here surfaces as a warning, never a block.

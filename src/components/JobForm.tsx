@@ -151,6 +151,13 @@ export default function JobForm({
     })),
   );
 
+  const [otherCosts, setOtherCosts] = useState<FeeState[]>(
+    (job?.job_costs ?? []).map((c) => ({
+      description: c.description ?? "",
+      amount: str(c.amount),
+    })),
+  );
+
   function patch(next: Partial<typeof form>) {
     setForm((f) => ({ ...f, ...next }));
     setStatusMsg(null);
@@ -209,6 +216,11 @@ export default function JobForm({
     setStatusMsg(null);
   }
 
+  function patchOtherCost(index: number, next: Partial<FeeState>) {
+    setOtherCosts((prev) => prev.map((c, i) => (i === index ? { ...c, ...next } : c)));
+    setStatusMsg(null);
+  }
+
   const totals = useMemo(
     () =>
       jobTotals(
@@ -218,9 +230,10 @@ export default function JobForm({
           total_worker_payout_override: form.total_worker_payout_override,
         },
         workers.map((w) => ({ ...w, fees: w.fees })),
+        otherCosts,
         { default_commission_percent: settings.default_commission_percent },
       ),
-    [form, workers, settings.default_commission_percent],
+    [form, workers, otherCosts, settings.default_commission_percent],
   );
 
   // Total Invoice Paid auto-fills from the target invoice until the
@@ -278,6 +291,7 @@ export default function JobForm({
           is_leader: w.is_leader,
           fees: w.fees,
         })),
+        other_costs: otherCosts,
       };
 
       const res = await saveJob(payload);
@@ -693,6 +707,45 @@ export default function JobForm({
         })}
       </Section>
 
+      {/* ---------- other job costs ---------- */}
+      <Section title="Other Job Costs">
+        <p className="muted mb-2 text-xs">
+          Ad-hoc costs (parking, supplies, etc.) — added to worker pay and CAG before
+          commission % and POS fee % are calculated.
+        </p>
+        {otherCosts.map((c, i) => (
+          <div key={i} className="mb-1 flex gap-1">
+            <input
+              className="input"
+              placeholder="Description"
+              value={c.description}
+              onChange={(e) => patchOtherCost(i, { description: e.target.value })}
+            />
+            <input
+              className="input w-28 shrink-0"
+              type="number"
+              step="0.01"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={c.amount}
+              onChange={(e) => patchOtherCost(i, { amount: e.target.value })}
+            />
+            <button
+              type="button"
+              className="btn btn-sm btn-danger shrink-0"
+              onClick={() => setOtherCosts((prev) => prev.filter((_, j) => j !== i))}
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+        <AddButton
+          onClick={() => setOtherCosts((prev) => [...prev, { description: "", amount: "" }])}
+        >
+          Add cost
+        </AddButton>
+      </Section>
+
       {/* ---------- money ---------- */}
       <Section title="Money">
         <div className="grid-form">
@@ -750,6 +803,9 @@ export default function JobForm({
                 : undefined
             }
           />
+          {totals.otherCostsTotal !== 0 && (
+            <SummaryRow label="Other job costs" value={money(totals.otherCostsTotal)} />
+          )}
           <SummaryRow
             label={`Commission (${settings.default_commission_percent}%)`}
             value={money(totals.commissionTarget)}

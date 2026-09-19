@@ -2,27 +2,31 @@
 -- 016 — Money model rebuild
 --
 -- Rebuilds job financials to match how money actually moves, bottom-up:
---   worker payout (gross, billed) + CAG (flat $5, hard-coded) form the base
---   that commission % and POS fee % both compute from -> + commission
---   (fixed %, from Settings) -> + POS fee % -> target invoice.
+--   worker payout (gross, billed) + other job costs + CAG (flat $5,
+--   hard-coded) form the base that commission % and POS fee % both
+--   compute from -> + commission (fixed %, from Settings) -> + POS fee %
+--   -> target invoice.
 --
 -- jobs.total_invoice_paid is still the real, editable number the customer
 -- was actually charged (typically from Square) — the app auto-fills it
 -- from the target invoice formula, but the dispatcher can type over it.
 --
 -- CAG is protected at exactly its flat target as long as there's enough
--- left to cover it — worker payout and the POS fee are never touched.
--- Commission gets whatever's left after CAG's target is covered, uncapped:
--- it absorbs a shortfall down to $0, and any surplus above target with no
--- ceiling. Only once a shortfall exceeds commission (commission at $0)
--- does CAG itself start shrinking below target — it can go negative.
+-- left to cover it — worker payout, other job costs and the POS fee are
+-- never touched. Commission gets whatever's left after CAG's target is
+-- covered, uncapped: it absorbs a shortfall down to $0, and any surplus
+-- above target with no ceiling. Only once a shortfall exceeds commission
+-- (commission at $0) does CAG itself start shrinking below target — it
+-- can go negative.
 --
--- Per-job commission_percent/commission_cap and other_job_costs are
--- dropped: commission is now a single fixed rate from Settings, and
--- "other costs" had no role separate from worker payout. A new Settings
--- field, transfer_fee_percent, tracks the cost of transferring money to a
--- worker (their calculated pay minus this rate is what they actually
--- receive) — purely a payroll figure, it never touches the invoice.
+-- Per-job commission_percent/commission_cap are dropped: commission is
+-- now a single fixed rate from Settings. The old flat other_job_costs
+-- column is replaced by a job_costs table (description + amount per row,
+-- like job_worker_fees) so a job can carry any number of ad-hoc costs.
+-- A new Settings field, transfer_fee_percent, tracks the cost of
+-- transferring money to a worker (their calculated pay minus this rate is
+-- what they actually receive) — purely a payroll figure, it never touches
+-- the invoice.
 --
 -- Run once in the Supabase SQL Editor. Safe to re-run.
 -- =====================================================================
@@ -37,11 +41,21 @@ alter table jobs drop column if exists other_job_costs;
 alter table jobs drop column if exists commission_percent;
 alter table jobs drop column if exists commission_cap;
 
+create table if not exists job_costs (
+  id          uuid primary key default gen_random_uuid(),
+  job_id      uuid not null references jobs(id) on delete cascade,
+  description text,
+  amount      numeric(12,2) not null default 0,
+  sort_order  integer not null default 0
+);
+create index if not exists job_costs_job_idx on job_costs (job_id);
+
 create view job_financials as
 select
   j.id as job_id,
   fin.calculated_worker_payout,
   fin.total_worker_payout,
+  fin.other_costs_total,
   fin.pos_fee_amount,
   fin.commission_target,
   fin.cag_target,
@@ -66,30 +80,39 @@ left join lateral (
   from job_worker_pay
   where job_id = j.id
 ) p on true
+left join lateral (
+  select sum(amount) as costs_total
+  from job_costs
+  where job_id = j.id
+) oc on true
 cross join lateral (
   with base as (
-    select coalesce(j.total_worker_payout_override, p.payout, 0) as total_worker_payout
+    select
+      coalesce(j.total_worker_payout_override, p.payout, 0) as total_worker_payout,
+      coalesce(oc.costs_total, 0)                            as other_costs_total
   ),
-  -- CAG is added to worker payout first — commission % and POS fee % both
-  -- compute off that combined base, not off worker payout alone.
+  -- Worker payout + other job costs + CAG together form the base that
+  -- commission % and POS fee % both compute from.
   fees as (
     select
       b.total_worker_payout,
-      5.0                                                                              as cag_target, -- hard-coded, not settings-driven
-      round((b.total_worker_payout + 5.0) * j.pos_fee_percent / 100.0, 2)              as pos_fee_amount,
-      round((b.total_worker_payout + 5.0) * s.default_commission_percent / 100.0, 2)   as commission_target
+      b.other_costs_total,
+      5.0                                                                                                   as cag_target, -- hard-coded, not settings-driven
+      round((b.total_worker_payout + b.other_costs_total + 5.0) * j.pos_fee_percent / 100.0, 2)             as pos_fee_amount,
+      round((b.total_worker_payout + b.other_costs_total + 5.0) * s.default_commission_percent / 100.0, 2)  as commission_target
     from base b
   ),
   totals as (
     select
       f.*,
-      round(f.total_worker_payout + f.commission_target + f.pos_fee_amount + f.cag_target, 2) as target_total_invoice,
-      (j.total_invoice_paid - f.total_worker_payout - f.pos_fee_amount) as remaining
+      round(f.total_worker_payout + f.other_costs_total + f.commission_target + f.pos_fee_amount + f.cag_target, 2) as target_total_invoice,
+      (j.total_invoice_paid - f.total_worker_payout - f.other_costs_total - f.pos_fee_amount) as remaining
     from fees f
   )
   select
     coalesce(p.payout, 0)                                                                        as calculated_worker_payout,
     t.total_worker_payout,
+    t.other_costs_total,
     t.pos_fee_amount,
     t.commission_target,
     t.cag_target,
@@ -101,3 +124,8 @@ cross join lateral (
 
 alter view job_financials set (security_invoker = on);
 grant select on job_financials to authenticated;
+
+alter table job_costs enable row level security;
+drop policy if exists job_costs_authenticated_all on job_costs;
+create policy job_costs_authenticated_all on job_costs
+  for all to authenticated using (true) with check (true);

@@ -25,6 +25,9 @@ export type JobMoneyInput = {
   total_worker_payout_override: number | string | null;
 };
 
+/** Ad-hoc job-level cost (parking, supplies, etc.) — a description and an amount. */
+export type OtherCostInput = { amount: number | string | null };
+
 /** The one money constant that comes from Settings, not the job. */
 export type JobFormulaSettings = {
   default_commission_percent: number | string | null;
@@ -53,6 +56,10 @@ export function round2(v: number): number {
 
 export function workerFeesTotal(fees: WorkerFeeInput[]): number {
   return round2(fees.reduce((sum, f) => sum + n(f.amount), 0));
+}
+
+export function otherJobCostsTotal(costs: OtherCostInput[]): number {
+  return round2(costs.reduce((sum, c) => sum + n(c.amount), 0));
 }
 
 /**
@@ -94,6 +101,7 @@ export function netWorkerPay(
 export type JobTotals = {
   calculatedWorkerPayout: number;
   totalWorkerPayout: number;
+  otherCostsTotal: number;
   posFeeAmount: number;
   /** Fixed % of worker payout, from Settings — the un-adjusted target. */
   commissionTarget: number;
@@ -108,46 +116,53 @@ export type JobTotals = {
 };
 
 /**
- * The invoice builds bottom-up: worker payout -> + commission -> + POS fee
- * -> + CAG -> targetTotalInvoice. That target is what auto-fills Total
- * Invoice Paid in the form, but the dispatcher can type over it.
+ * The invoice builds bottom-up: worker payout + other job costs + CAG
+ * together form the base that commission % and POS fee % both compute
+ * from -> + commission -> + POS fee -> targetTotalInvoice. That target is
+ * what auto-fills Total Invoice Paid in the form, but the dispatcher can
+ * type over it.
  *
  * commissionAmount/cagAmount are the REAL take, computed from whatever
- * total_invoice_paid actually is. Worker payout and the POS fee are never
- * touched. CAG is protected at exactly its flat target as long as there's
- * enough left to cover it; a shortfall below that eats into CAG itself
- * (which can go negative). Commission gets whatever's left after CAG's
- * target is covered — uncapped, so it absorbs any shortfall down to $0
- * and any surplus above target with no ceiling.
+ * total_invoice_paid actually is. Worker payout, other job costs and the
+ * POS fee are never touched. CAG is protected at exactly its flat target
+ * as long as there's enough left to cover it; a shortfall below that eats
+ * into CAG itself (which can go negative). Commission gets whatever's left
+ * after CAG's target is covered — uncapped, so it absorbs any shortfall
+ * down to $0 and any surplus above target with no ceiling.
  */
 export function jobTotals(
   job: JobMoneyInput,
   workers: WorkerInput[],
+  otherCosts: OtherCostInput[],
   settings: JobFormulaSettings,
 ): JobTotals {
   const calculatedWorkerPayout = calculatedTotalWorkerPayout(workers);
   const totalWorkerPayout =
     nullableNum(job.total_worker_payout_override) ?? calculatedWorkerPayout;
+  const otherCostsTotal = otherJobCostsTotal(otherCosts);
 
-  // CAG is added to worker payout first — commission % and POS fee % both
-  // compute off that combined base, not off worker payout alone.
+  // Worker payout + other job costs + CAG together form the base that
+  // commission % and POS fee % both compute from.
   const cagTarget = CAG_FLAT_FEE;
-  const percentBase = totalWorkerPayout + cagTarget;
+  const percentBase = totalWorkerPayout + otherCostsTotal + cagTarget;
   const posFeeAmount = round2((percentBase * n(job.pos_fee_percent)) / 100);
   const commissionTarget = round2((percentBase * n(settings.default_commission_percent)) / 100);
   const targetTotalInvoice = round2(
-    totalWorkerPayout + commissionTarget + posFeeAmount + cagTarget,
+    totalWorkerPayout + otherCostsTotal + commissionTarget + posFeeAmount + cagTarget,
   );
 
   // CAG is protected at exactly its flat target first; commission gets
   // whatever's left, uncapped in either direction.
-  const remaining = round2(n(job.total_invoice_paid) - totalWorkerPayout - posFeeAmount);
+  const remaining = round2(
+    n(job.total_invoice_paid) - totalWorkerPayout - otherCostsTotal - posFeeAmount,
+  );
   const commissionAmount = round2(Math.max(remaining - cagTarget, 0));
   const cagAmount = round2(remaining - commissionAmount);
 
   return {
     calculatedWorkerPayout,
     totalWorkerPayout,
+    otherCostsTotal,
     posFeeAmount,
     commissionTarget,
     cagTarget,

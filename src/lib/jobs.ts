@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { JobFinancials, JobFull } from "@/lib/types";
 
-const FULL_SELECT = `*, job_workers(*, job_worker_fees(*)), job_arrival_windows(*)`;
+const FULL_SELECT = `*, job_workers(*, job_worker_fees(*)), job_arrival_windows(*), job_costs(*)`;
 
 export async function getJob(id: string): Promise<JobFull | null> {
   const supabase = await createClient();
@@ -16,6 +16,7 @@ export async function getJob(id: string): Promise<JobFull | null> {
   job.job_arrival_windows = (job.job_arrival_windows ?? []).sort(
     (a, b) => a.sort_order - b.sort_order,
   );
+  job.job_costs = (job.job_costs ?? []).sort((a, b) => a.sort_order - b.sort_order);
   return job;
 }
 

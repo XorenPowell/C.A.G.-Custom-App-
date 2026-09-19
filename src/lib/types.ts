@@ -242,9 +242,19 @@ export type JobArrivalWindow = {
   end_time: string | null;
 };
 
+/** Ad-hoc job-level cost (parking, supplies, etc.) — folded into the base commission %/POS fee % compute from. */
+export type JobCost = {
+  id: string;
+  job_id: string;
+  description: string | null;
+  amount: number;
+  sort_order: number;
+};
+
 export type JobFull = Job & {
   job_workers: JobWorker[];
   job_arrival_windows: JobArrivalWindow[];
+  job_costs: JobCost[];
 };
 
 /** Rows from the `job_financials` view. */
@@ -252,12 +262,14 @@ export type JobFinancials = {
   job_id: string;
   calculated_worker_payout: number;
   total_worker_payout: number;
+  /** Sum of this job's job_costs rows. */
+  other_costs_total: number;
   pos_fee_amount: number;
-  /** Fixed % of worker payout, from Settings — the un-adjusted target. */
+  /** Fixed % of (worker payout + other costs + CAG), from Settings — the un-adjusted target. */
   commission_target: number;
   /** Flat $5, hard-coded — the un-adjusted target. */
   cag_target: number;
-  /** worker payout + commission_target + pos_fee_amount + cag_target — what total_invoice_paid auto-fills to. */
+  /** worker payout + other_costs_total + commission_target + pos_fee_amount + cag_target — what total_invoice_paid auto-fills to. */
   target_total_invoice: number;
   /** Real commission after the shortfall waterfall. Never exceeds commission_target; floors at 0. */
   commission_amount: number;

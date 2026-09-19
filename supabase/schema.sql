@@ -11,6 +11,7 @@ drop table  if exists face_to_face_conversations cascade;
 drop table  if exists face_to_face_sessions cascade;
 drop table  if exists time_entries          cascade;
 drop table  if exists job_arrival_windows cascade;
+drop table  if exists job_costs           cascade;
 drop table  if exists job_worker_fees     cascade;
 drop table  if exists job_workers         cascade;
 drop table  if exists jobs                cascade;
@@ -402,6 +403,18 @@ create table job_worker_fees (
 );
 create index job_worker_fees_worker_idx on job_worker_fees (job_worker_id);
 
+-- Ad-hoc job-level costs (parking, supplies, etc.) — a description and an
+-- amount, added to the base that commission % and POS fee % compute from,
+-- alongside worker payout and CAG.
+create table job_costs (
+  id          uuid primary key default gen_random_uuid(),
+  job_id      uuid not null references jobs(id) on delete cascade,
+  description text,
+  amount      numeric(12,2) not null default 0,
+  sort_order  integer not null default 0
+);
+create index job_costs_job_idx on job_costs (job_id);
+
 -- Up to three optional arrival windows per job (a date plus an optional
 -- start-end time range each), individually exposed as
 -- {{arrival_window_1}}/{{arrival_window_2}}/{{arrival_window_3}}. Only
@@ -605,6 +618,7 @@ select
   j.id as job_id,
   fin.calculated_worker_payout,
   fin.total_worker_payout,
+  fin.other_costs_total,
   fin.pos_fee_amount,
   fin.commission_target,
   fin.cag_target,
@@ -629,30 +643,39 @@ left join lateral (
   from job_worker_pay
   where job_id = j.id
 ) p on true
+left join lateral (
+  select sum(amount) as costs_total
+  from job_costs
+  where job_id = j.id
+) oc on true
 cross join lateral (
   with base as (
-    select coalesce(j.total_worker_payout_override, p.payout, 0) as total_worker_payout
+    select
+      coalesce(j.total_worker_payout_override, p.payout, 0) as total_worker_payout,
+      coalesce(oc.costs_total, 0)                            as other_costs_total
   ),
-  -- CAG is added to worker payout first — commission % and POS fee % both
-  -- compute off that combined base, not off worker payout alone.
+  -- Worker payout + other job costs + CAG together form the base that
+  -- commission % and POS fee % both compute from.
   fees as (
     select
       b.total_worker_payout,
-      5.0                                                                              as cag_target, -- hard-coded, not settings-driven
-      round((b.total_worker_payout + 5.0) * j.pos_fee_percent / 100.0, 2)              as pos_fee_amount,
-      round((b.total_worker_payout + 5.0) * s.default_commission_percent / 100.0, 2)   as commission_target
+      b.other_costs_total,
+      5.0                                                                                                   as cag_target, -- hard-coded, not settings-driven
+      round((b.total_worker_payout + b.other_costs_total + 5.0) * j.pos_fee_percent / 100.0, 2)             as pos_fee_amount,
+      round((b.total_worker_payout + b.other_costs_total + 5.0) * s.default_commission_percent / 100.0, 2)  as commission_target
     from base b
   ),
   totals as (
     select
       f.*,
-      round(f.total_worker_payout + f.commission_target + f.pos_fee_amount + f.cag_target, 2) as target_total_invoice,
-      (j.total_invoice_paid - f.total_worker_payout - f.pos_fee_amount) as remaining
+      round(f.total_worker_payout + f.other_costs_total + f.commission_target + f.pos_fee_amount + f.cag_target, 2) as target_total_invoice,
+      (j.total_invoice_paid - f.total_worker_payout - f.other_costs_total - f.pos_fee_amount) as remaining
     from fees f
   )
   select
     coalesce(p.payout, 0)                                                                        as calculated_worker_payout,
     t.total_worker_payout,
+    t.other_costs_total,
     t.pos_fee_amount,
     t.commission_target,
     t.cag_target,
@@ -681,6 +704,7 @@ alter table partnerships        enable row level security;
 alter table jobs                enable row level security;
 alter table job_workers         enable row level security;
 alter table job_worker_fees     enable row level security;
+alter table job_costs           enable row level security;
 alter table job_arrival_windows enable row level security;
 alter table face_to_face_sessions enable row level security;
 alter table face_to_face_conversations enable row level security;
@@ -693,7 +717,7 @@ begin
   foreach t in array array[
     'settings','list_items','message_templates','equipment_presets','entities','entity_references',
     'entity_rates','entity_fees','entity_equipment','entity_availability',
-    'partnerships','jobs','job_workers','job_worker_fees','job_arrival_windows',
+    'partnerships','jobs','job_workers','job_worker_fees','job_costs','job_arrival_windows',
     'face_to_face_sessions','face_to_face_conversations','time_entries'
   ] loop
     execute format(
