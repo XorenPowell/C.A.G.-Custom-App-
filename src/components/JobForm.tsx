@@ -19,7 +19,7 @@ import { saveJob, type JobPayload } from "@/app/actions/jobs";
 import { optionsFor, type Lists } from "@/lib/lists";
 import { calculatedWorkerPay, effectiveWorkerPay, jobTotals } from "@/lib/calc";
 import { rateFor } from "@/lib/entity-filters";
-import { money } from "@/lib/format";
+import { dateLongDisplayNoYear, money, timeDisplay } from "@/lib/format";
 import {
   CUSTOMER_TYPES,
   JOB_STATUSES,
@@ -50,6 +50,16 @@ type WorkerState = {
 };
 
 const str = (v: unknown) => (v === null || v === undefined ? "" : String(v));
+
+/** Collapsed-summary text for an arrival window's <summary>, e.g. "Thu, Sep 24, 6:00 AM – 8:00 AM". */
+function windowSummary(w: WindowState): string {
+  const range = w.start_time
+    ? w.end_time
+      ? `${timeDisplay(w.start_time)} – ${timeDisplay(w.end_time)}`
+      : timeDisplay(w.start_time)
+    : "";
+  return [dateLongDisplayNoYear(w.date), range].filter(Boolean).join(", ");
+}
 
 export default function JobForm({
   job,
@@ -109,6 +119,12 @@ export default function JobForm({
         end_time: w?.end_time?.slice(0, 5) ?? "",
       };
     }),
+  );
+
+  // How many of the 3 window slots are shown — starts at 1 (or however many
+  // the job already has filled in), with "+ add another" revealing more.
+  const [windowCount, setWindowCount] = useState(
+    Math.max(1, ...job?.job_arrival_windows.map((w) => w.sort_order + 1) ?? [0]),
   );
 
   function patchWindow(index: number, next: Partial<WindowState>) {
@@ -433,11 +449,14 @@ export default function JobForm({
             <p className="muted mb-2 text-xs">
               Up to three optional arrival windows — fill in what you know.
             </p>
-            <div className="flex flex-col gap-3">
-              {windows.map((w, i) => (
-                <div key={i} className="border border-[var(--color-line)] p-2">
-                  <div className="label mb-1">Arrival window {i + 1}</div>
-                  <div className="grid-form">
+            <div className="flex flex-col gap-2">
+              {windows.slice(0, windowCount).map((w, i) => (
+                <details key={i} className="border border-[var(--color-line)]">
+                  <summary className="label cursor-pointer list-none p-2">
+                    Arrival window {i + 1}
+                    {w.date ? ` — ${windowSummary(w)}` : ""}
+                  </summary>
+                  <div className="grid-form p-2 pt-0">
                     <TextInput
                       label="Date"
                       type="date"
@@ -457,8 +476,17 @@ export default function JobForm({
                       onChange={(e) => patchWindow(i, { end_time: e.target.value })}
                     />
                   </div>
-                </div>
+                </details>
               ))}
+              {windowCount < 3 && (
+                <button
+                  type="button"
+                  className="btn btn-sm self-start"
+                  onClick={() => setWindowCount((n) => n + 1)}
+                >
+                  + Add another arrival window
+                </button>
+              )}
             </div>
           </>
         )}
