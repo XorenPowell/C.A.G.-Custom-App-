@@ -655,7 +655,7 @@ cross join lateral (
     least(greatest(t.remaining, 0), t.commission_target)                           as commission_amount,
     t.remaining - least(greatest(t.remaining, 0), t.commission_target)             as cag_amount
   from totals t
-) fin on true;
+) fin;
 
 -- =====================================================================
 -- ROW LEVEL SECURITY

@@ -27,11 +27,13 @@
 alter table settings add column if not exists transfer_fee_percent numeric(6,3) not null default 2.0;
 alter table settings drop column if exists default_commission_cap;
 
+-- Must drop the old view before dropping the jobs columns it depends on.
+drop view if exists job_financials cascade;
+
 alter table jobs drop column if exists other_job_costs;
 alter table jobs drop column if exists commission_percent;
 alter table jobs drop column if exists commission_cap;
 
-drop view if exists job_financials cascade;
 create view job_financials as
 select
   j.id as job_id,
@@ -90,7 +92,7 @@ cross join lateral (
     least(greatest(t.remaining, 0), t.commission_target)                           as commission_amount,
     t.remaining - least(greatest(t.remaining, 0), t.commission_target)             as cag_amount
   from totals t
-) fin on true;
+) fin;
 
 alter view job_financials set (security_invoker = on);
 grant select on job_financials to authenticated;
