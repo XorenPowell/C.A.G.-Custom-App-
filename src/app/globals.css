@@ -107,7 +107,7 @@ textarea {
     @apply p-3 md:p-4;
   }
   .section-title {
-    @apply border-b border-[var(--color-line)] bg-[var(--panel-raised)] px-3 py-2 text-xs font-bold uppercase tracking-wide text-[var(--color-muted)];
+    @apply border-b border-[var(--color-line)] bg-[var(--panel-raised)] px-3 py-2 text-sm font-bold uppercase tracking-wide text-[var(--color-muted)];
   }
   .h1 {
     @apply text-lg font-bold md:text-xl;
