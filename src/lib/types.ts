@@ -35,6 +35,8 @@ export type ListItem = {
   description: string | null;
   /** conversation_outcome only: pre-fills a conversation's intent level when this outcome is picked. */
   default_intent_level: number | null;
+  /** service_category only: pre-fills a job's Details when this category is picked and Details is empty. */
+  details_template: string | null;
   sort_order: number;
   archived: boolean;
 };

@@ -167,6 +167,15 @@ export default function JobForm({
   const showPartnership =
     !!partnershipReferralId && form.inquiry_source_id === partnershipReferralId;
 
+  /** Pre-fills Details from the category's template — but never over existing text. */
+  function setServiceCategory(id: string) {
+    const template = lists.service_category.find((c) => c.id === id)?.details_template;
+    patch({
+      service_category_id: id,
+      ...(template && !form.details.trim() ? { details: template } : {}),
+    });
+  }
+
   function setInquirySource(id: string) {
     patch({
       inquiry_source_id: id,
@@ -372,7 +381,7 @@ export default function JobForm({
           <Select
             label="Service category"
             value={form.service_category_id}
-            onChange={(e) => patch({ service_category_id: e.target.value })}
+            onChange={(e) => setServiceCategory(e.target.value)}
           >
             <option value="">— select —</option>
             {optionsFor(lists.service_category, form.service_category_id || null).map((c) => (

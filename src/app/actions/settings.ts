@@ -12,6 +12,8 @@ export type ListItemDraft = {
   description: string | null;
   /** conversation_outcome only. Blank stays blank — a missing default is not 0. */
   default_intent_level: number | string | null;
+  /** service_category only. */
+  details_template: string | null;
   sort_order: number;
   archived: boolean;
 };
@@ -41,6 +43,7 @@ export async function saveList(
       description: orNull(item.description),
       default_intent_level:
         intentLevel === null ? null : Math.min(10, Math.max(0, intentLevel)),
+      details_template: orNull(item.details_template),
       sort_order: (index + 1) * 10,
       archived: item.archived,
     };

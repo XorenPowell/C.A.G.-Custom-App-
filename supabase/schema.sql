@@ -92,6 +92,9 @@ create table list_items (
   -- when that outcome is picked (e.g. Visitor -> 0). Null means no default.
   default_intent_level integer check (default_intent_level is null
                 or default_intent_level between 0 and 10),
+  -- Used by service_category: pre-fills a new job's Details section when
+  -- that category is picked and Details is still empty. Null means no pre-fill.
+  details_template text,
   sort_order  integer not null default 0,
   archived    boolean not null default false,
   created_at  timestamptz not null default now()
