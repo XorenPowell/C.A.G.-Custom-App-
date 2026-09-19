@@ -3,7 +3,7 @@
 --
 -- Rebuilds job financials to match how money actually moves, bottom-up:
 --   worker payout (gross, billed) -> + commission (fixed %, from Settings)
---   -> + POS fee % -> + CAG (flat $, from Settings) -> target invoice.
+--   -> + POS fee % -> + CAG (flat $5, hard-coded) -> target invoice.
 --
 -- jobs.total_invoice_paid is still the real, editable number the customer
 -- was actually charged (typically from Square) — the app auto-fills it
@@ -24,7 +24,6 @@
 -- Run once in the Supabase SQL Editor. Safe to re-run.
 -- =====================================================================
 
-alter table settings add column if not exists default_cag_fee numeric(12,2) not null default 5.0;
 alter table settings add column if not exists transfer_fee_percent numeric(6,3) not null default 2.0;
 alter table settings drop column if exists default_commission_cap;
 
@@ -71,7 +70,7 @@ cross join lateral (
       b.total_worker_payout,
       round(b.total_worker_payout * j.pos_fee_percent / 100.0, 2)            as pos_fee_amount,
       round(b.total_worker_payout * s.default_commission_percent / 100.0, 2) as commission_target,
-      s.default_cag_fee                                                     as cag_target
+      5.0                                                                    as cag_target -- hard-coded, not settings-driven
     from base b
   ),
   totals as (

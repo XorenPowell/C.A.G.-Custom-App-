@@ -12,7 +12,6 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
   const [values, setValues] = useState<SettingsValues>({
     default_pos_fee_percent: settings.default_pos_fee_percent,
     default_commission_percent: settings.default_commission_percent,
-    default_cag_fee: settings.default_cag_fee,
     transfer_fee_percent: settings.transfer_fee_percent,
     monthly_jobs_goal: settings.monthly_jobs_goal,
     daily_inquiries_goal: settings.daily_inquiries_goal,
@@ -58,13 +57,6 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
               patch({ default_commission_percent: Number(e.target.value) })
             }
             hint="Dispatcher's take, as a fixed percent of worker payout. Same on every job — not editable per job."
-          />
-          <NumberInput
-            label="CAG fee ($)"
-            step="1"
-            value={values.default_cag_fee}
-            onChange={(e) => patch({ default_cag_fee: Number(e.target.value) })}
-            hint="Flat admin fee folded into the target invoice alongside commission and the POS fee."
           />
           <NumberInput
             label="Transfer fee %"

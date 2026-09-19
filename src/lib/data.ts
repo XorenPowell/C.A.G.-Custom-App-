@@ -42,7 +42,6 @@ export async function getSettings(): Promise<Settings> {
       id: true,
       default_pos_fee_percent: 5,
       default_commission_percent: 5,
-      default_cag_fee: 5,
       transfer_fee_percent: 2,
       monthly_jobs_goal: 300,
       daily_inquiries_goal: 5,

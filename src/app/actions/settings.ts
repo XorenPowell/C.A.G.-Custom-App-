@@ -126,7 +126,6 @@ export async function listItemUsage(
 export type SettingsValues = {
   default_pos_fee_percent: number;
   default_commission_percent: number;
-  default_cag_fee: number;
   transfer_fee_percent: number;
   monthly_jobs_goal: number;
   daily_inquiries_goal: number;
@@ -141,7 +140,6 @@ export async function saveSettingsValues(values: SettingsValues): Promise<Action
     .update({
       default_pos_fee_percent: Number(values.default_pos_fee_percent) || 0,
       default_commission_percent: Number(values.default_commission_percent) || 0,
-      default_cag_fee: Number(values.default_cag_fee) || 0,
       transfer_fee_percent: Number(values.transfer_fee_percent) || 0,
       monthly_jobs_goal: toInt(values.monthly_jobs_goal),
       daily_inquiries_goal: toInt(values.daily_inquiries_goal),

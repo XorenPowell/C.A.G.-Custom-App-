@@ -218,12 +218,9 @@ export default function JobForm({
           total_worker_payout_override: form.total_worker_payout_override,
         },
         workers.map((w) => ({ ...w, fees: w.fees })),
-        {
-          default_commission_percent: settings.default_commission_percent,
-          default_cag_fee: settings.default_cag_fee,
-        },
+        { default_commission_percent: settings.default_commission_percent },
       ),
-    [form, workers, settings.default_commission_percent, settings.default_cag_fee],
+    [form, workers, settings.default_commission_percent],
   );
 
   // Total Invoice Paid auto-fills from the target invoice until the

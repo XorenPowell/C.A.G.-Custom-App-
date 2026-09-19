@@ -53,10 +53,6 @@ create table settings (
   -- Dispatcher commission: a flat percent of worker payout. Fixed for every
   -- job — there is no per-job override or cap.
   default_commission_percent  numeric(6,3)  not null default 5.0,
-  -- Flat admin fee folded into the target invoice alongside commission and
-  -- the POS fee. The real, per-job CAG (job_financials.cag_amount) can
-  -- differ from this if the actual invoice comes in short.
-  default_cag_fee             numeric(12,2) not null default 5.0,
   -- Percent held back when transferring a worker's calculated pay to them —
   -- the real cost of moving the money. Never touches the invoice; purely a
   -- payroll figure (job_worker_pay's effective_pay minus this rate).
@@ -591,7 +587,7 @@ left join lateral (
 -- Per job. Downstream figures always use the effective (override-aware) payout.
 --
 -- The invoice is built bottom-up: worker payout -> + commission (fixed %,
--- from settings) -> + POS fee % -> + CAG (flat $, from settings) ->
+-- from settings) -> + POS fee % -> + CAG (flat $5, hard-coded) ->
 -- target_total_invoice. That target auto-fills jobs.total_invoice_paid in
 -- the UI, but the dispatcher can type over it with the real number.
 --
@@ -639,7 +635,7 @@ cross join lateral (
       b.total_worker_payout,
       round(b.total_worker_payout * j.pos_fee_percent / 100.0, 2)            as pos_fee_amount,
       round(b.total_worker_payout * s.default_commission_percent / 100.0, 2) as commission_target,
-      s.default_cag_fee                                                     as cag_target
+      5.0                                                                    as cag_target -- hard-coded, not settings-driven
     from base b
   ),
   totals as (

@@ -44,8 +44,6 @@ export type Settings = {
   default_pos_fee_percent: number;
   /** Dispatcher commission: a flat percent of worker payout. Fixed for every job. */
   default_commission_percent: number;
-  /** Flat admin fee folded into the target invoice alongside commission and the POS fee. */
-  default_cag_fee: number;
   /** Percent held back when transferring a worker's calculated pay to them — the real cost of moving the money. */
   transfer_fee_percent: number;
   monthly_jobs_goal: number;
@@ -257,7 +255,7 @@ export type JobFinancials = {
   pos_fee_amount: number;
   /** Fixed % of worker payout, from Settings — the un-adjusted target. */
   commission_target: number;
-  /** Flat $, from Settings — the un-adjusted target. */
+  /** Flat $5, hard-coded — the un-adjusted target. */
   cag_target: number;
   /** worker payout + commission_target + pos_fee_amount + cag_target — what total_invoice_paid auto-fills to. */
   target_total_invoice: number;

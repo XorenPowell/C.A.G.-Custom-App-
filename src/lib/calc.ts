@@ -25,11 +25,13 @@ export type JobMoneyInput = {
   total_worker_payout_override: number | string | null;
 };
 
-/** The two money constants that come from Settings, not the job. */
+/** The one money constant that comes from Settings, not the job. */
 export type JobFormulaSettings = {
   default_commission_percent: number | string | null;
-  default_cag_fee: number | string | null;
 };
+
+/** Flat admin fee folded into the target invoice alongside commission and the POS fee. */
+export const CAG_FLAT_FEE = 5;
 
 /** Empty string, null and undefined all mean zero. */
 export function n(v: number | string | null | undefined): number {
@@ -95,7 +97,7 @@ export type JobTotals = {
   posFeeAmount: number;
   /** Fixed % of worker payout, from Settings — the un-adjusted target. */
   commissionTarget: number;
-  /** Flat $, from Settings — the un-adjusted target. */
+  /** Flat $5, hard-coded — the un-adjusted target. */
   cagTarget: number;
   /** worker payout + commissionTarget + posFeeAmount + cagTarget — what Total Invoice Paid auto-fills to. */
   targetTotalInvoice: number;
@@ -128,7 +130,7 @@ export function jobTotals(
   const commissionTarget = round2(
     (totalWorkerPayout * n(settings.default_commission_percent)) / 100,
   );
-  const cagTarget = round2(n(settings.default_cag_fee));
+  const cagTarget = CAG_FLAT_FEE;
   const targetTotalInvoice = round2(
     totalWorkerPayout + commissionTarget + posFeeAmount + cagTarget,
   );
