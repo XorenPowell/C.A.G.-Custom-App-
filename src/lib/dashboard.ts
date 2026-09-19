@@ -84,7 +84,7 @@ export type DashboardData = {
   completedByCategory: { label: string; value: number }[];
 
   totalRevenue: number;
-  /** Dispatcher's take across the range: percent of worker payout, capped in dollars per job. */
+  /** The real, waterfall-adjusted commission take across the range. */
   totalCommission: number;
   avgCommissionPerJob: number;
   revenueByCategory: { label: string; value: number }[];

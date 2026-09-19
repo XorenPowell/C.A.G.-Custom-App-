@@ -180,8 +180,8 @@ export default async function ReportsPage({
           by the date the job was created. New partnerships use their signed date —
           partnership leads with no signed date are excluded from every figure on this
           screen. Cards and fliers are lifetime running totals across signed partnerships.
-          Commission is a flat percent of worker payout capped in dollars per job —
-          independent of the invoice.
+          Commission is the real, waterfall-adjusted take on each job — worker pay and the
+          POS fee are covered first from the real invoice, then commission, then CAG.
         </p>
       </main>
     </>

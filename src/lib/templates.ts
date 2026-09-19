@@ -32,7 +32,10 @@ export const TEMPLATE_VARS: { token: string; description: string }[] = [
   { token: "poc_name", description: "Entity point of contact" },
   { token: "poc_phone", description: "Entity POC phone, formatted" },
   { token: "zone", description: "Job zone" },
-  { token: "pay", description: "The recipient worker's pay for this job, e.g. $117.50" },
+  {
+    token: "pay",
+    description: "What the recipient worker will actually receive, after the transfer fee, e.g. $117.50",
+  },
   { token: "details", description: "Job details (parking, gate codes, etc.)" },
   { token: "notes", description: "Job notes" },
 ];

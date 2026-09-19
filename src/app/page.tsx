@@ -97,8 +97,13 @@ export default async function HomePage({
             </div>
           </div>
 
-          <p className="mt-4 text-sm text-white/80">
-            Next payout: <span className="font-heading font-semibold text-white">{money(payoutData.totalCommission)}</span>
+          <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/80">
+            <span>
+              Next payout: <span className="font-heading font-semibold text-white">{money(payoutData.totalCommission)}</span>
+            </span>
+            <span>
+              Total rev: <span className="font-heading font-semibold text-white">{money(payoutData.totalRevenue)}</span>
+            </span>
           </p>
         </div>
       </section>

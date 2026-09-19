@@ -11,6 +11,7 @@ drop table  if exists face_to_face_conversations cascade;
 drop table  if exists face_to_face_sessions cascade;
 drop table  if exists time_entries          cascade;
 drop table  if exists job_arrival_windows cascade;
+drop table  if exists job_costs           cascade;
 drop table  if exists job_worker_fees     cascade;
 drop table  if exists job_workers         cascade;
 drop table  if exists jobs                cascade;
@@ -50,10 +51,13 @@ end $$;
 create table settings (
   id                          boolean primary key default true check (id),
   default_pos_fee_percent     numeric(6,3) not null default 5.0,
-  -- Dispatcher commission: a flat percent of the worker payout, capped in
-  -- dollars. Independent of the invoice, POS fee and other job costs.
+  -- Dispatcher commission: a flat percent of worker payout. Fixed for every
+  -- job — there is no per-job override or cap.
   default_commission_percent  numeric(6,3)  not null default 5.0,
-  default_commission_cap      numeric(12,2) not null default 50.0,
+  -- Percent held back when transferring a worker's calculated pay to them —
+  -- the real cost of moving the money. Never touches the invoice; purely a
+  -- payroll figure (job_worker_pay's effective_pay minus this rate).
+  transfer_fee_percent        numeric(6,3)  not null default 2.0,
   monthly_jobs_goal           integer      not null default 300,
   daily_inquiries_goal        integer      not null default 5,
   daily_partnerships_goal     integer      not null default 10,
@@ -334,14 +338,12 @@ create table jobs (
   estimated_duration_minutes integer,
   addresses           text[] not null default '{}',   -- any number of stops
 
+  -- Real number the customer was actually charged (typically from Square).
+  -- The app auto-fills this from the target invoice formula in
+  -- job_financials (worker payout + commission + POS fee + CAG); the
+  -- dispatcher can type over it when the real number differs.
   total_invoice_paid  numeric(12,2) not null default 0,
   pos_fee_percent     numeric(6,3)  not null default 5.0,
-  other_job_costs     numeric(12,2) not null default 0,
-
-  -- Dispatcher commission on this job: percent of the worker payout, capped
-  -- in dollars. Seeded from settings, editable per job.
-  commission_percent  numeric(6,3)  not null default 5.0,
-  commission_cap      numeric(12,2) not null default 50.0,
 
   -- Section 4 exception: dispatcher may type over the calculated payout.
   total_worker_payout_override numeric(12,2),
@@ -400,6 +402,18 @@ create table job_worker_fees (
   sort_order    integer not null default 0
 );
 create index job_worker_fees_worker_idx on job_worker_fees (job_worker_id);
+
+-- Ad-hoc job-level costs (parking, supplies, etc.) — a description and an
+-- amount, added to the base that commission % and POS fee % compute from,
+-- alongside worker payout and CAG.
+create table job_costs (
+  id          uuid primary key default gen_random_uuid(),
+  job_id      uuid not null references jobs(id) on delete cascade,
+  description text,
+  amount      numeric(12,2) not null default 0,
+  sort_order  integer not null default 0
+);
+create index job_costs_job_idx on job_costs (job_id);
 
 -- Up to three optional arrival windows per job (a date plus an optional
 -- start-end time range each), individually exposed as
@@ -585,23 +599,32 @@ left join lateral (
 
 -- Per job. Downstream figures always use the effective (override-aware) payout.
 --
--- `commission_amount` is the dispatcher's take: a flat percent of the worker
--- payout, capped in dollars. It is deliberately independent of the invoice,
--- the POS fee and other job costs — it is not a profit/loss figure, it is
--- what the dispatcher is paid on this job.
+-- The invoice is built bottom-up: worker payout + CAG (flat $5,
+-- hard-coded) form the base that commission % and POS fee % both compute
+-- from -> + commission (fixed %, from settings) -> + POS fee % ->
+-- target_total_invoice. That target auto-fills jobs.total_invoice_paid in
+-- the UI, but the dispatcher can type over it with the real number.
+--
+-- commission_amount/cag_amount are the REAL take, computed from whatever
+-- total_invoice_paid actually is. Worker payout and the POS fee are never
+-- touched. CAG is protected at exactly its flat target as long as there's
+-- enough left to cover it. Commission gets whatever's left after CAG's
+-- target is covered, uncapped: it absorbs a shortfall down to $0, and any
+-- surplus above target with no ceiling. Only once a shortfall exceeds
+-- commission (commission at $0) does CAG itself start shrinking below
+-- target — it can go negative.
 create view job_financials as
 select
   j.id as job_id,
-  coalesce(p.payout, 0)                                     as calculated_worker_payout,
-  coalesce(j.total_worker_payout_override, p.payout, 0)     as total_worker_payout,
-  round(j.total_invoice_paid * j.pos_fee_percent / 100.0, 2) as pos_fee_amount,
-  coalesce(j.total_worker_payout_override, p.payout, 0)
-    + round(j.total_invoice_paid * j.pos_fee_percent / 100.0, 2)
-    + j.other_job_costs                                     as total_job_costs,
-  least(
-    round(coalesce(j.total_worker_payout_override, p.payout, 0) * j.commission_percent / 100.0, 2),
-    j.commission_cap
-  )                                                          as commission_amount,
+  fin.calculated_worker_payout,
+  fin.total_worker_payout,
+  fin.other_costs_total,
+  fin.pos_fee_amount,
+  fin.commission_target,
+  fin.cag_target,
+  fin.target_total_invoice,
+  fin.commission_amount,
+  fin.cag_amount,
   date_trunc('week', coalesce(j.date_of_invoice, j.arrival_date, j.created_at::date))::date as week_of,
   to_char(coalesce(j.date_of_invoice, j.arrival_date, j.created_at::date), 'YYYY-MM')       as month,
   exists (
@@ -614,11 +637,53 @@ select
           < coalesce(j.date_of_invoice, j.arrival_date, j.created_at::date)
   )                                                         as repeat_customer
 from jobs j
+cross join settings s
 left join lateral (
   select sum(effective_pay) as payout
   from job_worker_pay
   where job_id = j.id
-) p on true;
+) p on true
+left join lateral (
+  select sum(amount) as costs_total
+  from job_costs
+  where job_id = j.id
+) oc on true
+cross join lateral (
+  with base as (
+    select
+      coalesce(j.total_worker_payout_override, p.payout, 0) as total_worker_payout,
+      coalesce(oc.costs_total, 0)                            as other_costs_total
+  ),
+  -- Worker payout + other job costs + CAG together form the base that
+  -- commission % and POS fee % both compute from.
+  fees as (
+    select
+      b.total_worker_payout,
+      b.other_costs_total,
+      5.0                                                                                                   as cag_target, -- hard-coded, not settings-driven
+      round((b.total_worker_payout + b.other_costs_total + 5.0) * j.pos_fee_percent / 100.0, 2)             as pos_fee_amount,
+      round((b.total_worker_payout + b.other_costs_total + 5.0) * s.default_commission_percent / 100.0, 2)  as commission_target
+    from base b
+  ),
+  totals as (
+    select
+      f.*,
+      round(f.total_worker_payout + f.other_costs_total + f.commission_target + f.pos_fee_amount + f.cag_target, 2) as target_total_invoice,
+      (j.total_invoice_paid - f.total_worker_payout - f.other_costs_total - f.pos_fee_amount) as remaining
+    from fees f
+  )
+  select
+    coalesce(p.payout, 0)                                                                        as calculated_worker_payout,
+    t.total_worker_payout,
+    t.other_costs_total,
+    t.pos_fee_amount,
+    t.commission_target,
+    t.cag_target,
+    t.target_total_invoice,
+    greatest(t.remaining - t.cag_target, 0)                                                       as commission_amount,
+    t.remaining - greatest(t.remaining - t.cag_target, 0)                                          as cag_amount
+  from totals t
+) fin;
 
 -- =====================================================================
 -- ROW LEVEL SECURITY
@@ -639,6 +704,7 @@ alter table partnerships        enable row level security;
 alter table jobs                enable row level security;
 alter table job_workers         enable row level security;
 alter table job_worker_fees     enable row level security;
+alter table job_costs           enable row level security;
 alter table job_arrival_windows enable row level security;
 alter table face_to_face_sessions enable row level security;
 alter table face_to_face_conversations enable row level security;
@@ -651,7 +717,7 @@ begin
   foreach t in array array[
     'settings','list_items','message_templates','equipment_presets','entities','entity_references',
     'entity_rates','entity_fees','entity_equipment','entity_availability',
-    'partnerships','jobs','job_workers','job_worker_fees','job_arrival_windows',
+    'partnerships','jobs','job_workers','job_worker_fees','job_costs','job_arrival_windows',
     'face_to_face_sessions','face_to_face_conversations','time_entries'
   ] loop
     execute format(

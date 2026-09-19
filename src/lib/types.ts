@@ -42,9 +42,10 @@ export type ListItem = {
 export type Settings = {
   id: boolean;
   default_pos_fee_percent: number;
-  /** Dispatcher commission: percent of worker payout, capped in dollars. */
+  /** Dispatcher commission: a flat percent of worker payout. Fixed for every job. */
   default_commission_percent: number;
-  default_commission_cap: number;
+  /** Percent held back when transferring a worker's calculated pay to them — the real cost of moving the money. */
+  transfer_fee_percent: number;
   monthly_jobs_goal: number;
   daily_inquiries_goal: number;
   daily_partnerships_goal: number;
@@ -194,12 +195,9 @@ export type Job = {
   confirmed_arrival_time: string | null;
   estimated_duration_minutes: number | null;
   addresses: string[];
+  /** Real amount the customer was charged. Auto-filled from job_financials.target_total_invoice; editable. */
   total_invoice_paid: number;
   pos_fee_percent: number;
-  other_job_costs: number;
-  /** Dispatcher commission on this job: percent of worker payout, capped in dollars. */
-  commission_percent: number;
-  commission_cap: number;
   total_worker_payout_override: number | null;
   invoice_ref: string | null;
   notes: string | null;
@@ -244,9 +242,19 @@ export type JobArrivalWindow = {
   end_time: string | null;
 };
 
+/** Ad-hoc job-level cost (parking, supplies, etc.) — folded into the base commission %/POS fee % compute from. */
+export type JobCost = {
+  id: string;
+  job_id: string;
+  description: string | null;
+  amount: number;
+  sort_order: number;
+};
+
 export type JobFull = Job & {
   job_workers: JobWorker[];
   job_arrival_windows: JobArrivalWindow[];
+  job_costs: JobCost[];
 };
 
 /** Rows from the `job_financials` view. */
@@ -254,10 +262,19 @@ export type JobFinancials = {
   job_id: string;
   calculated_worker_payout: number;
   total_worker_payout: number;
+  /** Sum of this job's job_costs rows. */
+  other_costs_total: number;
   pos_fee_amount: number;
-  total_job_costs: number;
-  /** Dispatcher's take: percent of worker payout, capped in dollars. Not a profit/loss figure. */
+  /** Fixed % of (worker payout + other costs + CAG), from Settings — the un-adjusted target. */
+  commission_target: number;
+  /** Flat $5, hard-coded — the un-adjusted target. */
+  cag_target: number;
+  /** worker payout + other_costs_total + commission_target + pos_fee_amount + cag_target — what total_invoice_paid auto-fills to. */
+  target_total_invoice: number;
+  /** Real commission after the shortfall waterfall. Never exceeds commission_target; floors at 0. */
   commission_amount: number;
+  /** Real CAG after the shortfall waterfall. Can go negative. */
+  cag_amount: number;
   week_of: string | null;
   month: string | null;
   repeat_customer: boolean;

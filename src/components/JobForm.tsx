@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import Link from "next/link";
 import SaveBar from "@/components/SaveBar";
@@ -17,9 +17,9 @@ import {
 } from "@/components/Form";
 import { saveJob, type JobPayload } from "@/app/actions/jobs";
 import { optionsFor, type Lists } from "@/lib/lists";
-import { calculatedWorkerPay, effectiveWorkerPay, jobTotals } from "@/lib/calc";
+import { calculatedWorkerPay, effectiveWorkerPay, jobTotals, netWorkerPay } from "@/lib/calc";
 import { rateFor } from "@/lib/entity-filters";
-import { money } from "@/lib/format";
+import { dateLongDisplayNoYear, money, timeDisplay } from "@/lib/format";
 import {
   CUSTOMER_TYPES,
   JOB_STATUSES,
@@ -50,6 +50,16 @@ type WorkerState = {
 };
 
 const str = (v: unknown) => (v === null || v === undefined ? "" : String(v));
+
+/** Collapsed-summary text for an arrival window's <summary>, e.g. "Thu, Sep 24, 6:00 AM – 8:00 AM". */
+function windowSummary(w: WindowState): string {
+  const range = w.start_time
+    ? w.end_time
+      ? `${timeDisplay(w.start_time)} – ${timeDisplay(w.end_time)}`
+      : timeDisplay(w.start_time)
+    : "";
+  return [dateLongDisplayNoYear(w.date), range].filter(Boolean).join(", ");
+}
 
 export default function JobForm({
   job,
@@ -87,9 +97,6 @@ export default function JobForm({
     estimated_duration_minutes: str(job?.estimated_duration_minutes),
     total_invoice_paid: str(job?.total_invoice_paid ?? 0),
     pos_fee_percent: str(job?.pos_fee_percent ?? settings.default_pos_fee_percent),
-    other_job_costs: str(job?.other_job_costs ?? 0),
-    commission_percent: str(job?.commission_percent ?? settings.default_commission_percent),
-    commission_cap: str(job?.commission_cap ?? settings.default_commission_cap),
     total_worker_payout_override: str(job?.total_worker_payout_override),
     invoice_ref: job?.invoice_ref ?? "",
     notes: job?.notes ?? "",
@@ -109,6 +116,12 @@ export default function JobForm({
         end_time: w?.end_time?.slice(0, 5) ?? "",
       };
     }),
+  );
+
+  // How many of the 3 window slots are shown — starts at 1 (or however many
+  // the job already has filled in), with "+ add another" revealing more.
+  const [windowCount, setWindowCount] = useState(
+    Math.max(1, ...job?.job_arrival_windows.map((w) => w.sort_order + 1) ?? [0]),
   );
 
   function patchWindow(index: number, next: Partial<WindowState>) {
@@ -135,6 +148,13 @@ export default function JobForm({
         description: f.description ?? "",
         amount: str(f.amount),
       })),
+    })),
+  );
+
+  const [otherCosts, setOtherCosts] = useState<FeeState[]>(
+    (job?.job_costs ?? []).map((c) => ({
+      description: c.description ?? "",
+      amount: str(c.amount),
     })),
   );
 
@@ -196,23 +216,37 @@ export default function JobForm({
     setStatusMsg(null);
   }
 
+  function patchOtherCost(index: number, next: Partial<FeeState>) {
+    setOtherCosts((prev) => prev.map((c, i) => (i === index ? { ...c, ...next } : c)));
+    setStatusMsg(null);
+  }
+
   const totals = useMemo(
     () =>
       jobTotals(
         {
           total_invoice_paid: form.total_invoice_paid,
           pos_fee_percent: form.pos_fee_percent,
-          other_job_costs: form.other_job_costs,
-          commission_percent: form.commission_percent,
-          commission_cap: form.commission_cap,
           total_worker_payout_override: form.total_worker_payout_override,
         },
         workers.map((w) => ({ ...w, fees: w.fees })),
+        otherCosts,
+        { default_commission_percent: settings.default_commission_percent },
       ),
-    [form, workers],
+    [form, workers, otherCosts, settings.default_commission_percent],
   );
 
+  // Total Invoice Paid auto-fills from the target invoice until the
+  // dispatcher types into it directly — existing jobs start "touched" so a
+  // saved real number is never silently overwritten.
+  const [totalInvoicePaidTouched, setTotalInvoicePaidTouched] = useState(!!job);
+  useEffect(() => {
+    if (totalInvoicePaidTouched) return;
+    setForm((f) => ({ ...f, total_invoice_paid: str(totals.targetTotalInvoice) }));
+  }, [totalInvoicePaidTouched, totals.targetTotalInvoice]);
+
   const payoutOverridden = form.total_worker_payout_override.trim() !== "";
+  const netTotalWorkerPayout = netWorkerPay(totals.totalWorkerPayout, settings.transfer_fee_percent);
 
   function save() {
     start(async () => {
@@ -241,9 +275,6 @@ export default function JobForm({
         addresses,
         total_invoice_paid: form.total_invoice_paid,
         pos_fee_percent: form.pos_fee_percent,
-        other_job_costs: form.other_job_costs,
-        commission_percent: form.commission_percent,
-        commission_cap: form.commission_cap,
         total_worker_payout_override: form.total_worker_payout_override || null,
         invoice_ref: form.invoice_ref,
         notes: form.notes,
@@ -260,6 +291,7 @@ export default function JobForm({
           is_leader: w.is_leader,
           fees: w.fees,
         })),
+        other_costs: otherCosts,
       };
 
       const res = await saveJob(payload);
@@ -433,11 +465,14 @@ export default function JobForm({
             <p className="muted mb-2 text-xs">
               Up to three optional arrival windows — fill in what you know.
             </p>
-            <div className="flex flex-col gap-3">
-              {windows.map((w, i) => (
-                <div key={i} className="border border-[var(--color-line)] p-2">
-                  <div className="label mb-1">Arrival window {i + 1}</div>
-                  <div className="grid-form">
+            <div className="flex flex-col gap-2">
+              {windows.slice(0, windowCount).map((w, i) => (
+                <details key={i} className="border border-[var(--color-line)]">
+                  <summary className="label cursor-pointer list-none p-2">
+                    Arrival window {i + 1}
+                    {w.date ? ` — ${windowSummary(w)}` : ""}
+                  </summary>
+                  <div className="grid-form p-2 pt-0">
                     <TextInput
                       label="Date"
                       type="date"
@@ -457,8 +492,17 @@ export default function JobForm({
                       onChange={(e) => patchWindow(i, { end_time: e.target.value })}
                     />
                   </div>
-                </div>
+                </details>
               ))}
+              {windowCount < 3 && (
+                <button
+                  type="button"
+                  className="btn btn-sm self-start"
+                  onClick={() => setWindowCount((n) => n + 1)}
+                >
+                  + Add another arrival window
+                </button>
+              )}
             </div>
           </>
         )}
@@ -627,12 +671,16 @@ export default function JobForm({
               {/* worker_total_pay — calculated, with an editable override */}
               <div className="mt-3 border-t border-[var(--color-line)] pt-2">
                 <div className="flex items-center justify-between gap-2 text-sm">
-                  <span className="font-semibold">Worker total pay</span>
+                  <span className="font-semibold">Worker pay (billed)</span>
                   <span className="mono text-base font-bold">{money(eff)}</span>
                 </div>
                 <div className="muted text-xs">
                   Calculated: {money(calc)}
                   {overridden && " — overridden below"}
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-2 text-sm">
+                  <span>Net after {settings.transfer_fee_percent}% transfer fee</span>
+                  <span className="mono">{money(netWorkerPay(eff, settings.transfer_fee_percent))}</span>
                 </div>
                 <div className="mt-1 flex items-end gap-2">
                   <div className="flex-1">
@@ -659,14 +707,48 @@ export default function JobForm({
         })}
       </Section>
 
+      {/* ---------- other job costs ---------- */}
+      <Section title="Other Job Costs">
+        <p className="muted mb-2 text-xs">
+          Ad-hoc costs (parking, supplies, etc.) — added to worker pay and CAG before
+          commission % and POS fee % are calculated.
+        </p>
+        {otherCosts.map((c, i) => (
+          <div key={i} className="mb-1 flex gap-1">
+            <input
+              className="input"
+              placeholder="Description"
+              value={c.description}
+              onChange={(e) => patchOtherCost(i, { description: e.target.value })}
+            />
+            <input
+              className="input w-28 shrink-0"
+              type="number"
+              step="0.01"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={c.amount}
+              onChange={(e) => patchOtherCost(i, { amount: e.target.value })}
+            />
+            <button
+              type="button"
+              className="btn btn-sm btn-danger shrink-0"
+              onClick={() => setOtherCosts((prev) => prev.filter((_, j) => j !== i))}
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+        <AddButton
+          onClick={() => setOtherCosts((prev) => [...prev, { description: "", amount: "" }])}
+        >
+          Add cost
+        </AddButton>
+      </Section>
+
       {/* ---------- money ---------- */}
       <Section title="Money">
         <div className="grid-form">
-          <MoneyInput
-            label="Total invoice paid"
-            value={form.total_invoice_paid}
-            onChange={(e) => patch({ total_invoice_paid: e.target.value })}
-          />
           <NumberInput
             label="POS fee %"
             step="0.1"
@@ -674,44 +756,46 @@ export default function JobForm({
             onChange={(e) => patch({ pos_fee_percent: e.target.value })}
             hint={`Default is ${settings.default_pos_fee_percent}% — editable per job.`}
           />
-          <MoneyInput
-            label="Other job costs"
-            value={form.other_job_costs}
-            onChange={(e) => patch({ other_job_costs: e.target.value })}
-          />
           <TextInput
             label="Invoice ref (Square)"
             value={form.invoice_ref}
             onChange={(e) => patch({ invoice_ref: e.target.value })}
             hint="Optional — Square invoice number or link."
           />
-          <NumberInput
-            label="Commission %"
-            step="0.1"
-            value={form.commission_percent}
-            onChange={(e) => patch({ commission_percent: e.target.value })}
-            hint={`Dispatcher's take on worker payout. Default is ${settings.default_commission_percent}% — editable per job.`}
-          />
-          <MoneyInput
-            label="Commission cap"
-            value={form.commission_cap}
-            onChange={(e) => patch({ commission_cap: e.target.value })}
-            hint={`Commission never exceeds this. Default is ${money(settings.default_commission_cap)}.`}
-          />
+        </div>
+        <div className="mt-2 flex items-end gap-2">
+          <div className="flex-1">
+            <MoneyInput
+              label="Total invoice paid"
+              value={form.total_invoice_paid}
+              onChange={(e) => {
+                setTotalInvoicePaidTouched(true);
+                patch({ total_invoice_paid: e.target.value });
+              }}
+              className="mb-0"
+              hint={
+                totalInvoicePaidTouched
+                  ? `Calculated: ${money(totals.targetTotalInvoice)}`
+                  : "Auto-filled from the calculation below — type over it if Square's real number differs."
+              }
+            />
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={!totalInvoicePaidTouched}
+            onClick={() => setTotalInvoicePaidTouched(false)}
+          >
+            Reset to calculated
+          </button>
         </div>
       </Section>
 
       {/* ---------- financial summary ---------- */}
       <Section title="Financial Summary">
         <dl className="text-sm">
-          <SummaryRow label="Total invoice paid" value={money(Number(form.total_invoice_paid) || 0)} />
           <SummaryRow
-            label={`POS fee (${form.pos_fee_percent || 0}%)`}
-            value={money(totals.posFeeAmount)}
-          />
-          <SummaryRow label="Other job costs" value={money(Number(form.other_job_costs) || 0)} />
-          <SummaryRow
-            label="Total worker payout"
+            label="Worker pay (billed)"
             value={money(totals.totalWorkerPayout)}
             note={
               payoutOverridden
@@ -719,12 +803,39 @@ export default function JobForm({
                 : undefined
             }
           />
-          <SummaryRow label="Total job costs" value={money(totals.totalJobCosts)} strong />
+          {totals.otherCostsTotal !== 0 && (
+            <SummaryRow label="Other job costs" value={money(totals.otherCostsTotal)} />
+          )}
           <SummaryRow
-            label={`Commission (${form.commission_percent || 0}%, capped at ${money(Number(form.commission_cap) || 0)})`}
+            label={`Commission (${settings.default_commission_percent}%)`}
+            value={money(totals.commissionTarget)}
+          />
+          <SummaryRow
+            label={`POS fee (${form.pos_fee_percent || 0}%)`}
+            value={money(totals.posFeeAmount)}
+          />
+          <SummaryRow label="CAG" value={money(totals.cagTarget)} />
+          <SummaryRow label="Target invoice" value={money(totals.targetTotalInvoice)} strong />
+        </dl>
+
+        <p className="muted mb-1 mt-3 text-xs">Real take, from the actual Total Invoice Paid above:</p>
+        <dl className="text-sm">
+          <SummaryRow label="Total invoice paid" value={money(Number(form.total_invoice_paid) || 0)} />
+          <SummaryRow
+            label="Commission"
             value={money(totals.commissionAmount)}
             strong
             tone="good"
+          />
+          <SummaryRow
+            label="CAG"
+            value={money(totals.cagAmount)}
+            strong
+            tone={totals.cagAmount < 0 ? "bad" : "good"}
+          />
+          <SummaryRow
+            label={`Total worker payout (${settings.transfer_fee_percent}% adjusted)`}
+            value={money(netTotalWorkerPayout)}
           />
         </dl>
 

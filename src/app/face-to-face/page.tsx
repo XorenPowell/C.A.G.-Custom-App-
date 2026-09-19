@@ -1,14 +1,17 @@
 import Link from "next/link";
 import TopBar from "@/components/TopBar";
 import NewSessionButton from "@/components/NewSessionButton";
+import OutcomeBreakdown from "@/components/OutcomeBreakdown";
 import {
+  averageIntentLevel,
   getActiveSession,
   getConversations,
   getSessions,
   getTodayConversationCount,
+  outcomeBreakdown,
 } from "@/lib/face-to-face";
 import { getLists, getSettings, lookup, nameMap } from "@/lib/data";
-import { durationDisplay } from "@/lib/format";
+import { durationDisplay, num } from "@/lib/format";
 import type { FaceToFaceSession } from "@/lib/types";
 
 function sessionDuration(session: FaceToFaceSession): string {
@@ -27,6 +30,8 @@ export default async function FaceToFacePage() {
     getSettings(),
   ]);
   const names = nameMap(lists);
+  const breakdown = outcomeBreakdown(conversations, names);
+  const avgIntent = averageIntentLevel(conversations);
 
   const countsBySession = new Map<string, number>();
   for (const c of conversations) {
@@ -44,6 +49,15 @@ export default async function FaceToFacePage() {
         <p className="mb-3 text-lg font-bold">
           {todayCount} / {settings.face_to_face_daily_goal} conversations today
         </p>
+
+        {conversations.length > 0 && (
+          <div className="mb-3 text-center">
+            <p className="muted text-sm">
+              {conversations.length} conversations all-time · avg intent {num(avgIntent, 1)}/10
+            </p>
+            <OutcomeBreakdown data={breakdown} />
+          </div>
+        )}
 
         <div className="flex flex-col gap-2">
           {sessions.map((s) => (
