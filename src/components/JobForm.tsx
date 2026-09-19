@@ -248,6 +248,11 @@ export default function JobForm({
     setForm((f) => ({ ...f, total_invoice_paid: str(totals.targetTotalInvoice) }));
   }, [totalInvoicePaidTouched, totals.targetTotalInvoice]);
 
+  // Once a job is Booked, its confirmed arrival is fixed and stays fixed
+  // through Completed/Cancelled/Lost — candidate windows only make sense
+  // pre-Booked (Inquiry, Quoted).
+  const isBookedOrLater = form.status !== "Inquiry" && form.status !== "Quoted";
+
   const payoutOverridden = form.total_worker_payout_override.trim() !== "";
   const netTotalWorkerPayout = netWorkerPay(totals.totalWorkerPayout, settings.transfer_fee_percent);
 
@@ -352,6 +357,15 @@ export default function JobForm({
         </div>
       </Section>
 
+      {/* ---------- details ---------- */}
+      <Section title="Details">
+        <TextArea
+          value={form.details}
+          onChange={(e) => patch({ details: e.target.value })}
+          placeholder="Parking, gate codes, access instructions — anything worth texting to the customer or worker."
+        />
+      </Section>
+
       {/* ---------- classification ---------- */}
       <Section title="Classification">
         <div className="grid-form">
@@ -443,7 +457,7 @@ export default function JobForm({
           />
         </div>
 
-        {form.status === "Booked" ? (
+        {isBookedOrLater ? (
           <>
             <p className="muted mb-2 text-xs">
               Job is Booked — this is the confirmed schedule, not a candidate window.
@@ -858,15 +872,6 @@ export default function JobForm({
         </div>
       </Section>
 
-      {/* ---------- details ---------- */}
-      <Section title="Details">
-        <TextArea
-          value={form.details}
-          onChange={(e) => patch({ details: e.target.value })}
-          placeholder="Parking, gate codes, access instructions — anything worth texting to the customer or worker."
-        />
-      </Section>
-
       {/* ---------- notes ---------- */}
       <Section title="Notes">
         <TextArea
@@ -882,7 +887,7 @@ export default function JobForm({
           serviceCategoryId={form.service_category_id || null}
           zoneId={form.zone_id || null}
           arrivalDates={
-            form.status === "Booked"
+            isBookedOrLater
               ? [form.confirmed_arrival_date].filter(Boolean)
               : windows.map((w) => w.date).filter(Boolean)
           }
