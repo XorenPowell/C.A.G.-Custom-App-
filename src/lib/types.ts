@@ -42,9 +42,12 @@ export type ListItem = {
 export type Settings = {
   id: boolean;
   default_pos_fee_percent: number;
-  /** Dispatcher commission: percent of worker payout, capped in dollars. */
+  /** Dispatcher commission: a flat percent of worker payout. Fixed for every job. */
   default_commission_percent: number;
-  default_commission_cap: number;
+  /** Flat admin fee folded into the target invoice alongside commission and the POS fee. */
+  default_cag_fee: number;
+  /** Percent held back when transferring a worker's calculated pay to them — the real cost of moving the money. */
+  transfer_fee_percent: number;
   monthly_jobs_goal: number;
   daily_inquiries_goal: number;
   daily_partnerships_goal: number;
@@ -194,12 +197,9 @@ export type Job = {
   confirmed_arrival_time: string | null;
   estimated_duration_minutes: number | null;
   addresses: string[];
+  /** Real amount the customer was charged. Auto-filled from job_financials.target_total_invoice; editable. */
   total_invoice_paid: number;
   pos_fee_percent: number;
-  other_job_costs: number;
-  /** Dispatcher commission on this job: percent of worker payout, capped in dollars. */
-  commission_percent: number;
-  commission_cap: number;
   total_worker_payout_override: number | null;
   invoice_ref: string | null;
   notes: string | null;
@@ -255,9 +255,16 @@ export type JobFinancials = {
   calculated_worker_payout: number;
   total_worker_payout: number;
   pos_fee_amount: number;
-  total_job_costs: number;
-  /** Dispatcher's take: percent of worker payout, capped in dollars. Not a profit/loss figure. */
+  /** Fixed % of worker payout, from Settings — the un-adjusted target. */
+  commission_target: number;
+  /** Flat $, from Settings — the un-adjusted target. */
+  cag_target: number;
+  /** worker payout + commission_target + pos_fee_amount + cag_target — what total_invoice_paid auto-fills to. */
+  target_total_invoice: number;
+  /** Real commission after the shortfall waterfall. Never exceeds commission_target; floors at 0. */
   commission_amount: number;
+  /** Real CAG after the shortfall waterfall. Can go negative. */
+  cag_amount: number;
   week_of: string | null;
   month: string | null;
   repeat_customer: boolean;

@@ -7,7 +7,7 @@ import { getJob, getJobFinancialsOne } from "@/lib/jobs";
 import { getEntitiesFull } from "@/lib/entities";
 import { getPartnerships } from "@/lib/partnerships";
 import { getLists, getSettings, getTemplates, lookup, nameMap, partnershipReferralId } from "@/lib/data";
-import { effectiveWorkerPay } from "@/lib/calc";
+import { effectiveWorkerPay, netWorkerPay } from "@/lib/calc";
 
 export default async function JobDetailPage({
   params,
@@ -38,16 +38,21 @@ export default async function JobDetailPage({
         poc_name: e.poc_name,
         poc_phone: e.poc_phone,
         is_leader: w.is_leader,
-        pay: effectiveWorkerPay({
-          regular_hours: w.regular_hours,
-          regular_rate: w.regular_rate,
-          travel_hours: w.travel_hours,
-          travel_rate: w.travel_rate,
-          other_hours: w.other_hours,
-          other_rate: w.other_rate,
-          total_pay_override: w.total_pay_override,
-          fees: w.job_worker_fees,
-        }),
+        // {{pay}} tells a worker what they'll actually receive — net of the
+        // transfer fee, not the gross amount billed on the invoice.
+        pay: netWorkerPay(
+          effectiveWorkerPay({
+            regular_hours: w.regular_hours,
+            regular_rate: w.regular_rate,
+            travel_hours: w.travel_hours,
+            travel_rate: w.travel_rate,
+            other_hours: w.other_hours,
+            other_rate: w.other_rate,
+            total_pay_override: w.total_pay_override,
+            fees: w.job_worker_fees,
+          }),
+          settings.transfer_fee_percent,
+        ),
       };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);

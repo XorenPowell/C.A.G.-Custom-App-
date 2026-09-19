@@ -12,7 +12,8 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
   const [values, setValues] = useState<SettingsValues>({
     default_pos_fee_percent: settings.default_pos_fee_percent,
     default_commission_percent: settings.default_commission_percent,
-    default_commission_cap: settings.default_commission_cap,
+    default_cag_fee: settings.default_cag_fee,
+    transfer_fee_percent: settings.transfer_fee_percent,
     monthly_jobs_goal: settings.monthly_jobs_goal,
     daily_inquiries_goal: settings.daily_inquiries_goal,
     daily_partnerships_goal: settings.daily_partnerships_goal,
@@ -50,22 +51,27 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
             hint="Pre-fills new jobs. 5 = 5% of the invoice. Editable per job."
           />
           <NumberInput
-            label="Default commission %"
+            label="Commission %"
             step="0.1"
             value={values.default_commission_percent}
             onChange={(e) =>
               patch({ default_commission_percent: Number(e.target.value) })
             }
-            hint="Dispatcher's take, as a percent of worker payout. Pre-fills new jobs, editable per job."
+            hint="Dispatcher's take, as a fixed percent of worker payout. Same on every job — not editable per job."
           />
           <NumberInput
-            label="Commission cap ($)"
+            label="CAG fee ($)"
             step="1"
-            value={values.default_commission_cap}
-            onChange={(e) =>
-              patch({ default_commission_cap: Number(e.target.value) })
-            }
-            hint="Commission never exceeds this amount. Pre-fills new jobs, editable per job."
+            value={values.default_cag_fee}
+            onChange={(e) => patch({ default_cag_fee: Number(e.target.value) })}
+            hint="Flat admin fee folded into the target invoice alongside commission and the POS fee."
+          />
+          <NumberInput
+            label="Transfer fee %"
+            step="0.1"
+            value={values.transfer_fee_percent}
+            onChange={(e) => patch({ transfer_fee_percent: Number(e.target.value) })}
+            hint="Held back when transferring a worker's pay to them — the real cost of moving the money. Never affects the invoice."
           />
           <NumberInput
             label="Monthly jobs goal"

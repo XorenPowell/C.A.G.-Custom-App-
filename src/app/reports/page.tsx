@@ -76,18 +76,18 @@ export default async function ReportsPage({
           <p className="muted mt-2 text-xs">Showing {rangeLabel(range)}.</p>
         </form>
 
-        {/* ---------- commission, front and center ---------- */}
-        <Panel title="Revenue & Commission">
+        {/* ---------- CAG, front and center ---------- */}
+        <Panel title="Revenue & CAG">
           <StatGrid>
             <Stat
-              label="Total commissions"
-              value={money(data.totalCommission)}
-              emphasis="good"
+              label="Total CAG"
+              value={money(data.totalCag)}
+              emphasis={data.totalCag < 0 ? "bad" : "good"}
             />
             <Stat
-              label="Avg commission / job"
-              value={money(data.avgCommissionPerJob)}
-              emphasis="good"
+              label="Avg CAG / job"
+              value={money(data.avgCagPerJob)}
+              emphasis={data.avgCagPerJob < 0 ? "bad" : "good"}
             />
           </StatGrid>
           <p className="mt-2 text-sm">Total revenue: {money(data.totalRevenue)}</p>
@@ -175,13 +175,14 @@ export default async function ReportsPage({
         </Panel>
 
         <p className="muted mt-4 text-xs">
-          Volume, revenue and commission are scoped by invoice date (falling back to
+          Volume, revenue and CAG are scoped by invoice date (falling back to
           arrival date, then created date). Inquiries, conversion and referrals are scoped
           by the date the job was created. New partnerships use their signed date —
           partnership leads with no signed date are excluded from every figure on this
           screen. Cards and fliers are lifetime running totals across signed partnerships.
-          Commission is a flat percent of worker payout capped in dollars per job —
-          independent of the invoice.
+          CAG is the real admin-fee take on each job: worker pay, commission (a fixed
+          percent from Settings) and the POS fee are covered first from the real invoice —
+          CAG is whatever's left, and can go negative if a job fell short.
         </p>
       </main>
     </>

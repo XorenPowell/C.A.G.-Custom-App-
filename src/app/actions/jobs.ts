@@ -52,9 +52,6 @@ export type JobPayload = {
   addresses: string[];
   total_invoice_paid: number | string;
   pos_fee_percent: number | string;
-  other_job_costs: number | string;
-  commission_percent: number | string;
-  commission_cap: number | string;
   total_worker_payout_override: number | string | null;
   invoice_ref: string | null;
   notes: string | null;
@@ -88,9 +85,6 @@ export async function saveJob(payload: JobPayload): Promise<JobSaveResult> {
     addresses: payload.addresses.map((a) => a.trim()).filter(Boolean),
     total_invoice_paid: toNum(payload.total_invoice_paid),
     pos_fee_percent: toNum(payload.pos_fee_percent),
-    other_job_costs: toNum(payload.other_job_costs),
-    commission_percent: toNum(payload.commission_percent),
-    commission_cap: toNum(payload.commission_cap),
     total_worker_payout_override: toNullableNum(payload.total_worker_payout_override),
     invoice_ref: orNull(payload.invoice_ref),
     notes: orNull(payload.notes),

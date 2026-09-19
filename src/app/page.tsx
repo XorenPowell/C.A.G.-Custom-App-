@@ -78,9 +78,9 @@ export default async function HomePage({
               </div>
             </div>
             <div className="rounded-[var(--radius-card)] border border-white/10 bg-white/[0.07] p-3">
-              <div className="text-xs text-white/70">Commission</div>
+              <div className="text-xs text-white/70">CAG</div>
               <div className="font-heading mt-1 text-2xl font-semibold text-[var(--money)]">
-                {money(data.totalCommission)}
+                {money(data.totalCag)}
               </div>
             </div>
             <div className="rounded-[var(--radius-card)] border border-white/10 bg-white/[0.07] p-3">
@@ -98,7 +98,7 @@ export default async function HomePage({
           </div>
 
           <p className="mt-4 text-sm text-white/80">
-            Next payout: <span className="font-heading font-semibold text-white">{money(payoutData.totalCommission)}</span>
+            Next payout: <span className="font-heading font-semibold text-white">{money(payoutData.totalCag)}</span>
           </p>
         </div>
       </section>

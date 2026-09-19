@@ -22,10 +22,13 @@ export type WorkerInput = {
 export type JobMoneyInput = {
   total_invoice_paid: number | string | null;
   pos_fee_percent: number | string | null;
-  other_job_costs: number | string | null;
-  commission_percent: number | string | null;
-  commission_cap: number | string | null;
   total_worker_payout_override: number | string | null;
+};
+
+/** The two money constants that come from Settings, not the job. */
+export type JobFormulaSettings = {
+  default_commission_percent: number | string | null;
+  default_cag_fee: number | string | null;
 };
 
 /** Empty string, null and undefined all mean zero. */
@@ -63,7 +66,7 @@ export function calculatedWorkerPay(w: WorkerInput): number {
   );
 }
 
-/** The override wins when present; everything downstream uses this. */
+/** The override wins when present; everything downstream — including the invoice — uses this. */
 export function effectiveWorkerPay(w: WorkerInput): number {
   const override = nullableNum(w.total_pay_override);
   return override ?? calculatedWorkerPay(w);
@@ -73,29 +76,77 @@ export function calculatedTotalWorkerPayout(workers: WorkerInput[]): number {
   return round2(workers.reduce((sum, w) => sum + effectiveWorkerPay(w), 0));
 }
 
+/**
+ * What a worker actually receives once their pay is transferred — the gross
+ * effective pay minus the transfer fee %. This never feeds the invoice: the
+ * customer is billed the gross amount, and the transfer fee is the real
+ * cost of moving that money out to the worker.
+ */
+export function netWorkerPay(
+  grossPay: number,
+  transferFeePercent: number | string | null,
+): number {
+  return round2(grossPay * (1 - n(transferFeePercent) / 100));
+}
+
 export type JobTotals = {
   calculatedWorkerPayout: number;
   totalWorkerPayout: number;
   posFeeAmount: number;
-  totalJobCosts: number;
-  /** Dispatcher's take: percent of worker payout, capped in dollars. Not a profit/loss figure. */
+  /** Fixed % of worker payout, from Settings — the un-adjusted target. */
+  commissionTarget: number;
+  /** Flat $, from Settings — the un-adjusted target. */
+  cagTarget: number;
+  /** worker payout + commissionTarget + posFeeAmount + cagTarget — what Total Invoice Paid auto-fills to. */
+  targetTotalInvoice: number;
+  /** Real commission after the shortfall waterfall. Never exceeds commissionTarget; floors at 0. */
   commissionAmount: number;
+  /** Real CAG after the shortfall waterfall. Can go negative. */
+  cagAmount: number;
 };
 
-export function jobTotals(job: JobMoneyInput, workers: WorkerInput[]): JobTotals {
+/**
+ * The invoice builds bottom-up: worker payout -> + commission -> + POS fee
+ * -> + CAG -> targetTotalInvoice. That target is what auto-fills Total
+ * Invoice Paid in the form, but the dispatcher can type over it.
+ *
+ * commissionAmount/cagAmount are the REAL take, computed from whatever
+ * total_invoice_paid actually is. Worker payout and the POS fee are never
+ * touched — a shortfall against the target is absorbed first by commission
+ * (down to $0), then by CAG (which can go negative); a surplus flows to CAG.
+ */
+export function jobTotals(
+  job: JobMoneyInput,
+  workers: WorkerInput[],
+  settings: JobFormulaSettings,
+): JobTotals {
   const calculatedWorkerPayout = calculatedTotalWorkerPayout(workers);
   const totalWorkerPayout =
     nullableNum(job.total_worker_payout_override) ?? calculatedWorkerPayout;
-  // pos_fee_percent is a percentage: 5.0 means 5%.
-  const posFeeAmount = round2((n(job.total_invoice_paid) * n(job.pos_fee_percent)) / 100);
-  const totalJobCosts = round2(totalWorkerPayout + posFeeAmount + n(job.other_job_costs));
-  // Independent of the invoice, POS fee and other job costs — a flat percent
-  // of the worker payout, capped in dollars.
-  const commissionAmount = Math.min(
-    round2((totalWorkerPayout * n(job.commission_percent)) / 100),
-    n(job.commission_cap),
+
+  const posFeeAmount = round2((totalWorkerPayout * n(job.pos_fee_percent)) / 100);
+  const commissionTarget = round2(
+    (totalWorkerPayout * n(settings.default_commission_percent)) / 100,
   );
-  return { calculatedWorkerPayout, totalWorkerPayout, posFeeAmount, totalJobCosts, commissionAmount };
+  const cagTarget = round2(n(settings.default_cag_fee));
+  const targetTotalInvoice = round2(
+    totalWorkerPayout + commissionTarget + posFeeAmount + cagTarget,
+  );
+
+  const remaining = round2(n(job.total_invoice_paid) - totalWorkerPayout - posFeeAmount);
+  const commissionAmount = Math.min(Math.max(remaining, 0), commissionTarget);
+  const cagAmount = round2(remaining - commissionAmount);
+
+  return {
+    calculatedWorkerPayout,
+    totalWorkerPayout,
+    posFeeAmount,
+    commissionTarget,
+    cagTarget,
+    targetTotalInvoice,
+    commissionAmount,
+    cagAmount,
+  };
 }
 
 /** Monday of the week containing the given YYYY-MM-DD date. */

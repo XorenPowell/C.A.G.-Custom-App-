@@ -84,9 +84,9 @@ export type DashboardData = {
   completedByCategory: { label: string; value: number }[];
 
   totalRevenue: number;
-  /** Dispatcher's take across the range: percent of worker payout, capped in dollars per job. */
-  totalCommission: number;
-  avgCommissionPerJob: number;
+  /** The real, per-job admin fee take across the range — can be negative on jobs that fell short. */
+  totalCag: number;
+  avgCagPerJob: number;
   revenueByCategory: { label: string; value: number }[];
 
   inquiriesGenerated: number;
@@ -138,8 +138,8 @@ export async function getDashboard(
   const completed = activity.filter((j) => j.status === "Completed");
 
   const totalRevenue = completed.reduce((s, j) => s + Number(j.total_invoice_paid ?? 0), 0);
-  const totalCommission = completed.reduce(
-    (s, j) => s + Number(financials.get(j.id)?.commission_amount ?? 0),
+  const totalCag = completed.reduce(
+    (s, j) => s + Number(financials.get(j.id)?.cag_amount ?? 0),
     0,
   );
 
@@ -161,8 +161,8 @@ export async function getDashboard(
     ),
 
     totalRevenue,
-    totalCommission,
-    avgCommissionPerJob: completed.length ? totalCommission / completed.length : 0,
+    totalCag,
+    avgCagPerJob: completed.length ? totalCag / completed.length : 0,
     revenueByCategory: tally(
       completed.map((j) => ({
         key: j.service_category_id,
@@ -240,23 +240,23 @@ function nextDay(iso: string): string {
 async function fetchFinancials(
   supabase: SupabaseClient,
   jobIds: string[],
-): Promise<Map<string, { commission_amount: number; repeat_customer: boolean }>> {
-  const map = new Map<string, { commission_amount: number; repeat_customer: boolean }>();
+): Promise<Map<string, { cag_amount: number; repeat_customer: boolean }>> {
+  const map = new Map<string, { cag_amount: number; repeat_customer: boolean }>();
   if (jobIds.length === 0) return map;
 
   for (let i = 0; i < jobIds.length; i += 500) {
     const chunk = jobIds.slice(i, i + 500);
     const { data } = await supabase
       .from("job_financials")
-      .select("job_id, commission_amount, repeat_customer")
+      .select("job_id, cag_amount, repeat_customer")
       .in("job_id", chunk);
     for (const row of (data ?? []) as {
       job_id: string;
-      commission_amount: number;
+      cag_amount: number;
       repeat_customer: boolean;
     }[]) {
       map.set(row.job_id, {
-        commission_amount: Number(row.commission_amount ?? 0),
+        cag_amount: Number(row.cag_amount ?? 0),
         repeat_customer: !!row.repeat_customer,
       });
     }

@@ -50,10 +50,17 @@ end $$;
 create table settings (
   id                          boolean primary key default true check (id),
   default_pos_fee_percent     numeric(6,3) not null default 5.0,
-  -- Dispatcher commission: a flat percent of the worker payout, capped in
-  -- dollars. Independent of the invoice, POS fee and other job costs.
+  -- Dispatcher commission: a flat percent of worker payout. Fixed for every
+  -- job — there is no per-job override or cap.
   default_commission_percent  numeric(6,3)  not null default 5.0,
-  default_commission_cap      numeric(12,2) not null default 50.0,
+  -- Flat admin fee folded into the target invoice alongside commission and
+  -- the POS fee. The real, per-job CAG (job_financials.cag_amount) can
+  -- differ from this if the actual invoice comes in short.
+  default_cag_fee             numeric(12,2) not null default 5.0,
+  -- Percent held back when transferring a worker's calculated pay to them —
+  -- the real cost of moving the money. Never touches the invoice; purely a
+  -- payroll figure (job_worker_pay's effective_pay minus this rate).
+  transfer_fee_percent        numeric(6,3)  not null default 2.0,
   monthly_jobs_goal           integer      not null default 300,
   daily_inquiries_goal        integer      not null default 5,
   daily_partnerships_goal     integer      not null default 10,
@@ -334,14 +341,12 @@ create table jobs (
   estimated_duration_minutes integer,
   addresses           text[] not null default '{}',   -- any number of stops
 
+  -- Real number the customer was actually charged (typically from Square).
+  -- The app auto-fills this from the target invoice formula in
+  -- job_financials (worker payout + commission + POS fee + CAG); the
+  -- dispatcher can type over it when the real number differs.
   total_invoice_paid  numeric(12,2) not null default 0,
   pos_fee_percent     numeric(6,3)  not null default 5.0,
-  other_job_costs     numeric(12,2) not null default 0,
-
-  -- Dispatcher commission on this job: percent of the worker payout, capped
-  -- in dollars. Seeded from settings, editable per job.
-  commission_percent  numeric(6,3)  not null default 5.0,
-  commission_cap      numeric(12,2) not null default 50.0,
 
   -- Section 4 exception: dispatcher may type over the calculated payout.
   total_worker_payout_override numeric(12,2),
@@ -585,23 +590,28 @@ left join lateral (
 
 -- Per job. Downstream figures always use the effective (override-aware) payout.
 --
--- `commission_amount` is the dispatcher's take: a flat percent of the worker
--- payout, capped in dollars. It is deliberately independent of the invoice,
--- the POS fee and other job costs — it is not a profit/loss figure, it is
--- what the dispatcher is paid on this job.
+-- The invoice is built bottom-up: worker payout -> + commission (fixed %,
+-- from settings) -> + POS fee % -> + CAG (flat $, from settings) ->
+-- target_total_invoice. That target auto-fills jobs.total_invoice_paid in
+-- the UI, but the dispatcher can type over it with the real number.
+--
+-- commission_amount/cag_amount are the REAL take, computed from whatever
+-- total_invoice_paid actually is. Worker payout and the POS fee are never
+-- touched — if the real invoice falls short of target_total_invoice, the
+-- shortfall is absorbed first by commission (down to $0), then by CAG
+-- (which can go negative). If the real invoice exceeds target, CAG absorbs
+-- the surplus. commission_amount never exceeds commission_target.
 create view job_financials as
 select
   j.id as job_id,
-  coalesce(p.payout, 0)                                     as calculated_worker_payout,
-  coalesce(j.total_worker_payout_override, p.payout, 0)     as total_worker_payout,
-  round(j.total_invoice_paid * j.pos_fee_percent / 100.0, 2) as pos_fee_amount,
-  coalesce(j.total_worker_payout_override, p.payout, 0)
-    + round(j.total_invoice_paid * j.pos_fee_percent / 100.0, 2)
-    + j.other_job_costs                                     as total_job_costs,
-  least(
-    round(coalesce(j.total_worker_payout_override, p.payout, 0) * j.commission_percent / 100.0, 2),
-    j.commission_cap
-  )                                                          as commission_amount,
+  fin.calculated_worker_payout,
+  fin.total_worker_payout,
+  fin.pos_fee_amount,
+  fin.commission_target,
+  fin.cag_target,
+  fin.target_total_invoice,
+  fin.commission_amount,
+  fin.cag_amount,
   date_trunc('week', coalesce(j.date_of_invoice, j.arrival_date, j.created_at::date))::date as week_of,
   to_char(coalesce(j.date_of_invoice, j.arrival_date, j.created_at::date), 'YYYY-MM')       as month,
   exists (
@@ -614,11 +624,42 @@ select
           < coalesce(j.date_of_invoice, j.arrival_date, j.created_at::date)
   )                                                         as repeat_customer
 from jobs j
+cross join settings s
 left join lateral (
   select sum(effective_pay) as payout
   from job_worker_pay
   where job_id = j.id
-) p on true;
+) p on true
+cross join lateral (
+  with base as (
+    select coalesce(j.total_worker_payout_override, p.payout, 0) as total_worker_payout
+  ),
+  fees as (
+    select
+      b.total_worker_payout,
+      round(b.total_worker_payout * j.pos_fee_percent / 100.0, 2)            as pos_fee_amount,
+      round(b.total_worker_payout * s.default_commission_percent / 100.0, 2) as commission_target,
+      s.default_cag_fee                                                     as cag_target
+    from base b
+  ),
+  totals as (
+    select
+      f.*,
+      round(f.total_worker_payout + f.commission_target + f.pos_fee_amount + f.cag_target, 2) as target_total_invoice,
+      (j.total_invoice_paid - f.total_worker_payout - f.pos_fee_amount) as remaining
+    from fees f
+  )
+  select
+    coalesce(p.payout, 0)                                                          as calculated_worker_payout,
+    t.total_worker_payout,
+    t.pos_fee_amount,
+    t.commission_target,
+    t.cag_target,
+    t.target_total_invoice,
+    least(greatest(t.remaining, 0), t.commission_target)                           as commission_amount,
+    t.remaining - least(greatest(t.remaining, 0), t.commission_target)             as cag_amount
+  from totals t
+) fin on true;
 
 -- =====================================================================
 -- ROW LEVEL SECURITY

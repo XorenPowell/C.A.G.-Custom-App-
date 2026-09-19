@@ -171,8 +171,14 @@ export default async function JobsPage({
                 <div className="mono mt-1 flex justify-between text-sm">
                   <span>{money(j.total_invoice_paid)}</span>
                   {fin && (
-                    <span className="text-[var(--color-good)]">
-                      COMM {money(fin.commission_amount)}
+                    <span
+                      className={
+                        fin.cag_amount < 0
+                          ? "text-[var(--color-danger)]"
+                          : "text-[var(--color-good)]"
+                      }
+                    >
+                      CAG {money(fin.cag_amount)}
                     </span>
                   )}
                 </div>
@@ -204,7 +210,7 @@ export default async function JobsPage({
                   <th>Workers</th>
                   <SortHeader field="status" label="Status" />
                   <SortHeader field="total_invoice_paid" label="Invoice" />
-                  <th>Commission</th>
+                  <th>CAG</th>
                 </tr>
               </thead>
               <tbody>
@@ -239,8 +245,14 @@ export default async function JobsPage({
                         <span className={`badge ${STATUS_TONE[j.status] ?? ""}`}>{j.status}</span>
                       </td>
                       <td className="mono">{money(j.total_invoice_paid)}</td>
-                      <td className="mono text-[var(--color-good)]">
-                        {fin ? money(fin.commission_amount) : "—"}
+                      <td
+                        className={`mono ${
+                          fin && fin.cag_amount < 0
+                            ? "text-[var(--color-danger)]"
+                            : "text-[var(--color-good)]"
+                        }`}
+                      >
+                        {fin ? money(fin.cag_amount) : "—"}
                       </td>
                     </tr>
                   );
