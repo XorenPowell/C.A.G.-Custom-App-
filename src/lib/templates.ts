@@ -1,4 +1,11 @@
-import { dateLongDisplay, durationDisplay, money, phoneDisplay, timeDisplay } from "@/lib/format";
+import {
+  dateLongDisplay,
+  dateLongDisplayNoYear,
+  durationDisplay,
+  money,
+  phoneDisplay,
+  timeDisplay,
+} from "@/lib/format";
 
 /** Every variable the dispatcher can put in a message body (spec section 6). */
 export const TEMPLATE_VARS: { token: string; description: string }[] = [
@@ -90,7 +97,7 @@ export type TemplateEntity = {
 /** "Mon, Aug 10, 2026, 6:00 AM – 8:00 AM" — or just the date, or "" if unset. */
 function formatArrivalWindow(w: TemplateArrivalWindow | undefined): string {
   if (!w?.date) return "";
-  const parts = [dateLongDisplay(w.date)];
+  const parts = [dateLongDisplayNoYear(w.date)];
   if (w.start_time) {
     parts.push(
       w.end_time ? `${timeDisplay(w.start_time)} – ${timeDisplay(w.end_time)}` : timeDisplay(w.start_time),
