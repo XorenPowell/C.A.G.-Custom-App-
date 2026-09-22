@@ -54,7 +54,11 @@ export default async function PartnershipsPage({
   const names = nameMap(lists);
 
   const rejectedId = partnershipStageId(lists, "Rejected");
-  const excludeRejected = sp.excludeRejected === "1";
+  // Checked by default. Once the filter form has been submitted at all
+  // (excludeRejectedSubmitted present), the checkbox's own presence is the
+  // real answer — including an explicit uncheck.
+  const excludeRejected =
+    sp.excludeRejectedSubmitted === "1" ? sp.excludeRejected === "1" : true;
 
   // The zone-maturity card is the one Zone control on this screen — picking
   // a zone there also filters the list below. Defaults to the first zone
@@ -85,7 +89,7 @@ export default async function PartnershipsPage({
     filters.status,
     filters.tier,
     filters.due,
-    excludeRejected,
+    !excludeRejected,
   ].some(Boolean);
 
   // Counts are always of the whole book, so the header does not move as you filter.
