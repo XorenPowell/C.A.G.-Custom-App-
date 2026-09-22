@@ -12,6 +12,8 @@ export type ListItemDraft = {
   description: string | null;
   /** conversation_outcome only. Blank stays blank — a missing default is not 0. */
   default_intent_level: number | string | null;
+  /** service_category only. */
+  details_template: string | null;
   sort_order: number;
   archived: boolean;
 };
@@ -41,6 +43,7 @@ export async function saveList(
       description: orNull(item.description),
       default_intent_level:
         intentLevel === null ? null : Math.min(10, Math.max(0, intentLevel)),
+      details_template: orNull(item.details_template),
       sort_order: (index + 1) * 10,
       archived: item.archived,
     };
@@ -132,6 +135,7 @@ export type SettingsValues = {
   daily_inquiries_goal: number;
   daily_partnerships_goal: number;
   pay_period_start_day: number;
+  mature_partnership_goal_per_zone: number;
 };
 
 export async function saveSettingsValues(values: SettingsValues): Promise<ActionResult> {
@@ -147,6 +151,10 @@ export async function saveSettingsValues(values: SettingsValues): Promise<Action
       daily_inquiries_goal: toInt(values.daily_inquiries_goal),
       daily_partnerships_goal: toInt(values.daily_partnerships_goal),
       pay_period_start_day: toInt(values.pay_period_start_day, 5),
+      mature_partnership_goal_per_zone: Math.max(
+        1,
+        toInt(values.mature_partnership_goal_per_zone, 30),
+      ),
     })
     .eq("id", true);
 

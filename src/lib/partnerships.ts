@@ -113,6 +113,13 @@ function sortPartnerships(rows: Partnership[], sort?: string): Partnership[] {
   }
 }
 
+/** Color band for a zone's mature-partnership percentage. */
+export function maturityTone(percent: number): "good" | "warn" | "danger" {
+  if (percent >= 75) return "good";
+  if (percent >= 40) return "warn";
+  return "danger";
+}
+
 export type PartnershipReferral = {
   id: string;
   job_id: string;

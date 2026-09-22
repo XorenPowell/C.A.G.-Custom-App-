@@ -75,6 +75,12 @@ export function FilterCheckbox({
   return (
     <div className="field flex items-end">
       <label className="flex items-center gap-1.5 pb-2 text-sm">
+        {/* An unchecked box submits nothing, so a default-on checkbox
+            couldn't otherwise tell "explicitly unchecked" from "form never
+            submitted." This marker (a distinct name — Next.js turns a
+            repeated query key into an array, not "last wins") is always
+            present once the form is submitted, checked or not. */}
+        <input type="hidden" name={`${name}Submitted`} value="1" />
         <input
           type="checkbox"
           name={name}

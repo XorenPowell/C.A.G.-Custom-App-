@@ -17,12 +17,14 @@ export default function ListEditor({
   withDescription,
   descriptionLabel,
   withIntentLevel,
+  withDetailsTemplate,
 }: {
   kind: ListKind;
   items: ListItem[];
   withDescription: boolean;
   descriptionLabel: string;
   withIntentLevel: boolean;
+  withDetailsTemplate: boolean;
 }) {
   const [rows, setRows] = useState<ListItemDraft[]>(
     items.map((i) => ({
@@ -30,6 +32,7 @@ export default function ListEditor({
       name: i.name,
       description: i.description,
       default_intent_level: i.default_intent_level,
+      details_template: i.details_template,
       sort_order: i.sort_order,
       archived: i.archived,
     })),
@@ -51,6 +54,7 @@ export default function ListEditor({
         name: "",
         description: null,
         default_intent_level: null,
+        details_template: null,
         sort_order: 0,
         archived: false,
       },
@@ -174,6 +178,19 @@ export default function ListEditor({
                     <p className="mt-1 text-xs text-[var(--color-muted)]">
                       Pre-fills the intent slider when this outcome is picked, e.g. Visitor → 0.
                     </p>
+                  </div>
+                )}
+                {withDetailsTemplate && (
+                  <div className="field mb-2">
+                    <span className="label">Details pre-fill (optional)</span>
+                    <textarea
+                      className="textarea min-h-16"
+                      value={row.details_template ?? ""}
+                      placeholder="Loaded into a new job's Details when this category is picked and Details is still empty."
+                      onChange={(e) =>
+                        patch(index, { details_template: e.target.value === "" ? null : e.target.value })
+                      }
+                    />
                   </div>
                 )}
                 <div className="flex flex-wrap items-center gap-3">

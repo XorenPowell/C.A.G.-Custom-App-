@@ -18,6 +18,7 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
     daily_inquiries_goal: settings.daily_inquiries_goal,
     daily_partnerships_goal: settings.daily_partnerships_goal,
     pay_period_start_day: settings.pay_period_start_day,
+    mature_partnership_goal_per_zone: settings.mature_partnership_goal_per_zone,
   });
   const [pending, start] = useGlobalTransition();
   const [status, setStatus] = useState<string | null>(null);
@@ -92,6 +93,15 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
             onChange={(e) =>
               patch({ daily_partnerships_goal: Number(e.target.value) })
             }
+          />
+          <NumberInput
+            label="Mature partnerships goal per zone"
+            step="1"
+            value={values.mature_partnership_goal_per_zone}
+            onChange={(e) =>
+              patch({ mature_partnership_goal_per_zone: Number(e.target.value) })
+            }
+            hint="Every zone is measured against this same target on the Partnerships screen."
           />
           <Select
             label="Pay period starts on"

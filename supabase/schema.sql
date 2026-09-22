@@ -73,6 +73,9 @@ create table settings (
   -- Work Face to Face: conversations-per-day target shown on that section's
   -- home screen. Resets with the calendar day, not stored per-day.
   face_to_face_daily_goal     integer      not null default 10,
+  -- Partnerships screen's zone-maturity card: every zone is measured
+  -- against this same target (Mature-status partnerships in that zone / this).
+  mature_partnership_goal_per_zone integer not null default 30,
   updated_at                  timestamptz  not null default now()
 );
 create trigger settings_updated_at before update on settings
@@ -92,6 +95,9 @@ create table list_items (
   -- when that outcome is picked (e.g. Visitor -> 0). Null means no default.
   default_intent_level integer check (default_intent_level is null
                 or default_intent_level between 0 and 10),
+  -- Used by service_category: pre-fills a new job's Details section when
+  -- that category is picked and Details is still empty. Null means no pre-fill.
+  details_template text,
   sort_order  integer not null default 0,
   archived    boolean not null default false,
   created_at  timestamptz not null default now()

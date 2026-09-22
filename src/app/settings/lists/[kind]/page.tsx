@@ -11,12 +11,14 @@ const META: Record<
     withDescription: boolean;
     descriptionLabel: string;
     withIntentLevel?: boolean;
+    withDetailsTemplate?: boolean;
   }
 > = {
   service_category: {
     title: "Service Categories",
     withDescription: false,
     descriptionLabel: "",
+    withDetailsTemplate: true,
   },
   inquiry_source: { title: "Inquiry Sources", withDescription: false, descriptionLabel: "" },
   zone: {
@@ -65,6 +67,7 @@ export default async function ListPage({
           withDescription={meta.withDescription}
           descriptionLabel={meta.descriptionLabel}
           withIntentLevel={meta.withIntentLevel ?? false}
+          withDetailsTemplate={meta.withDetailsTemplate ?? false}
         />
       </main>
     </>

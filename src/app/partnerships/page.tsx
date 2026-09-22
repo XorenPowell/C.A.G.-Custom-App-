@@ -1,15 +1,17 @@
 import Link from "next/link";
 import TopBar from "@/components/TopBar";
 import FilterBar, { FilterCheckbox, FilterSelect, FilterText } from "@/components/FilterBar";
+import ZoneMaturityCard from "@/components/ZoneMaturityCard";
 import {
   filterPartnerships,
   followUpLabel,
   followUpState,
   getPartnerships,
   getReferralCounts,
+  maturityTone,
   PARTNERSHIP_SORTS,
 } from "@/lib/partnerships";
-import { active, getLists, lookup, nameMap } from "@/lib/data";
+import { active, getLists, getSettings, lookup, nameMap } from "@/lib/data";
 import { partnershipStageId, stageTone } from "@/lib/lists";
 import { dateDisplay, money, phoneDisplay } from "@/lib/format";
 import type { Partnership } from "@/lib/types";
@@ -43,21 +45,40 @@ export default async function PartnershipsPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const sp = await searchParams;
-  const [lists, all, referrals] = await Promise.all([
+  const [lists, all, referrals, settings] = await Promise.all([
     getLists(),
     getPartnerships(),
     getReferralCounts(),
+    getSettings(),
   ]);
   const names = nameMap(lists);
 
   const rejectedId = partnershipStageId(lists, "Rejected");
-  const excludeRejected = sp.excludeRejected === "1";
+  // Checked by default. Once the filter form has been submitted at all
+  // (excludeRejectedSubmitted present), the checkbox's own presence is the
+  // real answer — including an explicit uncheck.
+  const excludeRejected =
+    sp.excludeRejectedSubmitted === "1" ? sp.excludeRejected === "1" : true;
+
+  // The zone-maturity card is the one Zone control on this screen — picking
+  // a zone there also filters the list below. Defaults to the first zone
+  // when none is picked yet, so the card always has something to show.
+  const activeZones = active(lists.zone);
+  const zoneId = sp.zone || activeZones[0]?.id || null;
+
+  function buildHref(next: Record<string, string>) {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries({ ...sp, ...next })) {
+      if (v) params.set(k, v);
+    }
+    return `/partnerships?${params.toString()}`;
+  }
 
   const filters = {
     q: sp.q ?? "",
     status: sp.status ?? "",
     tier: sp.tier ?? "",
-    zone: sp.zone ?? "",
+    zone: zoneId ?? "",
     due: sp.due ?? "",
     sort: sp.sort ?? "follow_up",
     excludeStatusId: excludeRejected ? rejectedId : null,
@@ -67,9 +88,8 @@ export default async function PartnershipsPage({
     filters.q,
     filters.status,
     filters.tier,
-    filters.zone,
     filters.due,
-    excludeRejected,
+    !excludeRejected,
   ].some(Boolean);
 
   // Counts are always of the whole book, so the header does not move as you filter.
@@ -84,6 +104,12 @@ export default async function PartnershipsPage({
     return s === "overdue" || s === "today";
   }).length;
 
+  const zoneMatureCount = zoneId
+    ? all.filter((p) => p.zone_id === zoneId && p.status_id === matureId).length
+    : 0;
+  const maturityTarget = settings.mature_partnership_goal_per_zone || 30;
+  const maturityPercent = Math.round((zoneMatureCount / maturityTarget) * 100);
+
   return (
     <>
       <TopBar
@@ -95,17 +121,25 @@ export default async function PartnershipsPage({
         }
       />
       <main className="page">
+        <ZoneMaturityCard
+          zones={activeZones.map((z) => ({ id: z.id, name: z.name }))}
+          selectedZoneId={zoneId}
+          currentParams={sp}
+          percent={maturityPercent}
+          tone={maturityTone(maturityPercent)}
+        />
+
         {/* Stage shortcuts — the common views without touching the filter form. */}
         <div className="mb-3 flex flex-wrap gap-1">
           <Link
-            href="/partnerships"
+            href={buildHref({ status: "", due: "" })}
             className={`btn btn-sm ${!filters.status && !filters.due ? "btn-primary" : ""}`}
           >
             All ({all.length})
           </Link>
           {visitedId && (
             <Link
-              href={`/partnerships?status=${visitedId}`}
+              href={buildHref({ status: visitedId, due: "" })}
               className={`btn btn-sm ${filters.status === visitedId ? "btn-primary" : ""}`}
             >
               Visited ({visitedCount})
@@ -113,7 +147,7 @@ export default async function PartnershipsPage({
           )}
           {developingId && (
             <Link
-              href={`/partnerships?status=${developingId}`}
+              href={buildHref({ status: developingId, due: "" })}
               className={`btn btn-sm ${filters.status === developingId ? "btn-primary" : ""}`}
             >
               Developing ({developingCount})
@@ -121,14 +155,14 @@ export default async function PartnershipsPage({
           )}
           {matureId && (
             <Link
-              href={`/partnerships?status=${matureId}`}
+              href={buildHref({ status: matureId, due: "" })}
               className={`btn btn-sm ${filters.status === matureId ? "btn-primary" : ""}`}
             >
               Mature ({matureCount})
             </Link>
           )}
           <Link
-            href="/partnerships?due=due"
+            href={buildHref({ due: "due", status: "" })}
             className={`btn btn-sm ${filters.due === "due" ? "btn-primary" : ""}`}
           >
             Follow up now ({dueCount})
@@ -136,6 +170,9 @@ export default async function PartnershipsPage({
         </div>
 
         <FilterBar action="/partnerships" active={anyFilter}>
+          {/* Zone lives in the maturity card above, not this form — but the
+              form's plain GET submit still needs to carry it forward. */}
+          <input type="hidden" name="zone" value={zoneId ?? ""} />
           <FilterText
             name="q"
             label="Search"
@@ -164,7 +201,6 @@ export default async function PartnershipsPage({
             value={filters.tier}
             options={active(lists.partnership_tier)}
           />
-          <FilterSelect name="zone" label="Zone" value={filters.zone} options={active(lists.zone)} />
           <FilterCheckbox name="excludeRejected" label="Exclude rejected" checked={excludeRejected} />
           <FilterSelect
             name="sort"
