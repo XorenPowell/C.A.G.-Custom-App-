@@ -57,6 +57,8 @@ export type Settings = {
   pay_period_start_day: number;
   /** Work Face to Face: conversations-per-day target. Resets with the calendar day. */
   face_to_face_daily_goal: number;
+  /** Partnerships zone-maturity card: every zone's target count of Mature-status partnerships. */
+  mature_partnership_goal_per_zone: number;
   /** Per-token color overrides from the Appearance settings screen. Empty object = shipped defaults. */
   theme_overrides: Record<string, string>;
 };

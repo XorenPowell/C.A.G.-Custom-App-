@@ -135,6 +135,7 @@ export type SettingsValues = {
   daily_inquiries_goal: number;
   daily_partnerships_goal: number;
   pay_period_start_day: number;
+  mature_partnership_goal_per_zone: number;
 };
 
 export async function saveSettingsValues(values: SettingsValues): Promise<ActionResult> {
@@ -150,6 +151,10 @@ export async function saveSettingsValues(values: SettingsValues): Promise<Action
       daily_inquiries_goal: toInt(values.daily_inquiries_goal),
       daily_partnerships_goal: toInt(values.daily_partnerships_goal),
       pay_period_start_day: toInt(values.pay_period_start_day, 5),
+      mature_partnership_goal_per_zone: Math.max(
+        1,
+        toInt(values.mature_partnership_goal_per_zone, 30),
+      ),
     })
     .eq("id", true);
 

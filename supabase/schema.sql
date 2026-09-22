@@ -73,6 +73,9 @@ create table settings (
   -- Work Face to Face: conversations-per-day target shown on that section's
   -- home screen. Resets with the calendar day, not stored per-day.
   face_to_face_daily_goal     integer      not null default 10,
+  -- Partnerships screen's zone-maturity card: every zone is measured
+  -- against this same target (Mature-status partnerships in that zone / this).
+  mature_partnership_goal_per_zone integer not null default 30,
   updated_at                  timestamptz  not null default now()
 );
 create trigger settings_updated_at before update on settings
