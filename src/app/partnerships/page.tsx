@@ -1,6 +1,6 @@
 import Link from "next/link";
 import TopBar from "@/components/TopBar";
-import FilterBar, { FilterSelect, FilterText } from "@/components/FilterBar";
+import FilterBar, { FilterCheckbox, FilterSelect, FilterText } from "@/components/FilterBar";
 import {
   filterPartnerships,
   followUpLabel,
@@ -50,6 +50,9 @@ export default async function PartnershipsPage({
   ]);
   const names = nameMap(lists);
 
+  const rejectedId = partnershipStageId(lists, "Rejected");
+  const excludeRejected = sp.excludeRejected === "1";
+
   const filters = {
     q: sp.q ?? "",
     status: sp.status ?? "",
@@ -57,6 +60,7 @@ export default async function PartnershipsPage({
     zone: sp.zone ?? "",
     due: sp.due ?? "",
     sort: sp.sort ?? "follow_up",
+    excludeStatusId: excludeRejected ? rejectedId : null,
   };
   const rows = filterPartnerships(all, filters);
   const anyFilter = [
@@ -65,6 +69,7 @@ export default async function PartnershipsPage({
     filters.tier,
     filters.zone,
     filters.due,
+    excludeRejected,
   ].some(Boolean);
 
   // Counts are always of the whole book, so the header does not move as you filter.
@@ -160,6 +165,7 @@ export default async function PartnershipsPage({
             options={active(lists.partnership_tier)}
           />
           <FilterSelect name="zone" label="Zone" value={filters.zone} options={active(lists.zone)} />
+          <FilterCheckbox name="excludeRejected" label="Exclude rejected" checked={excludeRejected} />
           <FilterSelect
             name="sort"
             label="Sort by"
