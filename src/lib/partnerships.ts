@@ -34,6 +34,8 @@ export type PartnershipFilters = {
   /** "due" = overdue or due today, "overdue" = overdue only. */
   due?: string;
   sort?: string;
+  /** When set, rows with this status_id (Rejected) are dropped. */
+  excludeStatusId?: string | null;
 };
 
 export const PARTNERSHIP_SORTS = [
@@ -54,6 +56,7 @@ export function filterPartnerships(
     if (f.status && p.status_id !== f.status) return false;
     if (f.tier && p.tier_id !== f.tier) return false;
     if (f.zone && p.zone_id !== f.zone) return false;
+    if (f.excludeStatusId && p.status_id === f.excludeStatusId) return false;
 
     if (f.due) {
       const state = followUpState(p, today);

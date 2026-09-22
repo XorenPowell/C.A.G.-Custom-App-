@@ -63,6 +63,31 @@ export function FilterSelect({
   );
 }
 
+export function FilterCheckbox({
+  name,
+  label,
+  checked,
+}: {
+  name: string;
+  label: string;
+  checked: boolean;
+}) {
+  return (
+    <div className="field flex items-end">
+      <label className="flex items-center gap-1.5 pb-2 text-sm">
+        <input
+          type="checkbox"
+          name={name}
+          value="1"
+          defaultChecked={checked}
+          className="size-4 accent-[var(--color-accent)]"
+        />
+        {label}
+      </label>
+    </div>
+  );
+}
+
 export function FilterText({
   name,
   label,
