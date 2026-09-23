@@ -16,7 +16,7 @@ import {
   TextInput,
 } from "@/components/Form";
 import { saveJob, type JobPayload } from "@/app/actions/jobs";
-import { optionsFor, type Lists } from "@/lib/lists";
+import { active, childrenOf, optionsFor, topLevelOf, type Lists } from "@/lib/lists";
 import { calculatedWorkerPay, effectiveWorkerPay, jobTotals, netWorkerPay } from "@/lib/calc";
 import { rateFor } from "@/lib/entity-filters";
 import { dateLongDisplayNoYear, money, timeDisplay } from "@/lib/format";
@@ -334,6 +334,21 @@ export default function JobForm({
     return rec;
   }, [lists]);
 
+  // Only subcategories are pickable — category is just how they're grouped.
+  const categoryGroups = useMemo(
+    () =>
+      active(topLevelOf(lists.service_category))
+        .map((category) => ({
+          category,
+          subcategories: optionsFor(
+            childrenOf(lists.service_category, category.id),
+            form.service_category_id || null,
+          ),
+        }))
+        .filter((g) => g.subcategories.length > 0),
+    [lists.service_category, form.service_category_id],
+  );
+
   return (
     <>
       {/* ---------- customer ---------- */}
@@ -384,10 +399,14 @@ export default function JobForm({
             onChange={(e) => setServiceCategory(e.target.value)}
           >
             <option value="">— select —</option>
-            {optionsFor(lists.service_category, form.service_category_id || null).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+            {categoryGroups.map((g) => (
+              <optgroup key={g.category.id} label={g.category.name}>
+                {g.subcategories.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </Select>
 
@@ -577,6 +596,10 @@ export default function JobForm({
           const calc = calculatedWorkerPay(w);
           const eff = effectiveWorkerPay(w);
           const overridden = w.total_pay_override.trim() !== "";
+          const workerEntity = w.entity_id ? entities.find((e) => e.id === w.entity_id) : null;
+          const flatRate = workerEntity
+            ? rateFor(workerEntity, form.service_category_id || null)?.flat_rate
+            : null;
 
           return (
             <div key={w.key} className="row-repeat mb-3">
@@ -727,6 +750,15 @@ export default function JobForm({
                     Reset to auto
                   </button>
                 </div>
+                {!!flatRate && (
+                  <button
+                    type="button"
+                    className="btn btn-sm mt-1"
+                    onClick={() => patchWorker(i, { total_pay_override: String(flatRate) })}
+                  >
+                    Use flat rate ({money(flatRate)})
+                  </button>
+                )}
               </div>
             </div>
           );

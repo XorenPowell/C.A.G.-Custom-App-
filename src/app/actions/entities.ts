@@ -35,10 +35,12 @@ export type EntityPayload = {
     verified: boolean;
   }[];
   rates: {
+    /** A subcategory id — rates are per subcategory, not the parent category. */
     service_category_id: string;
     regular_rate: number;
     travel_rate: number;
     other_rate: number;
+    flat_rate: number;
   }[];
   fees: { fee_name: string | null; description: string | null; amount: number }[];
   equipment: { item_name: string | null; quantity: number; notes: string | null }[];
@@ -55,9 +57,9 @@ export async function saveEntity(payload: EntityPayload): Promise<ActionResult> 
   if (!payload.entity_name.trim()) return fail("Entity name is required.");
 
   const rateCategories = payload.rates.map((r) => r.service_category_id);
-  if (rateCategories.some((c) => !c)) return fail("Every rate row needs a service category.");
+  if (rateCategories.some((c) => !c)) return fail("Every rate row needs a service subcategory.");
   if (new Set(rateCategories).size !== rateCategories.length)
-    return fail("Only one rate row per service category.");
+    return fail("Only one rate row per service subcategory.");
 
   const row = {
     entity_name: payload.entity_name.trim(),
@@ -141,6 +143,7 @@ export async function saveEntity(payload: EntityPayload): Promise<ActionResult> 
         regular_rate: toNum(r.regular_rate),
         travel_rate: toNum(r.travel_rate),
         other_rate: toNum(r.other_rate),
+        flat_rate: toNum(r.flat_rate),
       })),
     );
     if (error) return fail(error.message);

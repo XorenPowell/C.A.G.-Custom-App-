@@ -5,6 +5,7 @@ import { getJobList, SORT_FIELDS } from "@/lib/jobs";
 import { getEntitiesFull } from "@/lib/entities";
 import { getPartnerships } from "@/lib/partnerships";
 import { active, getLists, lookup, nameMap } from "@/lib/data";
+import { childrenOf, topLevelOf } from "@/lib/lists";
 import { dateDisplay, money, phoneDisplay, timeDisplay } from "@/lib/format";
 import { JOB_STATUSES } from "@/lib/types";
 
@@ -38,6 +39,15 @@ export default async function JobsPage({
     getPartnerships(),
   ]);
   const names = nameMap(lists);
+
+  // Job filter is by subcategory (what jobs.service_category_id actually
+  // holds) — category name prefixed on since there's no optgroup support here.
+  const subcategoryOptions = active(topLevelOf(lists.service_category)).flatMap((category) =>
+    active(childrenOf(lists.service_category, category.id)).map((sub) => ({
+      id: sub.id,
+      name: `${category.name} — ${sub.name}`,
+    })),
+  );
 
   const sort = sp.sort ?? "arrival_date";
   const dir: "asc" | "desc" = sp.dir === undefined ? "asc" : sp.dir === "asc" ? "asc" : "desc";
@@ -99,7 +109,7 @@ export default async function JobsPage({
             name="category"
             label="Service"
             value={sp.category ?? ""}
-            options={active(lists.service_category)}
+            options={subcategoryOptions}
           />
           <FilterSelect
             name="source"

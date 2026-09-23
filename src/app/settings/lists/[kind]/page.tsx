@@ -3,23 +3,19 @@ import TopBar from "@/components/TopBar";
 import { getLists } from "@/lib/data";
 import type { ListKind } from "@/lib/types";
 import ListEditor from "./ListEditor";
+import ServiceCategoryEditor from "./ServiceCategoryEditor";
 
-const META: Record<
-  ListKind,
-  {
-    title: string;
-    withDescription: boolean;
-    descriptionLabel: string;
-    withIntentLevel?: boolean;
-    withDetailsTemplate?: boolean;
-  }
+const META: Partial<
+  Record<
+    ListKind,
+    {
+      title: string;
+      withDescription: boolean;
+      descriptionLabel: string;
+      withIntentLevel?: boolean;
+    }
+  >
 > = {
-  service_category: {
-    title: "Service Categories",
-    withDescription: false,
-    descriptionLabel: "",
-    withDetailsTemplate: true,
-  },
   inquiry_source: { title: "Inquiry Sources", withDescription: false, descriptionLabel: "" },
   zone: {
     title: "Zones",
@@ -51,6 +47,19 @@ export default async function ListPage({
   params: Promise<{ kind: string }>;
 }) {
   const { kind } = await params;
+
+  if (kind === "service_category") {
+    const lists = await getLists();
+    return (
+      <>
+        <TopBar title="Service Categories" back="/settings" backLabel="Settings" />
+        <main className="page max-w-3xl">
+          <ServiceCategoryEditor items={lists.service_category} />
+        </main>
+      </>
+    );
+  }
+
   const meta = META[kind as ListKind];
   if (!meta) notFound();
 
@@ -67,7 +76,6 @@ export default async function ListPage({
           withDescription={meta.withDescription}
           descriptionLabel={meta.descriptionLabel}
           withIntentLevel={meta.withIntentLevel ?? false}
-          withDetailsTemplate={meta.withDetailsTemplate ?? false}
         />
       </main>
     </>

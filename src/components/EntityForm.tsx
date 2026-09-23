@@ -18,7 +18,7 @@ import {
 } from "@/components/Form";
 import EquipmentItemInput from "@/components/EquipmentItemInput";
 import { saveEntity, type EntityPayload } from "@/app/actions/entities";
-import { active, optionsFor, type Lists } from "@/lib/lists";
+import { active, childrenOf, optionsFor, topLevelOf, type Lists } from "@/lib/lists";
 import { entityType } from "@/lib/format";
 import {
   ENTITY_STATUSES,
@@ -77,6 +77,7 @@ export default function EntityForm({
       regular_rate: Number(r.regular_rate),
       travel_rate: Number(r.travel_rate),
       other_rate: Number(r.other_rate),
+      flat_rate: Number(r.flat_rate),
     })),
   );
   const [fees, setFees] = useState<FeeRow[]>(
@@ -99,7 +100,17 @@ export default function EntityForm({
     setStatusMsg(null);
   }
 
-  const categories = active(lists.service_category);
+  // References are verified at the category level; rates are per subcategory
+  // (the rate-bearing, dispatchable unit).
+  const topCategories = active(topLevelOf(lists.service_category));
+  function subcategoryGroupsFor(selectedId: string | null) {
+    return topCategories
+      .map((category) => ({
+        category,
+        subcategories: optionsFor(childrenOf(lists.service_category, category.id), selectedId),
+      }))
+      .filter((g) => g.subcategories.length > 0);
+  }
   const vehicles = active(lists.vehicle_type);
 
   /** Every default note in the library, used to tell autofill from real writing. */
@@ -268,8 +279,9 @@ export default function EntityForm({
 
       <Section title="Rates">
         <p className="muted mb-2 text-xs">
-          One row per service this entity can perform. No row means they will not appear
-          in the dispatch picker for that service.
+          One row per subcategory this entity can perform. No row means they will not appear
+          in the dispatch picker for that service. Hourly and flat can both be set — the
+          dispatcher picks which to use per job.
         </p>
         {rates.map((r, i) => (
           <RepeatRow
@@ -278,7 +290,7 @@ export default function EntityForm({
             onRemove={() => setRates((prev) => prev.filter((_, j) => j !== i))}
           >
             <Select
-              label="Service category"
+              label="Service subcategory"
               value={r.service_category_id}
               onChange={(e) =>
                 setRates((prev) =>
@@ -289,13 +301,17 @@ export default function EntityForm({
               }
             >
               <option value="">— select —</option>
-              {optionsFor(lists.service_category, r.service_category_id || null).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
+              {subcategoryGroupsFor(r.service_category_id || null).map((g) => (
+                <optgroup key={g.category.id} label={g.category.name}>
+                  {g.subcategories.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </Select>
-            <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-4">
               <MoneyInput
                 label="Regular"
                 value={r.regular_rate}
@@ -329,6 +345,17 @@ export default function EntityForm({
                   )
                 }
               />
+              <MoneyInput
+                label="Flat"
+                value={r.flat_rate}
+                onChange={(e) =>
+                  setRates((prev) =>
+                    prev.map((row, j) =>
+                      j === i ? { ...row, flat_rate: Number(e.target.value) } : row,
+                    ),
+                  )
+                }
+              />
             </div>
           </RepeatRow>
         ))}
@@ -336,13 +363,19 @@ export default function EntityForm({
           onClick={() =>
             setRates((p) => [
               ...p,
-              { service_category_id: "", regular_rate: 0, travel_rate: 0, other_rate: 0 },
+              {
+                service_category_id: "",
+                regular_rate: 0,
+                travel_rate: 0,
+                other_rate: 0,
+                flat_rate: 0,
+              },
             ])
           }
         >
           Add rate
         </AddButton>
-        {categories.length === 0 && (
+        {topCategories.length === 0 && (
           <p className="muted mt-2 text-xs">No service categories defined yet.</p>
         )}
       </Section>
@@ -504,7 +537,7 @@ export default function EntityForm({
               }
             >
               <option value="">— select —</option>
-              {optionsFor(lists.service_category, r.service_category_id).map((c) => (
+              {optionsFor(topLevelOf(lists.service_category), r.service_category_id).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>

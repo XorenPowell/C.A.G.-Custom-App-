@@ -98,12 +98,18 @@ create table list_items (
   -- Used by service_category: pre-fills a new job's Details section when
   -- that category is picked and Details is still empty. Null means no pre-fill.
   details_template text,
+  -- Used by service_category: null = a top-level category, set = a
+  -- subcategory under that category (one level only). Jobs and entity_rates
+  -- reference subcategories; entity_references reference the top-level
+  -- category. Unused by every other kind.
+  parent_id   uuid references list_items(id) on delete cascade,
   sort_order  integer not null default 0,
   archived    boolean not null default false,
   created_at  timestamptz not null default now()
 );
 create index list_items_kind_idx on list_items (kind, archived, sort_order);
 create unique index list_items_kind_name_idx on list_items (kind, lower(name));
+create index list_items_parent_idx on list_items (parent_id);
 
 create table message_templates (
   id            uuid primary key default gen_random_uuid(),
@@ -182,7 +188,7 @@ create table entity_references (
 );
 create index entity_references_entity_idx on entity_references (entity_id);
 
--- One row per service category the entity can perform.
+-- One row per (subcategory) service the entity can perform.
 -- No row => cannot perform that service => excluded from the dispatch picker.
 create table entity_rates (
   id                  uuid primary key default gen_random_uuid(),
@@ -191,6 +197,9 @@ create table entity_rates (
   regular_rate        numeric(12,2) not null default 0,
   travel_rate         numeric(12,2) not null default 0,
   other_rate          numeric(12,2) not null default 0,
+  -- An entity can have an hourly rate above, a flat rate here, or both —
+  -- whichever's configured, the dispatcher picks per job which applies.
+  flat_rate           numeric(12,2) not null default 0,
   unique (entity_id, service_category_id)
 );
 create index entity_rates_entity_idx on entity_rates (entity_id);

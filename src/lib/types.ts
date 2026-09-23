@@ -37,6 +37,8 @@ export type ListItem = {
   default_intent_level: number | null;
   /** service_category only: pre-fills a job's Details when this category is picked and Details is empty. */
   details_template: string | null;
+  /** service_category only: null = top-level category, set = a subcategory under that category. */
+  parent_id: string | null;
   sort_order: number;
   archived: boolean;
 };
@@ -108,6 +110,8 @@ export type EntityRate = {
   regular_rate: number;
   travel_rate: number;
   other_rate: number;
+  /** Can coexist with the hourly rates above — the dispatcher picks per job which to use. */
+  flat_rate: number;
 };
 
 export type EntityFee = {

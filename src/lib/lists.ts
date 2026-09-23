@@ -37,6 +37,16 @@ export function optionsFor(items: ListItem[], selectedId: string | null): ListIt
   return out;
 }
 
+/** service_category only: the top-level categories (parent_id null). */
+export function topLevelOf(items: ListItem[]): ListItem[] {
+  return items.filter((i) => !i.parent_id);
+}
+
+/** service_category only: the subcategories under one category. */
+export function childrenOf(items: ListItem[], parentId: string): ListItem[] {
+  return items.filter((i) => i.parent_id === parentId);
+}
+
 /** Flat id -> name map across every list, for rendering FK columns. */
 export function nameMap(lists: Lists): Map<string, string> {
   const m = new Map<string, string>();

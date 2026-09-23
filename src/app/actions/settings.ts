@@ -12,8 +12,6 @@ export type ListItemDraft = {
   description: string | null;
   /** conversation_outcome only. Blank stays blank — a missing default is not 0. */
   default_intent_level: number | string | null;
-  /** service_category only. */
-  details_template: string | null;
   sort_order: number;
   archived: boolean;
 };
@@ -43,7 +41,6 @@ export async function saveList(
       description: orNull(item.description),
       default_intent_level:
         intentLevel === null ? null : Math.min(10, Math.max(0, intentLevel)),
-      details_template: orNull(item.details_template),
       sort_order: (index + 1) * 10,
       archived: item.archived,
     };
@@ -53,6 +50,78 @@ export async function saveList(
       : await supabase.from("list_items").insert(row);
 
     if (res.error) return fail(res.error.message);
+  }
+
+  revalidatePath("/", "layout");
+  return ok();
+}
+
+export type SubcategoryDraft = {
+  id: string | null;
+  name: string;
+  /** Pre-fills a job's Details when this subcategory is picked and Details is empty. */
+  details_template: string | null;
+  archived: boolean;
+};
+
+export type CategoryDraft = {
+  id: string | null;
+  name: string;
+  archived: boolean;
+  subcategories: SubcategoryDraft[];
+};
+
+/**
+ * Saves the whole service-category tree at once: upserts every category,
+ * then upserts its subcategories against that category's (possibly
+ * newly-created) id. Deleting a row goes through `deleteListItem` instead —
+ * same as the generic list editor, a delete happens immediately, not on save.
+ */
+export async function saveServiceCategories(categories: CategoryDraft[]): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const named = categories.filter((c) => c.name.trim() !== "");
+  if (named.length !== categories.length) return fail("Every category needs a name.");
+  for (const c of named) {
+    const subNamed = c.subcategories.filter((s) => s.name.trim() !== "");
+    if (subNamed.length !== c.subcategories.length) {
+      return fail(`Every subcategory under "${c.name.trim()}" needs a name.`);
+    }
+  }
+
+  for (const [ci, cat] of named.entries()) {
+    const catRow = {
+      kind: "service_category" as const,
+      name: cat.name.trim(),
+      archived: cat.archived,
+      sort_order: (ci + 1) * 10,
+      parent_id: null,
+    };
+
+    let categoryId = cat.id;
+    if (categoryId) {
+      const res = await supabase.from("list_items").update(catRow).eq("id", categoryId);
+      if (res.error) return fail(res.error.message);
+    } else {
+      const res = await supabase.from("list_items").insert(catRow).select("id").single();
+      if (res.error) return fail(res.error.message);
+      categoryId = res.data.id;
+    }
+
+    for (const [si, sub] of cat.subcategories.entries()) {
+      const subRow = {
+        kind: "service_category" as const,
+        name: sub.name.trim(),
+        details_template: orNull(sub.details_template),
+        archived: sub.archived,
+        sort_order: (si + 1) * 10,
+        parent_id: categoryId,
+      };
+      const res = sub.id
+        ? await supabase.from("list_items").update(subRow).eq("id", sub.id)
+        : await supabase.from("list_items").insert(subRow);
+      if (res.error) return fail(res.error.message);
+    }
   }
 
   revalidatePath("/", "layout");

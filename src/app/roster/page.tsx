@@ -4,6 +4,7 @@ import FilterBar, { FilterSelect, FilterText } from "@/components/FilterBar";
 import StaleFlag from "@/components/StaleFlag";
 import { filterEntities, getEntitiesFull } from "@/lib/entities";
 import { active, getLists, lookup, nameMap } from "@/lib/data";
+import { childrenOf, topLevelOf } from "@/lib/lists";
 import { entityType, phoneDisplay, phoneLinkTarget } from "@/lib/format";
 import { ENTITY_STATUSES } from "@/lib/types";
 
@@ -29,14 +30,28 @@ export default async function RosterPage({
   const rows = filterEntities(all, filters);
   const anyFilter = [sp.q, sp.status, sp.zone, sp.category, sp.vehicle, sp.avail].some(Boolean);
 
+  // "Can perform" filters by subcategory (what entity_rates actually key on)
+  // — category name prefixed on since there's no optgroup support here.
+  const subcategoryOptions = active(topLevelOf(lists.service_category)).flatMap((category) =>
+    active(childrenOf(lists.service_category, category.id)).map((sub) => ({
+      id: sub.id,
+      name: `${category.name} — ${sub.name}`,
+    })),
+  );
+
   return (
     <>
       <TopBar
         title="Roster"
         action={
-          <Link href="/roster/new" className="btn btn-sm btn-primary shrink-0">
-            + New
-          </Link>
+          <div className="flex shrink-0 gap-2">
+            <Link href="/roster/offerings" className="btn btn-sm">
+              Offerings
+            </Link>
+            <Link href="/roster/new" className="btn btn-sm btn-primary">
+              + New
+            </Link>
+          </div>
         }
       />
       <main className="page">
@@ -58,7 +73,7 @@ export default async function RosterPage({
             name="category"
             label="Can perform"
             value={filters.category}
-            options={active(lists.service_category)}
+            options={subcategoryOptions}
           />
           <FilterSelect
             name="vehicle"

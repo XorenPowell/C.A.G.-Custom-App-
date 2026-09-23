@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import StaleFlag from "@/components/StaleFlag";
-import { canPerform, coversDate, matchesText } from "@/lib/entity-filters";
+import { canPerform, coversDate, matchesText, rateFor } from "@/lib/entity-filters";
 import { entityType, phoneDisplay } from "@/lib/format";
 import { money } from "@/lib/format";
 import type { EntityFull } from "@/lib/types";
@@ -105,9 +105,7 @@ export default function DispatchPicker({
           {matching.map((e) => {
             const why = reasons.get(e.id) ?? [];
             const picked = alreadyPicked.includes(e.id);
-            const rate = serviceCategoryId
-              ? e.entity_rates.find((r) => r.service_category_id === serviceCategoryId)
-              : null;
+            const rate = rateFor(e, serviceCategoryId);
 
             return (
               <button
@@ -129,6 +127,7 @@ export default function DispatchPicker({
                   <div className="mono mt-0.5 text-xs">
                     reg {money(rate.regular_rate)} · trav {money(rate.travel_rate)} · other{" "}
                     {money(rate.other_rate)}
+                    {rate.flat_rate > 0 ? ` · flat ${money(rate.flat_rate)}` : ""}
                   </div>
                 )}
                 <div className="mt-1 flex flex-wrap gap-1">
