@@ -5,6 +5,7 @@ import { getJobList, SORT_FIELDS } from "@/lib/jobs";
 import { getEntitiesFull } from "@/lib/entities";
 import { getPartnerships } from "@/lib/partnerships";
 import { active, getLists, lookup, nameMap } from "@/lib/data";
+import { chicagoDateOf } from "@/lib/dates";
 import { dateDisplay, money, phoneDisplay, timeDisplay } from "@/lib/format";
 import { JOB_STATUSES } from "@/lib/types";
 
@@ -154,6 +155,9 @@ export default async function JobsPage({
                   <span className="mono font-bold">{j.job_id}</span>
                   <span className={`badge ${STATUS_TONE[j.status] ?? ""}`}>{j.status}</span>
                 </div>
+                <div className="muted text-xs">
+                  Created {dateDisplay(chicagoDateOf(j.created_at))}
+                </div>
                 <div className="font-semibold">{j.customer_name || "—"}</div>
                 <div className="muted text-sm">
                   {lookup(names, j.service_category_id)} · {lookup(names, j.zone_id)}
@@ -222,6 +226,9 @@ export default async function JobsPage({
                         <Link href={`/jobs/${j.id}`} className="link mono font-semibold">
                           {j.job_id}
                         </Link>
+                        <div className="muted text-xs">
+                          Created {dateDisplay(chicagoDateOf(j.created_at))}
+                        </div>
                       </td>
                       <td className="whitespace-nowrap">{dateDisplay(j.date_of_invoice)}</td>
                       <td className="whitespace-nowrap">

@@ -75,6 +75,19 @@ export function dateLongDisplayNoYear(iso: string | null | undefined): string {
   });
 }
 
+/** Full timestamp (timestamptz) in Chicago local time — e.g. "Sep 24, 2026, 2:32 PM". */
+export function instantDisplay(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-US", {
+    timeZone: "America/Chicago",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 /** "14:30:00" -> "2:30 PM" */
 export function timeDisplay(t: string | null | undefined): string {
   if (!t) return "—";
