@@ -8,6 +8,7 @@ import { getEntitiesFull } from "@/lib/entities";
 import { getPartnerships } from "@/lib/partnerships";
 import { getLists, getSettings, getTemplates, lookup, nameMap, partnershipReferralId } from "@/lib/data";
 import { effectiveWorkerPay, netWorkerPay } from "@/lib/calc";
+import { instantDisplay } from "@/lib/format";
 
 export default async function JobDetailPage({
   params,
@@ -61,6 +62,11 @@ export default async function JobDetailPage({
     <>
       <TopBar title={job.job_id} back="/jobs" backLabel="Jobs" />
       <main className="page max-w-3xl">
+        <p className="mb-2 text-sm font-semibold">
+          Lead created:{" "}
+          <span className="text-[var(--color-accent)]">{instantDisplay(job.created_at)}</span>
+        </p>
+
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="badge border-[var(--color-line)]">{job.status}</span>
           {financials?.repeat_customer && (
