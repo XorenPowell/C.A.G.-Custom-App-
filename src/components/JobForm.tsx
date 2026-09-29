@@ -467,26 +467,57 @@ export default function JobForm({
             ))}
           </Select>
 
-          <TextInput
-            label="Follow-up date/time"
-            type="datetime-local"
-            value={form.follow_up_local}
-            onChange={(e) => patch({ follow_up_local: e.target.value })}
-            hint="When to call this lead back. Blank means it won't show up anywhere. Shows on Home under Calls Today when it falls today."
-          />
+          <div className="field">
+            <span className="label">Follow-up date/time</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="datetime-local"
+                className="input"
+                value={form.follow_up_local}
+                onChange={(e) => patch({ follow_up_local: e.target.value })}
+              />
+              <button
+                type="button"
+                className="btn btn-sm shrink-0"
+                disabled={!form.follow_up_local}
+                onClick={() => patch({ follow_up_local: "" })}
+              >
+                Clear
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-[var(--color-muted)]">
+              When to call this lead back. Blank means it won&rsquo;t show up anywhere. Shows on
+              Home under Calls Today when it falls today.
+            </p>
+          </div>
         </div>
       </Section>
 
       {/* ---------- scheduling ---------- */}
       <Section title="Scheduling">
         <div className="grid-form">
-          <TextInput
-            label="Invoice date"
-            type="date"
-            value={form.date_of_invoice}
-            onChange={(e) => patch({ date_of_invoice: e.target.value })}
-            hint="Drives week/month grouping and the dashboard date range."
-          />
+          <div className="field">
+            <span className="label">Invoice date</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                className="input"
+                value={form.date_of_invoice}
+                onChange={(e) => patch({ date_of_invoice: e.target.value })}
+              />
+              <button
+                type="button"
+                className="btn btn-sm shrink-0"
+                disabled={!form.date_of_invoice}
+                onClick={() => patch({ date_of_invoice: "" })}
+              >
+                Clear
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-[var(--color-muted)]">
+              Drives week/month grouping and the dashboard date range.
+            </p>
+          </div>
           <NumberInput
             label="Estimated duration (minutes)"
             step="15"
