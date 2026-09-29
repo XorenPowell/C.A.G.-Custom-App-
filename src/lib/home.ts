@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getJobEntityNames } from "@/lib/jobs";
-import { todayISO } from "@/lib/dates";
+import { chicagoDateOf, todayISO } from "@/lib/dates";
 
 /**
  * Home screen data (spec: new home screen + theme system).
@@ -51,4 +51,29 @@ export async function getBookedToday(): Promise<BookedTodayTicket[]> {
     address: r.addresses?.[0] ?? null,
     entityNames: entityNames.get(r.id) ?? [],
   }));
+}
+
+export type CallToday = {
+  id: string;
+  job_id: string;
+  customer_name: string | null;
+  status: string;
+  /** UTC instant — render in Chicago local time. */
+  follow_up_at: string;
+};
+
+/** Every job with a follow-up set for today (Chicago calendar day), earliest first. */
+export async function getCallsToday(): Promise<CallToday[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("id, job_id, customer_name, status, follow_up_at")
+    .not("follow_up_at", "is", null);
+  if (error) throw new Error(error.message);
+
+  const today = todayISO();
+  return ((data ?? []) as CallToday[])
+    .filter((j) => chicagoDateOf(j.follow_up_at) === today)
+    .sort((a, b) => a.follow_up_at.localeCompare(b.follow_up_at));
 }

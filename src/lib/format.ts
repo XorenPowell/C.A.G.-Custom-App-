@@ -88,6 +88,16 @@ export function instantDisplay(iso: string | null | undefined): string {
   });
 }
 
+/** Time-of-day portion of a timestamp (timestamptz) in Chicago local time — e.g. "2:32 PM". */
+export function instantTimeDisplay(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleTimeString("en-US", {
+    timeZone: "America/Chicago",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 /** "14:30:00" -> "2:30 PM" */
 export function timeDisplay(t: string | null | undefined): string {
   if (!t) return "—";

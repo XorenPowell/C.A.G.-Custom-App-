@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getDashboard } from "@/lib/dashboard";
-import { getBookedToday } from "@/lib/home";
+import { getBookedToday, getCallsToday } from "@/lib/home";
 import { getLists, getSettings, lookup, nameMap } from "@/lib/data";
 import {
   RANGE_PRESETS,
@@ -9,7 +9,7 @@ import {
   resolveRange,
   type RangePreset,
 } from "@/lib/dates";
-import { money, timeDisplay } from "@/lib/format";
+import { instantTimeDisplay, money, timeDisplay } from "@/lib/format";
 
 const NAV_ITEMS: { href: string; label: string; badge?: string }[] = [
   { href: "/jobs", label: "Jobs" },
@@ -36,9 +36,10 @@ export default async function HomePage({
   const [lists, settings] = await Promise.all([getLists(), getSettings()]);
   const names = nameMap(lists);
 
-  const [data, bookedToday] = await Promise.all([
+  const [data, bookedToday, callsToday] = await Promise.all([
     getDashboard(range, names),
     getBookedToday(),
+    getCallsToday(),
   ]);
 
   // Next payout is a fixed weekly cycle, not the selected range — the most
@@ -200,6 +201,49 @@ export default async function HomePage({
                   </div>
                   <div className="mt-2 flex h-10 items-center border-t border-dashed border-[var(--ticket-divider)] text-sm font-medium">
                     {t.entityNames.length ? t.entityNames.join(", ") : "Unassigned"}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ---------- calls today: leads with a follow-up due today ---------- */}
+      <section className="mt-4 border-b border-[var(--border)] bg-[var(--panel)] py-4">
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="mb-3 flex items-center gap-2">
+            <h2 className="font-heading flex-1 text-sm font-semibold uppercase tracking-wide">
+              Calls Today
+            </h2>
+            <span className="badge border-[var(--pill-border)] bg-[var(--pill-bg)] text-[var(--text)]">
+              {callsToday.length}
+            </span>
+          </div>
+
+          {callsToday.length === 0 ? (
+            <p className="muted text-sm">No follow-ups due today.</p>
+          ) : (
+            <div className="scroll-x flex gap-3 pb-1">
+              {callsToday.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/jobs/${c.id}`}
+                  className="flex w-64 shrink-0 flex-col justify-between rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--panel-raised)] p-3"
+                >
+                  <div>
+                    <div className="font-heading text-lg font-semibold">
+                      {instantTimeDisplay(c.follow_up_at)}
+                    </div>
+                    <div className="mt-0.5 text-sm text-[var(--text-muted)]">
+                      {c.customer_name || "No name"}
+                    </div>
+                    <div className="mt-1 truncate text-sm text-[var(--text-faint)]">
+                      {c.job_id}
+                    </div>
+                  </div>
+                  <div className="mt-2 flex h-10 items-center border-t border-dashed border-[var(--ticket-divider)] text-sm font-medium">
+                    {c.status}
                   </div>
                 </Link>
               ))}
