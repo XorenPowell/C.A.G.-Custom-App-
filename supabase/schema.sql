@@ -366,6 +366,10 @@ create table jobs (
   details             text,
   google_calendar_event_id text,              -- hidden from the UI
 
+  -- When the dispatcher needs to call this lead back. Null means it never
+  -- shows up anywhere — sole source for the Home screen's Calls Today section.
+  follow_up_at        timestamptz,
+
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now()
 );
@@ -373,6 +377,7 @@ create trigger jobs_updated_at before update on jobs
   for each row execute function set_updated_at();
 create index jobs_status_idx on jobs (status);
 create index jobs_arrival_idx on jobs (arrival_date);
+create index jobs_follow_up_at_idx on jobs (follow_up_at);
 create index jobs_invoice_date_idx on jobs (date_of_invoice);
 create index jobs_category_idx on jobs (service_category_id);
 create index jobs_inquiry_source_idx on jobs (inquiry_source_id);

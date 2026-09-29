@@ -210,6 +210,8 @@ export type Job = {
   /** Separate from notes — meant for message templates via {{details}}. */
   details: string | null;
   google_calendar_event_id: string | null;
+  /** When the dispatcher needs to call this lead back. Null means it doesn't show up anywhere. */
+  follow_up_at: string | null;
   created_at: string;
 };
 
