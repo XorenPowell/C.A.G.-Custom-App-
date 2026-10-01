@@ -8,8 +8,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * The date range is applied in SQL, then the (already small) result set is
  * aggregated in memory. Two different date fields are in play and the screen
  * labels which is which:
- *   - business activity  -> date_of_invoice, falling back to arrival_date then
- *     created_at, matching how the job_financials view derives week/month
+ *   - business activity  -> arrival_date (when the job actually happened —
+ *     you don't earn the commission until the job is done), falling back to
+ *     date_of_invoice then created_at for jobs with no arrival date set
  *   - demand generation  -> created_at, because an inquiry is generated when
  *     it arrives, not when it is invoiced
  *   - partnerships       -> every partnership counts, at whatever stage
@@ -54,7 +55,7 @@ async function pageAll<T>(
 
 /** The date a job counts on for business activity. */
 function activityDate(j: JobRow): string {
-  return (j.date_of_invoice ?? j.arrival_date ?? j.created_at).slice(0, 10);
+  return (j.arrival_date ?? j.date_of_invoice ?? j.created_at).slice(0, 10);
 }
 
 function within(date: string | null, r: DateRange): boolean {
