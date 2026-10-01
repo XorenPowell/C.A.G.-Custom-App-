@@ -1,16 +1,21 @@
 import { createClient } from "@/lib/supabase/server";
-import type { DateRange } from "@/lib/dates";
+import { chicagoDateOf, type DateRange } from "@/lib/dates";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Dashboard aggregation.
  *
  * The date range is applied in SQL, then the (already small) result set is
- * aggregated in memory. Two different date fields are in play and the screen
- * labels which is which:
- *   - business activity  -> arrival_date (when the job actually happened —
- *     you don't earn the commission until the job is done), falling back to
- *     date_of_invoice then created_at for jobs with no arrival date set
+ * aggregated in memory. Several different date fields are in play and the
+ * screen labels which is which:
+ *   - business activity  -> date_of_invoice, falling back to arrival_date
+ *     then created_at, matching how the job_financials view derives
+ *     week/month. Drives volume (jobsCompleted/Booked/Cancelled) and revenue.
+ *   - commission         -> completed_at (stamped by trigger the moment a
+ *     job's status becomes Completed), NOT business activity date — you
+ *     don't earn the commission until the job is actually done. A job with
+ *     no completed_at (shouldn't happen for a Completed job, but just in
+ *     case) never counts toward commission.
  *   - demand generation  -> created_at, because an inquiry is generated when
  *     it arrives, not when it is invoiced
  *   - partnerships       -> every partnership counts, at whatever stage
@@ -31,11 +36,12 @@ type JobRow = {
   date_of_invoice: string | null;
   arrival_date: string | null;
   created_at: string;
+  completed_at: string | null;
   total_invoice_paid: number;
 };
 
 const JOB_COLUMNS =
-  "id, status, service_category_id, inquiry_source_id, partnership_id, date_of_invoice, arrival_date, created_at, total_invoice_paid";
+  "id, status, service_category_id, inquiry_source_id, partnership_id, date_of_invoice, arrival_date, created_at, completed_at, total_invoice_paid";
 
 /** Reads every matching row, in pages, so nothing is silently truncated. */
 async function pageAll<T>(
@@ -53,9 +59,9 @@ async function pageAll<T>(
   return out;
 }
 
-/** The date a job counts on for business activity. */
+/** The date a job counts on for business activity (volume, revenue — not commission). */
 function activityDate(j: JobRow): string {
-  return (j.arrival_date ?? j.date_of_invoice ?? j.created_at).slice(0, 10);
+  return (j.date_of_invoice ?? j.arrival_date ?? j.created_at).slice(0, 10);
 }
 
 function within(date: string | null, r: DateRange): boolean {
@@ -134,12 +140,20 @@ export async function getDashboard(
       .range(from, to),
   );
 
-  // ---- volume, revenue, commission: scoped by activity date ---------------
+  // ---- volume, revenue: scoped by activity date ----------------------------
   const activity = jobs.filter((j) => within(activityDate(j), range));
   const completed = activity.filter((j) => j.status === "Completed");
 
   const totalRevenue = completed.reduce((s, j) => s + Number(j.total_invoice_paid ?? 0), 0);
-  const totalCommission = completed.reduce(
+
+  // ---- commission: scoped by completion date, not business activity -------
+  // A job isn't earned until it's actually done — dated by completed_at
+  // (stamped by trigger when status becomes Completed), independent of
+  // whichever activity-date job happens to also fall in range above.
+  const completedByCompletionDate = jobs.filter(
+    (j) => j.status === "Completed" && j.completed_at && within(chicagoDateOf(j.completed_at), range),
+  );
+  const totalCommission = completedByCompletionDate.reduce(
     (s, j) => s + Number(financials.get(j.id)?.commission_amount ?? 0),
     0,
   );
@@ -163,7 +177,9 @@ export async function getDashboard(
 
     totalRevenue,
     totalCommission,
-    avgCommissionPerJob: completed.length ? totalCommission / completed.length : 0,
+    avgCommissionPerJob: completedByCompletionDate.length
+      ? totalCommission / completedByCompletionDate.length
+      : 0,
     revenueByCategory: tally(
       completed.map((j) => ({
         key: j.service_category_id,
@@ -208,7 +224,9 @@ async function fetchJobsInRange(
     );
   }
 
-  // A job is relevant if any of its three candidate dates lands in the range.
+  // A job is relevant if any of its candidate dates lands in the range. This
+  // net only needs to be a superset — within()/chicagoDateOf() downstream do
+  // the precise, timezone-correct cut.
   const clauses: string[] = [];
   const bound = (col: string) =>
     [range.start ? `${col}.gte.${range.start}` : null, range.end ? `${col}.lte.${range.end}` : null]
@@ -218,14 +236,17 @@ async function fetchJobsInRange(
   for (const col of ["date_of_invoice", "arrival_date"]) {
     clauses.push(`and(${bound(col)})`);
   }
-  // created_at is a timestamp; widen the upper bound to cover the whole end day.
-  const createdBound = [
-    range.start ? `created_at.gte.${range.start}` : null,
-    range.end ? `created_at.lt.${nextDay(range.end)}` : null,
-  ]
-    .filter(Boolean)
-    .join(",");
-  clauses.push(`and(${createdBound})`);
+  // created_at and completed_at are timestamps; widen the upper bound to
+  // cover the whole end day.
+  for (const col of ["created_at", "completed_at"]) {
+    const tsBound = [
+      range.start ? `${col}.gte.${range.start}` : null,
+      range.end ? `${col}.lt.${nextDay(range.end)}` : null,
+    ]
+      .filter(Boolean)
+      .join(",");
+    clauses.push(`and(${tsBound})`);
+  }
 
   return pageAll<JobRow>((from, to) =>
     supabase.from("jobs").select(JOB_COLUMNS).or(clauses.join(",")).range(from, to),
