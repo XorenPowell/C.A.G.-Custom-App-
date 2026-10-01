@@ -175,8 +175,8 @@ export default async function ReportsPage({
         </Panel>
 
         <p className="muted mt-4 text-xs">
-          Volume, revenue and commission are scoped by invoice date (falling back to
-          arrival date, then created date). Inquiries, conversion and referrals are scoped
+          Volume, revenue and commission are scoped by arrival date (falling back to
+          invoice date, then created date). Inquiries, conversion and referrals are scoped
           by the date the job was created. New partnerships use their signed date —
           partnership leads with no signed date are excluded from every figure on this
           screen. Cards and fliers are lifetime running totals across signed partnerships.
