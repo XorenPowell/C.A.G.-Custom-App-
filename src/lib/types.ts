@@ -212,6 +212,8 @@ export type Job = {
   google_calendar_event_id: string | null;
   /** When the dispatcher needs to call this lead back. Null means it doesn't show up anywhere. */
   follow_up_at: string | null;
+  /** Trigger-maintained: stamped the moment status becomes Completed, cleared if it moves back out. */
+  completed_at: string | null;
   created_at: string;
 };
 

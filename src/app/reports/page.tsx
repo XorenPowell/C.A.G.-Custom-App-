@@ -175,13 +175,13 @@ export default async function ReportsPage({
         </Panel>
 
         <p className="muted mt-4 text-xs">
-          Volume, revenue and commission are scoped by arrival date (falling back to
-          invoice date, then created date). Inquiries, conversion and referrals are scoped
+          Volume and revenue are scoped by invoice date (falling back to arrival date, then
+          created date). Commission is scoped separately, by completion date — you don&rsquo;t
+          earn it until the job is actually done, so it can fall in a different period than
+          the job&rsquo;s invoice/arrival date. Inquiries, conversion and referrals are scoped
           by the date the job was created. New partnerships use their signed date —
           partnership leads with no signed date are excluded from every figure on this
           screen. Cards and fliers are lifetime running totals across signed partnerships.
-          Commission is the real, waterfall-adjusted take on each job — worker pay and the
-          POS fee are covered first from the real invoice, then commission, then CAG.
         </p>
       </main>
     </>
