@@ -33,6 +33,7 @@ drop function if exists touch_entity_availability() cascade;
 drop function if exists next_job_id()     cascade;
 drop function if exists stamp_partnership_stage() cascade;
 drop function if exists sync_job_primary_arrival() cascade;
+drop function if exists stamp_job_completed_at() cascade;
 
 create extension if not exists "pgcrypto";
 
@@ -370,14 +371,32 @@ create table jobs (
   -- shows up anywhere — sole source for the Home screen's Calls Today section.
   follow_up_at        timestamptz,
 
+  -- Stamped by trigger the moment status transitions into 'Completed', and
+  -- cleared if it moves back out. Commission on the dashboard is dated by
+  -- this — you don't earn it until the job is actually done.
+  completed_at        timestamptz,
+
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now()
 );
 create trigger jobs_updated_at before update on jobs
   for each row execute function set_updated_at();
+
+create function stamp_job_completed_at() returns trigger language plpgsql as $$
+begin
+  if new.status = 'Completed' and (tg_op = 'INSERT' or old.status is distinct from 'Completed') then
+    new.completed_at := now();
+  elsif new.status <> 'Completed' then
+    new.completed_at := null;
+  end if;
+  return new;
+end $$;
+create trigger jobs_stamp_completed_at before insert or update on jobs
+  for each row execute function stamp_job_completed_at();
 create index jobs_status_idx on jobs (status);
 create index jobs_arrival_idx on jobs (arrival_date);
 create index jobs_follow_up_at_idx on jobs (follow_up_at);
+create index jobs_completed_at_idx on jobs (completed_at);
 create index jobs_invoice_date_idx on jobs (date_of_invoice);
 create index jobs_category_idx on jobs (service_category_id);
 create index jobs_inquiry_source_idx on jobs (inquiry_source_id);
