@@ -6,7 +6,13 @@ import { getEntitiesFull } from "@/lib/entities";
 import { getPartnerships } from "@/lib/partnerships";
 import { active, getLists, lookup, nameMap } from "@/lib/data";
 import { chicagoDateOf } from "@/lib/dates";
-import { dateDisplay, money, phoneDisplay, timeDisplay } from "@/lib/format";
+import {
+  dateDisplay,
+  instantTimeDisplay,
+  money,
+  phoneDisplay,
+  timeDisplay,
+} from "@/lib/format";
 import { JOB_STATUSES } from "@/lib/types";
 
 const STATUS_TONE: Record<string, string> = {
@@ -206,9 +212,9 @@ export default async function JobsPage({
               <thead>
                 <tr>
                   <SortHeader field="job_id" label="Job" />
-                  <SortHeader field="date_of_invoice" label="Invoiced" />
-                  <SortHeader field="arrival_date" label="Arrival" />
                   <SortHeader field="customer_name" label="Customer" />
+                  <SortHeader field="arrival_date" label="Arrival" />
+                  <SortHeader field="follow_up_at" label="Follow-up" />
                   <th>Service</th>
                   <th>Source</th>
                   <th>Workers</th>
@@ -230,17 +236,28 @@ export default async function JobsPage({
                           Created {dateDisplay(chicagoDateOf(j.created_at))}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap">{dateDisplay(j.date_of_invoice)}</td>
+                      <td>
+                        {j.customer_name || "—"}
+                        {j.customer_phone && (
+                          <div className="muted text-xs">{phoneDisplay(j.customer_phone)}</div>
+                        )}
+                      </td>
                       <td className="whitespace-nowrap">
                         {dateDisplay(j.arrival_date)}
                         {j.arrival_time && (
                           <div className="muted text-xs">{timeDisplay(j.arrival_time)}</div>
                         )}
                       </td>
-                      <td>
-                        {j.customer_name || "—"}
-                        {j.customer_phone && (
-                          <div className="muted text-xs">{phoneDisplay(j.customer_phone)}</div>
+                      <td className="whitespace-nowrap">
+                        {j.follow_up_at ? (
+                          <>
+                            {dateDisplay(chicagoDateOf(j.follow_up_at))}
+                            <div className="muted text-xs">
+                              {instantTimeDisplay(j.follow_up_at)}
+                            </div>
+                          </>
+                        ) : (
+                          <span className="muted">—</span>
                         )}
                       </td>
                       <td>{lookup(names, j.service_category_id)}</td>
