@@ -30,6 +30,7 @@ export async function getJobFinancials(jobIds: string[]): Promise<Map<string, Jo
 export const SORT_FIELDS = [
   { value: "date_of_invoice", label: "Invoice date" },
   { value: "arrival_date", label: "Arrival date" },
+  { value: "follow_up_at", label: "Follow-up" },
   { value: "created_at", label: "Created" },
   { value: "job_id", label: "Job ID" },
   { value: "customer_name", label: "Customer" },
@@ -69,6 +70,7 @@ export type JobListRow = {
   date_of_invoice: string | null;
   arrival_date: string | null;
   arrival_time: string | null;
+  follow_up_at: string | null;
   total_invoice_paid: number;
   created_at: string;
 };
@@ -117,7 +119,7 @@ export async function getJobList(f: JobFilters): Promise<JobListResult> {
   let query = supabase
     .from("jobs")
     .select(
-      "id, job_id, customer_name, customer_phone, status, service_category_id, inquiry_source_id, zone_id, partnership_id, date_of_invoice, arrival_date, arrival_time, total_invoice_paid, created_at",
+      "id, job_id, customer_name, customer_phone, status, service_category_id, inquiry_source_id, zone_id, partnership_id, date_of_invoice, arrival_date, arrival_time, follow_up_at, total_invoice_paid, created_at",
       { count: "exact" },
     );
 
