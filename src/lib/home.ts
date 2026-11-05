@@ -88,6 +88,8 @@ export type WorkQueue = {
   calls: QueueItem[];
   restocks: QueueItem[];
   noAction: QueueItem[];
+  /** Set when a source could not be read. The panel says so; the page lives. */
+  failure: string | null;
 };
 
 /**
@@ -117,15 +119,20 @@ export async function getWorkQueue(): Promise<WorkQueue> {
       .is("removed_on", null),
   ]);
 
-  // A failed query must never render as an empty queue. "No calls due" on a
-  // book with 83 overdue partnerships is worse than an error page, because
-  // nothing about it looks wrong.
+  // A failed query must never render as an empty queue: "No calls due" on a
+  // book with 83 overdue partnerships looks like good news. But throwing took
+  // the whole landing page down over one panel, which is worse again. The
+  // failure is reported and the rest of Home still renders.
+  const failures: string[] = [];
   for (const [name, res] of [
     ["partnerships", partnershipsRes],
     ["jobs", jobsRes],
     ["campaign_placements", placementsRes],
   ] as const) {
-    if (res.error) throw new Error(`Work queue could not read ${name}: ${res.error.message}`);
+    if (res.error) failures.push(`${name}: ${res.error.message}`);
+  }
+  if (failures.length > 0) {
+    return { calls: [], restocks: [], noAction: [], failure: failures.join(" · ") };
   }
 
   const partnerships = (partnershipsRes.data ?? []) as {
@@ -224,5 +231,5 @@ export async function getWorkQueue(): Promise<WorkQueue> {
   restocks.sort(byDue);
   noAction.sort((a, b) => a.title.localeCompare(b.title));
 
-  return { calls, restocks, noAction };
+  return { calls, restocks, noAction, failure: null };
 }
