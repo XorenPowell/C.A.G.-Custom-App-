@@ -32,7 +32,12 @@ ok("target is 100", camps[0]?.target===100, `${camps[0]?.target}`);
 
 const roles = await all(stage,"list_items","id,name,kind");
 const cr = roles.filter(r=>r.kind==="contact_role");
-ok("8 contact roles seeded", cr.length===8, `${cr.length}`);
+// 8 seeded by 022, plus any lifted out of contact names by
+// scripts/extract-contact-roles.mjs, which creates the dispatcher's own
+// wording rather than forcing an approximate match.
+ok("contact roles present", cr.length>=8, `${cr.length}`);
+ok("contacts carry a role where one was known", contacts.filter(c=>c.role_id).length>=18,
+   `${contacts.filter(c=>c.role_id).length} of ${contacts.length}`);
 
 const act = await all(stage,"activity");
 ok("activity seeded", act.length===110, `${act.length}`);
