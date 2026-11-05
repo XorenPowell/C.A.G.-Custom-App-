@@ -1002,7 +1002,7 @@ export default function JobForm({
         />
       )}
 
-      <SaveBar onSave={save} pending={pending} status={status} error={error} />
+      <SaveBar onSave={save} pending={pending} status={status} error={error} label="Save job" />
     </>
   );
 }

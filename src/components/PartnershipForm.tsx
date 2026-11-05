@@ -305,7 +305,7 @@ export default function PartnershipForm({
         <TextArea value={form.notes} onChange={(e) => patch({ notes: e.target.value })} />
       </Section>
 
-      <SaveBar onSave={save} pending={pending} status={status} error={error} />
+      <SaveBar onSave={save} pending={pending} status={status} error={error} label="Save business details" />
     </>
   );
 }

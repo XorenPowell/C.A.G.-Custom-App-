@@ -109,6 +109,7 @@ export default async function JobDetailPage({
               <p className="note">
                 Chasing a deposit and confirming arrival are different calls — say which
                 in <strong>What for</strong> so the queue tells you why it is ringing.
+                This card saves on its own; the Save at the bottom is for the job itself.
               </p>
             ) : (
               <p className="note">
