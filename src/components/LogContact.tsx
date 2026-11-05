@@ -222,7 +222,7 @@ export default function LogContact({
               </div>
             </>
           ) : (
-            <p className="text-sm text-[var(--color-warn)]">
+            <p className="note border-[var(--color-warn)] text-[var(--color-warn)]">
               Nothing will be scheduled, and any existing callback is cleared. This record
               drops out of every follow-up list.
             </p>

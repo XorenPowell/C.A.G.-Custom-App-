@@ -300,7 +300,7 @@ function EmailComposer({
               onChange={(e) => setBody(e.target.value)} />
           </div>
 
-          <div className="mb-3 border-l-[3px] border-[var(--color-accent)] bg-[var(--panel-raised)] px-3 py-2 text-xs text-[var(--color-muted)]">
+          <div className="note mb-3">
             <strong className="text-[var(--color-ink)]">Added automatically:</strong>
             <pre className="mt-1 whitespace-pre-wrap font-sans">{FOOTER.trim()}</pre>
             <p className="mt-2">

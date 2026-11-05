@@ -169,11 +169,8 @@ export default async function CampaignsPage() {
                     {z.placed} / {z.total}
                   </span>
                 </div>
-                <div className="h-1 overflow-hidden rounded bg-[var(--panel-raised)]">
-                  <div
-                    className="h-full bg-[var(--color-accent)]"
-                    style={{ width: `${(z.placed / maxZone) * 100}%` }}
-                  />
+                <div className="lbar">
+                  <i style={{ width: `${(z.placed / maxZone) * 100}%` }} />
                 </div>
               </div>
             ))}
