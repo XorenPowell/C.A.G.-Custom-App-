@@ -83,6 +83,11 @@ export default async function JobDetailPage({
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="badge border-[var(--color-line)]">{job.status}</span>
+          {job.direct_to_worker && (
+            <span className="badge border-[var(--color-accent)] text-[var(--color-accent)]">
+              DIRECT TO WORKER
+            </span>
+          )}
           {financials?.repeat_customer && (
             <span className="badge border-[var(--color-accent)] text-[var(--color-accent)]">
               Repeat customer

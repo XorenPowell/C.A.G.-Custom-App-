@@ -39,6 +39,7 @@ export type JobPayload = {
   customer_name: string | null;
   customer_phone: string | null;
   customer_type: CustomerType | null;
+  direct_to_worker: boolean;
   service_category_id: string | null;
   inquiry_source_id: string | null;
   partnership_id: string | null;
