@@ -72,6 +72,7 @@ export type JobListRow = {
   arrival_time: string | null;
   follow_up_at: string | null;
   total_invoice_paid: number;
+  direct_to_worker: boolean;
   created_at: string;
 };
 
@@ -119,7 +120,7 @@ export async function getJobList(f: JobFilters): Promise<JobListResult> {
   let query = supabase
     .from("jobs")
     .select(
-      "id, job_id, customer_name, customer_phone, status, service_category_id, inquiry_source_id, zone_id, partnership_id, date_of_invoice, arrival_date, arrival_time, follow_up_at, total_invoice_paid, created_at",
+      "id, job_id, customer_name, customer_phone, status, service_category_id, inquiry_source_id, zone_id, partnership_id, date_of_invoice, arrival_date, arrival_time, follow_up_at, total_invoice_paid, direct_to_worker, created_at",
       { count: "exact" },
     );
 

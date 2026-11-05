@@ -86,6 +86,7 @@ export default function JobForm({
     customer_name: job?.customer_name ?? "",
     customer_phone: job?.customer_phone ?? "",
     customer_type: (job?.customer_type ?? "") as CustomerType | "",
+    direct_to_worker: job?.direct_to_worker ?? false,
     service_category_id: job?.service_category_id ?? "",
     inquiry_source_id: job?.inquiry_source_id ?? "",
     partnership_id: job?.partnership_id ?? "",
@@ -294,6 +295,7 @@ export default function JobForm({
         customer_name: form.customer_name,
         customer_phone: form.customer_phone,
         customer_type: form.customer_type || null,
+        direct_to_worker: form.direct_to_worker,
         service_category_id: form.service_category_id || null,
         inquiry_source_id: form.inquiry_source_id || null,
         partnership_id: showPartnership ? form.partnership_id || null : null,
@@ -465,6 +467,23 @@ export default function JobForm({
           </Select>
 
         </div>
+
+        <label className="flex cursor-pointer items-start gap-2">
+          <input
+            type="checkbox"
+            className="mt-1 size-4 accent-[var(--color-accent)]"
+            checked={form.direct_to_worker}
+            onChange={(e) => patch({ direct_to_worker: e.target.checked })}
+          />
+          <span>
+            <span className="text-sm font-semibold">Direct to worker</span>
+            <span className="muted block text-xs">
+              Passed straight to a worker, so no money runs through you. Invoice, payout,
+              fees and commission all read zero. The job still moves through the pipeline
+              and still needs following up.
+            </span>
+          </span>
+        </label>
       </Section>
 
       {/* ---------- scheduling ---------- */}

@@ -267,6 +267,11 @@ export default async function JobsPage({
                       </td>
                       <td>
                         <span className={`badge ${STATUS_TONE[j.status] ?? ""}`}>{j.status}</span>
+                        {j.direct_to_worker && (
+                          <div className="mt-0.5 text-[10px] font-bold text-[var(--color-accent)]">
+                            DIRECT
+                          </div>
+                        )}
                       </td>
                       <td className="mono">{money(j.total_invoice_paid)}</td>
                       <td

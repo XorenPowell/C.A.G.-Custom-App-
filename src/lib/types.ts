@@ -303,6 +303,13 @@ export type Job = {
   /** Why — chasing a deposit and confirming arrival are different calls. */
   follow_up_note: string | null;
   follow_up_kind: FollowUpKind;
+  /**
+   * Handed straight to a worker: a real job that still needs following up,
+   * but no money passes through the dispatcher. job_financials zeroes every
+   * figure for these; the underlying columns are left alone so unticking it
+   * restores them.
+   */
+  direct_to_worker: boolean;
   /** Trigger-maintained: stamped the moment status becomes Completed, cleared if it moves back out. */
   completed_at: string | null;
   created_at: string;
