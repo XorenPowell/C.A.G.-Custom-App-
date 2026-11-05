@@ -85,11 +85,15 @@ function relLabel(due: string, today: string): string {
 }
 
 export type WorkQueue = {
+  /** Anything done from a desk: calls, texts, emails. */
   calls: QueueItem[];
-  restocks: QueueItem[];
+  /** Anything needing travel. A restock is a visit with a different reason. */
+  visits: QueueItem[];
   noAction: QueueItem[];
   /** Set when a source could not be read. The panel says so; the page lives. */
   failure: string | null;
+  /** The date the queue was measured against. */
+  asOf: string;
 };
 
 /**
@@ -102,9 +106,13 @@ export type WorkQueue = {
  * job genuinely does not need a next step.
  */
 
-export async function getWorkQueue(): Promise<WorkQueue> {
+/**
+ * @param asOf Show everything due on or before this date. Defaults to today;
+ *   a later date answers "what is due by Friday" without changing anything.
+ */
+export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
   const supabase = await createClient();
-  const today = todayISO();
+  const today = asOf && /^\d{4}-\d{2}-\d{2}$/.test(asOf) ? asOf : todayISO();
 
   const [partnershipsRes, jobsRes, placementsRes] = await Promise.all([
     supabase
@@ -132,7 +140,7 @@ export async function getWorkQueue(): Promise<WorkQueue> {
     if (res.error) failures.push(`${name}: ${res.error.message}`);
   }
   if (failures.length > 0) {
-    return { calls: [], restocks: [], noAction: [], failure: failures.join(" · ") };
+    return { calls: [], visits: [], noAction: [], failure: failures.join(" · "), asOf: today };
   }
 
   const partnerships = (partnershipsRes.data ?? []) as {
@@ -159,7 +167,12 @@ export async function getWorkQueue(): Promise<WorkQueue> {
   }));
 
   const calls: QueueItem[] = [];
+  const visits: QueueItem[] = [];
   const noAction: QueueItem[] = [];
+
+  // A booked visit belongs with the driving, not the dialling.
+  const place = (item: QueueItem) =>
+    (item.followKind === "visit" ? visits : calls).push(item);
 
   for (const p of partnerships) {
     if (!p.follow_up_at) {
@@ -173,7 +186,7 @@ export async function getWorkQueue(): Promise<WorkQueue> {
     }
     const due = chicagoDateOf(p.follow_up_at);
     if (due > today) continue;
-    calls.push({
+    place({
       id: p.id, href: `/partnerships/${p.id}`, kind: "partnership",
       title: p.business_name,
       subtitle: p.follow_up_note || p.poc_name || "Follow-up",
@@ -197,7 +210,7 @@ export async function getWorkQueue(): Promise<WorkQueue> {
     }
     const due = chicagoDateOf(j.follow_up_at);
     if (due > today) continue;
-    calls.push({
+    place({
       id: j.id, href: `/jobs/${j.id}`, kind: "job",
       title: j.customer_name || j.job_id,
       subtitle: j.follow_up_note || `${j.job_id} · ${j.status}`,
@@ -207,20 +220,20 @@ export async function getWorkQueue(): Promise<WorkQueue> {
     });
   }
 
-  const restocks: QueueItem[] = [];
   for (const pl of placements) {
     const base = pl.last_restock_on ?? pl.placed_on;
     const d = new Date(`${base}T00:00:00Z`);
     d.setUTCDate(d.getUTCDate() + pl.restock_interval_days);
     const due = d.toISOString().slice(0, 10);
     if (due > today) continue;
-    restocks.push({
+    visits.push({
       id: pl.id, href: `/partnerships/${pl.partnership_id}`, kind: "restock",
       title: pl.partnerships?.business_name ?? "—",
       subtitle: `${pl.location ?? "stack"}${pl.cards_left != null ? ` · ~${pl.cards_left} left` : ""}`,
       dueOn: due, dueLabel: relLabel(due, today),
       state: due < today ? "overdue" : "today",
       phone: pl.partnerships?.poc_phone ?? null,
+      followKind: "visit",
     });
   }
 
@@ -228,8 +241,8 @@ export async function getWorkQueue(): Promise<WorkQueue> {
   const byDue = (a: QueueItem, b: QueueItem) =>
     a.dueOn.localeCompare(b.dueOn) || a.title.localeCompare(b.title);
   calls.sort(byDue);
-  restocks.sort(byDue);
+  visits.sort(byDue);
   noAction.sort((a, b) => a.title.localeCompare(b.title));
 
-  return { calls, restocks, noAction, failure: null };
+  return { calls, visits, noAction, failure: null, asOf: today };
 }
