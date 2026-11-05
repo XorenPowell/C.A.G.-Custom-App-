@@ -20,6 +20,13 @@ export const JOB_STATUSES = [
 ] as const;
 export type JobStatus = (typeof JOB_STATUSES)[number];
 
+/** Terminal: the job is finished or dead and needs no scheduled next step. */
+export const CLOSED_JOB_STATUSES = ["Completed", "Cancelled", "Lost"] as const;
+
+export function isJobOpen(status: string): boolean {
+  return !(CLOSED_JOB_STATUSES as readonly string[]).includes(status);
+}
+
 export const CUSTOMER_TYPES = ["Residential", "Commercial"] as const;
 export type CustomerType = (typeof CUSTOMER_TYPES)[number];
 
