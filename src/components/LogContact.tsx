@@ -6,7 +6,7 @@ import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { logContact } from "@/app/actions/activity";
 import { ACTIVITY_KINDS } from "@/lib/types";
 import { OUTCOME_SUGGESTIONS } from "@/lib/activity-meta";
-import { chicagoDateTimeInputValue, chicagoLocalToUTCISO } from "@/lib/dates";
+import { TIME_STEP_SECONDS, chicagoDateTimeInputValue, chicagoLocalToUTCISO } from "@/lib/dates";
 import {
   FOLLOW_UP_KINDS,
   FOLLOW_UP_LABELS,
@@ -247,7 +247,7 @@ export default function LogContact({
                   </label>
                   <input
                     id="lc-next"
-                    type="datetime-local"
+                    type="datetime-local" step={TIME_STEP_SECONDS}
                     className="input"
                     value={nextLocal}
                     onChange={(e) => setNextLocal(e.target.value)}

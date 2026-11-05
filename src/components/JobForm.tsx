@@ -6,6 +6,7 @@ import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import Link from "next/link";
 import SaveBar from "@/components/SaveBar";
 import DispatchPicker from "@/components/DispatchPicker";
+import { TIME_STEP_SECONDS } from "@/lib/dates";
 import {
   AddButton,
   MoneyInput,
@@ -534,7 +535,7 @@ export default function JobForm({
               />
               <TextInput
                 label="Confirmed arrival time"
-                type="time"
+                type="time" step={TIME_STEP_SECONDS}
                 value={form.confirmed_arrival_time}
                 onChange={(e) => patch({ confirmed_arrival_time: e.target.value })}
               />
@@ -577,13 +578,13 @@ export default function JobForm({
                     />
                     <TextInput
                       label="Start time"
-                      type="time"
+                      type="time" step={TIME_STEP_SECONDS}
                       value={w.start_time}
                       onChange={(e) => patchWindow(i, { start_time: e.target.value })}
                     />
                     <TextInput
                       label="End time"
-                      type="time"
+                      type="time" step={TIME_STEP_SECONDS}
                       value={w.end_time}
                       onChange={(e) => patchWindow(i, { end_time: e.target.value })}
                     />

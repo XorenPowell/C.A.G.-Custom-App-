@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { setNextAction } from "@/app/actions/activity";
-import { chicagoDateTimeInputValue, chicagoLocalToUTCISO } from "@/lib/dates";
+import { TIME_STEP_SECONDS, chicagoDateTimeInputValue, chicagoLocalToUTCISO } from "@/lib/dates";
 import { FOLLOW_UP_KINDS, FOLLOW_UP_LABELS, type FollowUpKind } from "@/lib/types";
 
 type Tone = "overdue" | "today" | "upcoming" | "none";
@@ -162,7 +162,7 @@ export default function NextActionCard({
             <label className="label" htmlFor="na-time">At</label>
             <input
               id="na-time"
-              type="time"
+              type="time" step={TIME_STEP_SECONDS}
               className="input"
               value={time}
               onChange={(e) => setTime(e.target.value)}
