@@ -12,6 +12,8 @@ import { Empty } from "@/components/Detail";
 import { followUpLabel, followUpState, getPartnership, getPartnershipReferrals } from "@/lib/partnerships";
 import { getPartnershipActivity } from "@/lib/activity";
 import { getScheduledForPartnership } from "@/lib/scheduled";
+import { getVisitDays, nextDayInZone } from "@/lib/visits";
+import { todayISO } from "@/lib/dates";
 import PlannedActions from "@/components/PlannedActions";
 import { getCampaigns, getPlacements, restockLabel, restockState } from "@/lib/campaigns";
 import { getContactsFor } from "@/lib/contacts";
@@ -34,6 +36,7 @@ export default async function PartnershipDetailPage({
     getCampaigns(),
   ]);
   const planned = await getScheduledForPartnership(id);
+  const visitDays = await getVisitDays();
   if (!partnership) notFound();
 
   const campaign = campaigns[0] ?? null;
@@ -44,6 +47,22 @@ export default async function PartnershipDetailPage({
   const revenue = referrals.reduce((s, r) => s + r.total_invoice_paid, 0);
   const completed = referrals.filter((r) => r.status === "Completed").length;
   const statusName = lookup(names, partnership.status_id);
+  const zoneName = lookup(names, partnership.zone_id);
+  // Exclude this business's own bookings, so the hint points at a run it
+  // could join rather than at itself.
+  const zoneDay =
+    zoneName === "—"
+      ? null
+      : nextDayInZone(
+          visitDays
+            .map((d) => ({
+              ...d,
+              stops: d.stops.filter((s) => s.partnership_id !== partnership.id),
+            }))
+            .filter((d) => d.stops.length > 0),
+          zoneName,
+          todayISO(),
+        );
   const due = followUpState(partnership);
 
   return (
@@ -98,6 +117,8 @@ export default async function PartnershipDetailPage({
           followUpAt={partnership.follow_up_at}
           followUpNote={partnership.follow_up_note}
           followUpKind={partnership.follow_up_kind}
+          zoneName={zoneName === "—" ? null : zoneName}
+          nextZoneDay={zoneDay}
           tone={due}
           dueLabel={followUpLabel(partnership)}
         >
