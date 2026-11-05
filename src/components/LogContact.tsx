@@ -44,7 +44,16 @@ export default function LogContact({
   const [kind, setKind] = useState<ActivityKind>(defaultKind);
   const [outcome, setOutcome] = useState("");
   const [note, setNote] = useState("");
-  const [scheduleNext, setScheduleNext] = useState(true);
+  /**
+   * book  — set a new callback (the default)
+   * keep  — leave whatever is already booked untouched
+   * clear — deliberately remove it
+   *
+   * "keep" exists because the previous version treated an unticked box as
+   * "delete the callback", so logging a call could silently wipe a booking
+   * the dispatcher had made earlier and still wanted.
+   */
+  const [mode, setMode] = useState<"book" | "keep" | "clear">("book");
   const [nextLocal, setNextLocal] = useState(() => plusDays(7));
   const [nextNote, setNextNote] = useState(currentFollowUpNote ?? "");
 
@@ -59,7 +68,7 @@ export default function LogContact({
     setKind(defaultKind);
     setOutcome("");
     setNote("");
-    setScheduleNext(true);
+    setMode("book");
     setNextLocal(plusDays(7));
     setNextNote(currentFollowUpNote ?? "");
     setError(null);
@@ -76,8 +85,16 @@ export default function LogContact({
         note: note || null,
         // Scheduling off means "there is deliberately nothing next", which
         // has to clear the existing callback rather than leave it stale.
-        next_follow_up_at: scheduleNext && nextLocal ? chicagoLocalToUTCISO(nextLocal) : null,
-        next_follow_up_note: scheduleNext ? nextNote || null : null,
+        // undefined leaves the record's callback alone; null clears it.
+        next_follow_up_at:
+          mode === "keep"
+            ? undefined
+            : mode === "clear"
+              ? null
+              : nextLocal
+                ? chicagoLocalToUTCISO(nextLocal)
+                : null,
+        next_follow_up_note: mode === "book" ? nextNote || null : mode === "clear" ? null : undefined,
       });
       if (!res.ok) {
         setError(res.error ?? "Could not save.");
@@ -170,17 +187,34 @@ export default function LogContact({
         </div>
 
         <div className="border-t border-[var(--color-line)] pt-3">
-          <label className="mb-2 flex cursor-pointer items-center gap-2">
-            <input
-              type="checkbox"
-              checked={scheduleNext}
-              onChange={(e) => setScheduleNext(e.target.checked)}
-              className="size-4 accent-[var(--color-accent)]"
-            />
-            <span className="text-sm font-semibold">Schedule the next contact</span>
-          </label>
+          <span className="label">Then what</span>
+          <div className="mb-2 -mx-1 flex gap-1 overflow-x-auto px-1 [&>*]:shrink-0">
+            <button
+              type="button"
+              onClick={() => setMode("book")}
+              className={`btn btn-sm ${mode === "book" ? "btn-primary" : ""}`}
+            >
+              Book the next contact
+            </button>
+            {currentFollowUpAt && (
+              <button
+                type="button"
+                onClick={() => setMode("keep")}
+                className={`btn btn-sm ${mode === "keep" ? "btn-primary" : ""}`}
+              >
+                Leave the current one
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setMode("clear")}
+              className={`btn btn-sm ${mode === "clear" ? "btn-primary" : ""}`}
+            >
+              Nothing further
+            </button>
+          </div>
 
-          {scheduleNext ? (
+          {mode === "book" && (
             <>
               <div className="grid-form">
                 <div className="field">
@@ -203,7 +237,7 @@ export default function LogContact({
                     id="lc-next-note"
                     className="input"
                     value={nextNote}
-                    placeholder="Check if they placed the cards"
+                    placeholder="Check if the deposit landed"
                     onChange={(e) => setNextNote(e.target.value)}
                   />
                 </div>
@@ -220,11 +254,26 @@ export default function LogContact({
                   </button>
                 ))}
               </div>
+              {!nextLocal && (
+                <p className="note border-[var(--color-warn)] text-[var(--color-warn)]">
+                  No date set, so nothing will be booked.
+                </p>
+              )}
             </>
-          ) : (
+          )}
+
+          {mode === "keep" && (
+            <p className="note">
+              The callback already booked stays exactly as it is. Only the log entry
+              above is saved.
+            </p>
+          )}
+
+          {mode === "clear" && (
             <p className="note border-[var(--color-warn)] text-[var(--color-warn)]">
-              Nothing will be scheduled, and any existing callback is cleared. This record
-              drops out of every follow-up list.
+              {currentFollowUpAt
+                ? "Clears the booked callback. This record drops out of every follow-up list."
+                : "Nothing is scheduled, so this record will not come back to you on its own."}
             </p>
           )}
         </div>
@@ -244,7 +293,7 @@ export default function LogContact({
           </button>
         </div>
 
-        {currentFollowUpAt && scheduleNext && (
+        {currentFollowUpAt && mode === "book" && (
           <p className="muted mt-2 text-xs">
             Replaces the callback currently booked for{" "}
             {chicagoDateTimeInputValue(currentFollowUpAt).replace("T", " ")}.

@@ -57,13 +57,16 @@ export async function logContact(payload: LogContactPayload): Promise<ActionResu
   if (payload.next_follow_up_at !== undefined) {
     const table = partnershipId ? "partnerships" : "jobs";
     const id = partnershipId ?? jobId!;
-    const { error } = await supabase
-      .from(table)
-      .update({
-        follow_up_at: payload.next_follow_up_at || null,
-        follow_up_note: orNull(payload.next_follow_up_note ?? null),
-      })
-      .eq("id", id);
+    const patch: Record<string, string | null> = {
+      follow_up_at: payload.next_follow_up_at || null,
+    };
+    // Only touch the note when the caller actually decided about it, so
+    // "leave the current callback alone" leaves its reason alone too.
+    if (payload.next_follow_up_note !== undefined) {
+      patch.follow_up_note = orNull(payload.next_follow_up_note);
+    }
+
+    const { error } = await supabase.from(table).update(patch).eq("id", id);
     if (error) return fail(error.message);
   }
 
