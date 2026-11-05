@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { setNextAction } from "@/app/actions/activity";
-import { chicagoDateTimeInputValue, chicagoLocalToUTCISO } from "@/lib/dates";
+import { TIME_STEP_SECONDS, chicagoDateTimeInputValue, chicagoLocalToUTCISO } from "@/lib/dates";
 import { FOLLOW_UP_KINDS, FOLLOW_UP_LABELS, type FollowUpKind } from "@/lib/types";
 
 type Tone = "overdue" | "today" | "upcoming" | "none";
@@ -38,6 +38,9 @@ export default function NextActionCard({
    */
   emptyLabel = "nothing booked",
   alarmWhenEmpty = true,
+  /** Zone of this record, and the next date already being walked there. */
+  zoneName,
+  nextZoneDay,
   children,
 }: {
   partnershipId?: string;
@@ -49,6 +52,8 @@ export default function NextActionCard({
   dueLabel: string;
   emptyLabel?: string;
   alarmWhenEmpty?: boolean;
+  zoneName?: string | null;
+  nextZoneDay?: string | null;
   children?: React.ReactNode;
 }) {
   const alarming = tone === "none" && alarmWhenEmpty;
@@ -162,7 +167,7 @@ export default function NextActionCard({
             <label className="label" htmlFor="na-time">At</label>
             <input
               id="na-time"
-              type="time"
+              type="time" step={TIME_STEP_SECONDS}
               className="input"
               value={time}
               onChange={(e) => setTime(e.target.value)}
@@ -196,6 +201,21 @@ export default function NextActionCard({
           <button type="button" className="btn btn-sm" disabled={pending} onClick={() => inDays(30)}>
             +1 month
           </button>
+          {/* Booking a visit is really choosing which run it joins, so the
+              useful date is "when am I next in that neighbourhood". */}
+          {kind === "visit" && nextZoneDay && nextZoneDay !== date && (
+            <button
+              type="button"
+              className="btn btn-sm"
+              disabled={pending}
+              onClick={() => {
+                setDate(nextZoneDay);
+                save(nextZoneDay, time, note, kind);
+              }}
+            >
+              Next {zoneName ?? "zone"} day
+            </button>
+          )}
           {date && (
             <button
               type="button"
@@ -222,6 +242,14 @@ export default function NextActionCard({
         {error && (
           <p className="mt-2 border border-[var(--color-danger)] px-2 py-2 text-sm text-[var(--color-danger)]">
             {error}
+          </p>
+        )}
+
+        {kind === "visit" && zoneName && (
+          <p className="muted mt-2 text-xs">
+            {nextZoneDay
+              ? `You are next in ${zoneName} on ${nextZoneDay}.`
+              : `Nothing else booked in ${zoneName} yet — this starts the run.`}
           </p>
         )}
 

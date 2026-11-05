@@ -8,7 +8,7 @@ import {
   completeScheduledAction,
   deleteScheduledAction,
 } from "@/app/actions/scheduled";
-import { chicagoLocalToUTCISO } from "@/lib/dates";
+import { TIME_STEP_SECONDS, chicagoLocalToUTCISO } from "@/lib/dates";
 import { todayLocal } from "@/lib/follow-up";
 import { ACTIVITY_META } from "@/lib/activity-meta";
 import { FOLLOW_UP_KINDS, FOLLOW_UP_LABELS, type FollowUpKind } from "@/lib/types";
@@ -217,7 +217,7 @@ export default function PlannedActions({
               </label>
               <input
                 id="pa-when"
-                type="datetime-local"
+                type="datetime-local" step={TIME_STEP_SECONDS}
                 className="input"
                 value={local}
                 onChange={(e) => setLocal(e.target.value)}

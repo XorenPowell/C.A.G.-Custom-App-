@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { updateTimeEntry } from "@/app/actions/time-clock";
-import { chicagoDateTimeInputValue } from "@/lib/dates";
+import { TIME_STEP_SECONDS, chicagoDateTimeInputValue } from "@/lib/dates";
 import type { TimeEntry } from "@/lib/types";
 
 function timeOf(iso: string): string {
@@ -72,7 +72,7 @@ export default function TimeEntryRow({ entry }: { entry: TimeEntry }) {
         <div className="field">
           <label className="label">Clock in</label>
           <input
-            type="datetime-local"
+            type="datetime-local" step={TIME_STEP_SECONDS}
             className="input"
             value={clockedIn}
             onChange={(e) => setClockedIn(e.target.value)}
@@ -81,7 +81,7 @@ export default function TimeEntryRow({ entry }: { entry: TimeEntry }) {
         <div className="field">
           <label className="label">Clock out</label>
           <input
-            type="datetime-local"
+            type="datetime-local" step={TIME_STEP_SECONDS}
             className="input"
             value={clockedOut}
             onChange={(e) => setClockedOut(e.target.value)}
