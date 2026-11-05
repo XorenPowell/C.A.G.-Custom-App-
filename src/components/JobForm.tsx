@@ -19,7 +19,6 @@ import { saveJob, type JobPayload } from "@/app/actions/jobs";
 import { optionsFor, type Lists } from "@/lib/lists";
 import { calculatedWorkerPay, effectiveWorkerPay, jobTotals, netWorkerPay } from "@/lib/calc";
 import { rateFor } from "@/lib/entity-filters";
-import { chicagoDateTimeInputValue, chicagoLocalToUTCISO } from "@/lib/dates";
 import { dateLongDisplayNoYear, money, timeDisplay } from "@/lib/format";
 import {
   CUSTOMER_TYPES,
@@ -95,8 +94,6 @@ export default function JobForm({
     date_of_invoice: job?.date_of_invoice ?? "",
     confirmed_arrival_date: job?.confirmed_arrival_date ?? "",
     confirmed_arrival_time: job?.confirmed_arrival_time?.slice(0, 5) ?? "",
-    follow_up_local: job?.follow_up_at ? chicagoDateTimeInputValue(job.follow_up_at) : "",
-    follow_up_note: job?.follow_up_note ?? "",
     estimated_duration_minutes: str(job?.estimated_duration_minutes),
     total_invoice_paid: str(job?.total_invoice_paid ?? 0),
     pos_fee_percent: str(job?.pos_fee_percent ?? settings.default_pos_fee_percent),
@@ -312,8 +309,6 @@ export default function JobForm({
         confirmed_arrival_time: form.confirmed_arrival_time || null,
         estimated_duration_minutes: form.estimated_duration_minutes || null,
         addresses,
-        follow_up_at: form.follow_up_local ? chicagoLocalToUTCISO(form.follow_up_local) : null,
-        follow_up_note: form.follow_up_note,
         total_invoice_paid: form.total_invoice_paid,
         pos_fee_percent: form.pos_fee_percent,
         total_worker_payout_override: form.total_worker_payout_override || null,
@@ -469,45 +464,6 @@ export default function JobForm({
             ))}
           </Select>
 
-          <div className="field">
-            <span className="label">Follow-up date/time</span>
-            <div className="flex items-center gap-2">
-              <input
-                type="datetime-local"
-                className="input"
-                value={form.follow_up_local}
-                onChange={(e) => patch({ follow_up_local: e.target.value })}
-              />
-              <button
-                type="button"
-                className="btn btn-sm shrink-0"
-                disabled={!form.follow_up_local}
-                onClick={() => patch({ follow_up_local: "" })}
-              >
-                Clear
-              </button>
-            </div>
-            <p className="mt-1 text-xs text-[var(--color-muted)]">
-              When to call this lead back. Blank means it won&rsquo;t show up anywhere. Shows on
-              Home under Calls when it falls due.
-            </p>
-          </div>
-
-          <div className="field">
-            <label className="label" htmlFor="job-fu-note">
-              What the call is for
-            </label>
-            <input
-              id="job-fu-note"
-              className="input"
-              value={form.follow_up_note}
-              placeholder="Chase the deposit"
-              onChange={(e) => patch({ follow_up_note: e.target.value })}
-            />
-            <p className="mt-1 text-xs text-[var(--color-muted)]">
-              Chasing a deposit and confirming arrival are different calls.
-            </p>
-          </div>
         </div>
       </Section>
 

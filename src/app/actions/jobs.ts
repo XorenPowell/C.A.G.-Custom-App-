@@ -53,8 +53,6 @@ export type JobPayload = {
   estimated_duration_minutes: number | string | null;
   addresses: string[];
   /** UTC ISO instant, already converted from the dispatcher's local input. Null shows up nowhere. */
-  follow_up_at: string | null;
-  follow_up_note: string | null;
   total_invoice_paid: number | string;
   pos_fee_percent: number | string;
   total_worker_payout_override: number | string | null;
@@ -89,8 +87,6 @@ export async function saveJob(payload: JobPayload): Promise<JobSaveResult> {
         ? null
         : toInt(payload.estimated_duration_minutes),
     addresses: payload.addresses.map((a) => a.trim()).filter(Boolean),
-    follow_up_at: payload.follow_up_at || null,
-    follow_up_note: orNull(payload.follow_up_note),
     total_invoice_paid: toNum(payload.total_invoice_paid),
     pos_fee_percent: toNum(payload.pos_fee_percent),
     total_worker_payout_override: toNullableNum(payload.total_worker_payout_override),

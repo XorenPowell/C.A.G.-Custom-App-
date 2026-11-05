@@ -31,8 +31,6 @@ export type PartnershipPayload = {
   fliers_dropped_last_visit: number | string;
   total_fliers_dropped: number | string;
   last_contact: string | null;
-  follow_up_at: string | null;
-  follow_up_note: string | null;
   notes: string | null;
 };
 
@@ -64,8 +62,6 @@ export async function savePartnership(
     last_contact: laterOf(payload.last_contact, payload.last_visit),
     // A booked instant. follow_up_days is left untouched on the row so 022
     // stays reversible; nothing reads it any more.
-    follow_up_at: payload.follow_up_at || null,
-    follow_up_note: orNull(payload.follow_up_note),
     notes: orNull(payload.notes),
   };
 

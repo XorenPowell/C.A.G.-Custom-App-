@@ -54,24 +54,16 @@ export async function logContact(payload: LogContactPayload): Promise<ActionResu
   if (logError) return fail(logError.message);
 
   // `next_follow_up_at` present at all means the caller is deciding the next
-  // step — including deciding there isn't one.
+  // step — including deciding there isn't one. Routed through setNextAction
+  // so it edits the plan rather than the trigger-maintained mirror column.
   if (payload.next_follow_up_at !== undefined) {
-    const table = partnershipId ? "partnerships" : "jobs";
-    const id = partnershipId ?? jobId!;
-    const patch: Record<string, string | null> = {
-      follow_up_at: payload.next_follow_up_at || null,
-    };
-    // Only touch the note when the caller actually decided about it, so
-    // "leave the current callback alone" leaves its reason alone too.
-    if (payload.next_follow_up_note !== undefined) {
-      patch.follow_up_note = orNull(payload.next_follow_up_note);
-    }
-    if (payload.next_follow_up_kind !== undefined) {
-      patch.follow_up_kind = payload.next_follow_up_kind;
-    }
-
-    const { error } = await supabase.from(table).update(patch).eq("id", id);
-    if (error) return fail(error.message);
+    const res = await setNextAction(
+      partnershipId ? { partnership_id: partnershipId } : { job_id: jobId! },
+      payload.next_follow_up_at,
+      payload.next_follow_up_note ?? null,
+      payload.next_follow_up_kind ?? "call",
+    );
+    if (!res.ok) return res;
   }
 
   revalidatePath("/", "layout");
@@ -115,7 +107,14 @@ export async function setPartnershipStage(
   return ok();
 }
 
-/** Saves just the booked callback, without round-tripping the whole form. */
+/**
+ * Saves the next action by editing the plan, not the mirror column.
+ *
+ * follow_up_at is maintained by a trigger on scheduled_actions, so writing
+ * it directly produced a callback the queue honoured but the Planned list
+ * knew nothing about. The card now edits the earliest planned action, which
+ * keeps both in step by construction.
+ */
 export async function setNextAction(
   target: { partnership_id?: string; job_id?: string },
   followUpAt: string | null,
@@ -123,19 +122,40 @@ export async function setNextAction(
   kind: string = "call",
 ): Promise<ActionResult> {
   const supabase = await createClient();
-  const table = target.partnership_id ? "partnerships" : "jobs";
-  const id = target.partnership_id ?? target.job_id;
-  if (!id) return fail("Nothing to update.");
 
-  const { error } = await supabase
-    .from(table)
-    .update({
-      follow_up_at: followUpAt,
-      follow_up_note: orNull(note),
-      follow_up_kind: kind,
-    })
-    .eq("id", id);
-  if (error) return fail(error.message);
+  const partnershipId = target.partnership_id ?? null;
+  const jobId = target.job_id ?? null;
+  if (!partnershipId && !jobId) return fail("Nothing to update.");
+
+  const column = partnershipId ? "partnership_id" : "job_id";
+  const parentId = partnershipId ?? jobId!;
+
+  const { data: existing, error: readError } = await supabase
+    .from("scheduled_actions")
+    .select("id")
+    .eq(column, parentId)
+    .order("due_at")
+    .limit(1);
+  if (readError) return fail(readError.message);
+
+  const earliest = (existing ?? [])[0] as { id: string } | undefined;
+
+  // Clearing the date means removing that plan entirely; the trigger then
+  // promotes whatever is next, or empties follow_up_at if nothing is left.
+  if (!followUpAt) {
+    if (!earliest) return ok();
+    const { error } = await supabase.from("scheduled_actions").delete().eq("id", earliest.id);
+    if (error) return fail(error.message);
+    revalidatePath("/", "layout");
+    return ok();
+  }
+
+  const row = { kind, due_at: followUpAt, note: orNull(note) };
+  const res = earliest
+    ? await supabase.from("scheduled_actions").update(row).eq("id", earliest.id)
+    : await supabase.from("scheduled_actions").insert({ ...row, [column]: parentId });
+
+  if (res.error) return fail(res.error.message);
 
   revalidatePath("/", "layout");
   return ok();
