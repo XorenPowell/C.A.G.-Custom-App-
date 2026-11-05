@@ -3,13 +3,8 @@ import { getDashboard } from "@/lib/dashboard";
 import { getBookedToday, getWorkQueue } from "@/lib/home";
 import WorkQueue from "@/components/WorkQueue";
 import { getLists, getSettings, lookup, nameMap } from "@/lib/data";
-import {
-  RANGE_PRESETS,
-  payPeriodRange,
-  rangeLabel,
-  resolveRange,
-  type RangePreset,
-} from "@/lib/dates";
+import { getUser } from "@/lib/supabase/server";
+import { payPeriodRange } from "@/lib/dates";
 import { money, timeDisplay } from "@/lib/format";
 
 
@@ -40,146 +35,49 @@ function QueueTile({
   );
 }
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | undefined>>;
-}) {
-  const sp = await searchParams;
-  // "Today" is the natural landing default here — unlike the detailed report,
-  // which defaults to "This Month" for a monthly business overview.
-  const preset = (RANGE_PRESETS as readonly string[]).includes(sp.preset ?? "")
-    ? (sp.preset as RangePreset)
-    : "Today";
-  const range = resolveRange(preset, sp.start, sp.end);
-
-  const [lists, settings] = await Promise.all([getLists(), getSettings()]);
+export default async function HomePage() {
+  const [lists, settings, user] = await Promise.all([getLists(), getSettings(), getUser()]);
   const names = nameMap(lists);
 
-  const [data, bookedToday, queue] = await Promise.all([
-    getDashboard(range, names),
-    getBookedToday(),
-    getWorkQueue(),
-  ]);
+  const [bookedToday, queue] = await Promise.all([getBookedToday(), getWorkQueue()]);
 
-  // Next payout is a fixed weekly cycle, not the selected range — the most
-  // recent occurrence of the configured start day through today, inclusive.
+  // Next payout survives the cull because it is a fixed weekly cycle, not a
+  // range the Reports screen can show without being reconfigured each time.
   const payPeriod = payPeriodRange(settings.pay_period_start_day ?? 5);
   const payoutData = await getDashboard(payPeriod, names);
 
+  const firstName = (user?.email ?? "there").split("@")[0].split(/[._-]/)[0];
+  const todayLabel = new Date().toLocaleDateString("en-US", {
+    timeZone: "America/Chicago",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
     <>
-      {/* ---------- hero ---------- */}
+      {/* ---------- greeting ---------- */}
       <section
-        className="relative overflow-hidden px-4 pb-8 pt-6 text-white"
+        className="px-4 py-5 text-white"
         style={{ background: "linear-gradient(155deg, var(--hero-a), var(--hero-b), var(--hero-c))" }}
       >
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to top, rgba(10,11,13,0) 40%, rgba(10,11,13,0.55) 100%)",
-          }}
-        />
-        <div className="relative mx-auto max-w-6xl">
-          <div className="flex items-center justify-between text-sm text-white/70">
-            <span className="font-heading font-bold tracking-wide">C.A.G.</span>
-            <span>{rangeLabel(range)}</span>
-          </div>
-
-          <h1 className="font-heading mt-3 text-[30px] font-medium leading-tight">
-            Welcome, Xoren
+        <div className="mx-auto max-w-6xl">
+          <h1 className="font-heading text-2xl font-bold md:text-3xl">
+            Welcome, {firstName}
           </h1>
-
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-[var(--radius-card)] border border-white/10 bg-white/[0.07] p-3">
-              <div className="text-xs text-white/70">Total Jobs Completed</div>
-              <div className="font-heading mt-1 text-2xl font-semibold">
-                {data.jobsCompleted}
-              </div>
-            </div>
-            <div className="rounded-[var(--radius-card)] border border-white/10 bg-white/[0.07] p-3">
-              <div className="text-xs text-white/70">Commission</div>
-              <div className="font-heading mt-1 text-2xl font-semibold text-[var(--money)]">
-                {money(data.totalCommission)}
-              </div>
-            </div>
-            <div className="rounded-[var(--radius-card)] border border-white/10 bg-white/[0.07] p-3">
-              <div className="text-xs text-white/70">New Inquiries</div>
-              <div className="font-heading mt-1 text-2xl font-semibold">
-                {data.inquiriesGenerated}
-              </div>
-            </div>
-            <div className="rounded-[var(--radius-card)] border border-white/10 bg-white/[0.07] p-3">
-              <div className="text-xs text-white/70">Developing Partnerships</div>
-              <div className="font-heading mt-1 text-2xl font-semibold">
-                {data.developingPartnerships}
-              </div>
-            </div>
-          </div>
-
-          <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/80">
+          <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/80">
+            <span>{todayLabel}</span>
             <span>
-              Next payout: <span className="font-heading font-semibold text-white">{money(payoutData.totalCommission)}</span>
+              Next payout:{" "}
+              <span className="font-heading font-semibold text-white">
+                {money(payoutData.totalCommission)}
+              </span>
             </span>
-            <span>
-              Total rev: <span className="font-heading font-semibold text-white">{money(data.totalRevenue)}</span>
-            </span>
+            <Link href="/reports" className="text-white/90 underline underline-offset-2">
+              Reports
+            </Link>
           </p>
         </div>
-      </section>
-
-      {/* ---------- range selector ---------- */}
-      <section className="mx-auto max-w-6xl px-4 pt-4">
-        <form method="get" action="/">
-          <div className="flex flex-wrap gap-2">
-            {RANGE_PRESETS.filter((p) => p !== "Custom").map((p) => (
-              <button
-                key={p}
-                type="submit"
-                name="preset"
-                value={p}
-                className={`pill ${preset === p ? "pill-active" : ""}`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-          <details className="mt-2">
-            <summary className="cursor-pointer text-sm text-[var(--color-muted)] underline underline-offset-2">
-              Custom range
-            </summary>
-            <div className="mt-2 flex flex-wrap items-end gap-2">
-              <div className="field mb-0">
-                <label className="label" htmlFor="start">
-                  From
-                </label>
-                <input
-                  id="start"
-                  name="start"
-                  type="date"
-                  defaultValue={sp.start ?? ""}
-                  className="input"
-                />
-              </div>
-              <div className="field mb-0">
-                <label className="label" htmlFor="end">
-                  To
-                </label>
-                <input
-                  id="end"
-                  name="end"
-                  type="date"
-                  defaultValue={sp.end ?? ""}
-                  className="input"
-                />
-              </div>
-              <button type="submit" name="preset" value="Custom" className="btn btn-sm">
-                Apply custom range
-              </button>
-            </div>
-          </details>
-        </form>
       </section>
 
       {/* ---------- booked today: full-bleed, always today, ignores the range above ---------- */}
