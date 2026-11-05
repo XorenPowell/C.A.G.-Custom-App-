@@ -178,6 +178,11 @@ export default function ContactsBrowser({
                   </td>
                   <td className="font-semibold">
                     {c.name}
+                    {c.source === "Business card" && (
+                      <span className="badge ml-1 border-[var(--color-line)] text-[10px] text-[var(--text-faint)]">
+                        card
+                      </span>
+                    )}
                     {c.email_opt_out && (
                       <span className="badge ml-1 border-[var(--color-danger)] text-[var(--color-danger)]">
                         no email

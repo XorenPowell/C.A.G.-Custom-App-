@@ -88,53 +88,68 @@ export default function ContactsPanel({
         )}
 
         {contacts.length > 0 && (
-          <ul className="m-0 mb-2 list-none p-0">
-            {contacts.map((c) => (
-              <li
-                key={c.id}
-                className="flex flex-wrap items-start gap-2 border-b border-[var(--color-line-soft)] py-2 last:border-b-0"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">{c.name}</span>
-                    {roleName(c.role_id) && (
-                      <span className="badge border-[var(--color-line)] text-[var(--color-muted)]">
-                        {roleName(c.role_id)}
-                      </span>
-                    )}
-                    {c.email_opt_out && (
-                      <span className="badge border-[var(--color-danger)] text-[var(--color-danger)]">
-                        no email
-                      </span>
-                    )}
-                  </div>
-                  <div className="muted text-xs">
-                    {c.phone ? phoneDisplay(c.phone) : ""}
-                    {c.phone && c.email ? " · " : ""}
-                    {c.email ?? ""}
-                  </div>
-                </div>
-                <div className="flex shrink-0 gap-1">
-                  {c.phone && (
-                    <a className="btn btn-sm" href={`tel:${phoneLinkTarget(c.phone)}`}>
-                      Call
-                    </a>
-                  )}
-                  <button type="button" className="btn btn-sm" onClick={() => edit(c)}>
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-danger"
-                    disabled={pending}
-                    onClick={() => remove(c)}
-                  >
-                    ✕
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <div className="scroll-x">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Source</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {contacts.map((c) => (
+                  <tr key={c.id}>
+                    <td className="font-semibold">
+                      {c.name}
+                      {c.email_opt_out && (
+                        <span className="badge ml-1 border-[var(--color-danger)] text-[var(--color-danger)]">
+                          no email
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {roleName(c.role_id) ? (
+                        <span className="badge border-[var(--color-line)] text-[var(--color-muted)]">
+                          {roleName(c.role_id)}
+                        </span>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
+                    <td className="muted text-xs">{c.email ?? "—"}</td>
+                    <td className="muted whitespace-nowrap text-xs">
+                      {c.phone ? phoneDisplay(c.phone) : "—"}
+                    </td>
+                    <td className="text-xs text-[var(--text-faint)]">{c.source ?? "—"}</td>
+                    <td>
+                      <div className="flex gap-1">
+                        {c.phone && (
+                          <a className="btn btn-sm" href={`tel:${phoneLinkTarget(c.phone)}`}>
+                            Call
+                          </a>
+                        )}
+                        <button type="button" className="btn btn-sm" onClick={() => edit(c)}>
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger"
+                          disabled={pending}
+                          onClick={() => remove(c)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
 
         {editing && (

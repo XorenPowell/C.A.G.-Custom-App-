@@ -107,3 +107,24 @@ export async function setPartnershipStage(
   revalidatePath("/", "layout");
   return ok();
 }
+
+/** Saves just the booked callback, without round-tripping the whole form. */
+export async function setNextAction(
+  target: { partnership_id?: string; job_id?: string },
+  followUpAt: string | null,
+  note: string | null,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const table = target.partnership_id ? "partnerships" : "jobs";
+  const id = target.partnership_id ?? target.job_id;
+  if (!id) return fail("Nothing to update.");
+
+  const { error } = await supabase
+    .from(table)
+    .update({ follow_up_at: followUpAt, follow_up_note: orNull(note) })
+    .eq("id", id);
+  if (error) return fail(error.message);
+
+  revalidatePath("/", "layout");
+  return ok();
+}

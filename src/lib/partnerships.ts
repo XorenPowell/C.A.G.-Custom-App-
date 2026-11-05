@@ -42,14 +42,6 @@ export type PartnershipFilters = {
   excludeStatusId?: string | null;
 };
 
-export const PARTNERSHIP_SORTS = [
-  { value: "follow_up", label: "Follow-up due" },
-  { value: "last_contact", label: "Last contact (newest)" },
-  // The one that finds cold partnerships, which is the point of sorting by it.
-  { value: "last_contact_oldest", label: "Last contact (oldest)" },
-  { value: "business_name", label: "Business name" },
-  { value: "created_at", label: "Recently added" },
-] as const;
 
 export function filterPartnerships(
   rows: Partnership[],

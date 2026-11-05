@@ -1,32 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import TopBar from "@/components/TopBar";
-import PartnershipForm from "@/components/PartnershipForm";
 import ActivityTrail from "@/components/ActivityTrail";
 import ContactsPanel from "@/components/ContactsPanel";
 import LogContact from "@/components/LogContact";
+import NextActionCard from "@/components/NextActionCard";
+import PartnershipForm from "@/components/PartnershipForm";
+import PlacementCard from "@/components/PlacementCard";
 import StageSelect from "@/components/StageSelect";
 import DeletePartnershipButton from "./DeletePartnershipButton";
-import { Empty, Stat, StatGrid } from "@/components/Detail";
-import {
-  followUpLabel,
-  followUpState,
-  followUpTime,
-  getPartnership,
-  getPartnershipReferrals,
-} from "@/lib/partnerships";
+import { Empty } from "@/components/Detail";
+import { followUpLabel, followUpState, getPartnership, getPartnershipReferrals } from "@/lib/partnerships";
 import { getPartnershipActivity } from "@/lib/activity";
+import { getCampaigns, getPlacements, restockLabel, restockState } from "@/lib/campaigns";
 import { getContactsFor } from "@/lib/contacts";
 import { active, getLists, lookup, nameMap } from "@/lib/data";
 import { stageTone } from "@/lib/lists";
-import { dateDisplay, dateLongDisplay, money } from "@/lib/format";
-
-const DUE_TONE: Record<string, string> = {
-  overdue: "border-[var(--color-danger)] text-[var(--color-danger)]",
-  today: "border-[var(--color-warn)] text-[var(--color-warn)]",
-  upcoming: "border-[var(--color-line)] text-[var(--color-muted)]",
-  none: "border-[var(--color-danger)] text-[var(--color-danger)]",
-};
+import { dateDisplay, money } from "@/lib/format";
 
 export default async function PartnershipDetailPage({
   params,
@@ -34,14 +23,19 @@ export default async function PartnershipDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [partnership, lists, referrals, activity, contacts] = await Promise.all([
+  const [partnership, lists, referrals, activity, contacts, campaigns] = await Promise.all([
     getPartnership(id),
     getLists(),
     getPartnershipReferrals(id),
     getPartnershipActivity(id),
     getContactsFor(id),
+    getCampaigns(),
   ]);
   if (!partnership) notFound();
+
+  const campaign = campaigns[0] ?? null;
+  const placements = campaign ? await getPlacements(campaign.id) : [];
+  const placement = placements.find((p) => p.partnership_id === partnership.id) ?? null;
 
   const names = nameMap(lists);
   const revenue = referrals.reduce((s, r) => s + r.total_invoice_paid, 0);
@@ -50,128 +44,124 @@ export default async function PartnershipDetailPage({
   const due = followUpState(partnership);
 
   return (
-    <>
-      <TopBar
-        title={partnership.business_name}
-        back="/partnerships"
-        backLabel="Partnerships"
-      />
-      <main className="page max-w-3xl">
-        {/* Stage is a dropdown, not a label: it moves often, and burying it
-            inside the Edit form made a routine change a three-step job. */}
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <StageSelect
-            partnershipId={partnership.id}
-            currentId={partnership.status_id}
-            stages={active(lists.partnership_status)}
-            tone={stageTone(statusName)}
-          />
-          <span className="badge border-[var(--color-line)] text-[var(--color-muted)]">
-            {lookup(names, partnership.tier_id)}
-          </span>
-          <span className="badge border-[var(--color-line)] text-[var(--color-muted)]">
-            {lookup(names, partnership.zone_id)}
-          </span>
+    <main className="page max-w-6xl">
+      {/* Header: identity on the left, the two things you came to do on the
+          right. Wraps to stacked on a phone. */}
+      <div className="mb-2">
+        <Link href="/partnerships" className="btn btn-sm">
+          ‹ Partnerships
+        </Link>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="h1 text-xl md:text-2xl">{partnership.business_name}</h1>
+          <div className="muted text-sm">
+            {[partnership.address, lookup(names, partnership.zone_id)]
+              .filter((v) => v && v !== "—")
+              .join(" · ")}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <StageSelect
+              partnershipId={partnership.id}
+              currentId={partnership.status_id}
+              stages={active(lists.partnership_status)}
+              tone={stageTone(statusName)}
+            />
+            <span className="badge border-[var(--color-line)] text-[var(--color-muted)]">
+              {lookup(names, partnership.tier_id)}
+            </span>
+            {placement && <span className="badge border-[#a98bd8] text-[#c4acec]">SAFC</span>}
+          </div>
         </div>
 
-        {/* The next action comes before the record itself. Across 117
-            partnerships, "what do I do about this one" is the live question. */}
-        <section
-          className={`card mb-3 ${due === "none" ? "border-[var(--color-danger)]" : "border-[var(--color-accent)]"}`}
-        >
-          <div className="section-title flex items-center justify-between">
-            <span>Next action</span>
-            <span className={`badge ${DUE_TONE[due]}`}>
-              {due === "none" ? "nothing booked" : followUpLabel(partnership)}
-            </span>
-          </div>
-          <div className="card-pad">
-            {partnership.follow_up_at ? (
-              <>
-                <p className="text-sm">
-                  <strong>{dateLongDisplay(partnership.follow_up_at.slice(0, 10))}</strong>
-                  {followUpTime(partnership) ? ` at ${followUpTime(partnership)}` : ""}
-                </p>
-                {partnership.follow_up_note && (
-                  <p className="muted mt-1 text-sm">{partnership.follow_up_note}</p>
-                )}
-              </>
-            ) : (
-              <p className="text-sm text-[var(--color-danger)]">
-                No callback booked. This partnership appears in no follow-up list and will
-                not come back to you on its own.
-              </p>
-            )}
-
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              {partnership.poc_phone && (
-                <a
-                  className="btn btn-sm"
-                  href={`tel:${partnership.poc_phone.replace(/\D/g, "")}`}
-                >
-                  Call {partnership.poc_name || "POC"}
-                </a>
-              )}
-              <span className="muted text-sm">
-                Last contact {dateDisplay(partnership.last_contact)}
-              </span>
-            </div>
-          </div>
-        </section>
-
-        <div className="mb-3 flex flex-wrap gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Link href="#edit" className="btn">
+            Edit
+          </Link>
           <LogContact
             partnershipId={partnership.id}
             currentFollowUpAt={partnership.follow_up_at}
             currentFollowUpNote={partnership.follow_up_note}
           />
         </div>
+      </div>
 
-        <ContactsPanel
+      {/* Next action and the stack sit side by side: both are "what do I do
+          about this business", and both are edited in place. */}
+      <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <NextActionCard
           partnershipId={partnership.id}
-          contacts={contacts}
-          roles={active(lists.contact_role)}
-        />
+          followUpAt={partnership.follow_up_at}
+          followUpNote={partnership.follow_up_note}
+          tone={due}
+          dueLabel={followUpLabel(partnership)}
+        >
+          <p className="muted mt-2 text-xs">
+            Last contact {dateDisplay(partnership.last_contact)}. Log contact records what
+            was said and books the next call in one step.
+          </p>
+        </NextActionCard>
 
-        <section className="card mb-3">
-          <div className="section-title">Activity ({activity.length})</div>
+        {campaign && (
+          <PlacementCard
+            campaignId={campaign.id}
+            partnershipId={partnership.id}
+            placement={placement}
+            dueLabel={placement ? restockLabel(placement) : ""}
+            tone={placement ? restockState(placement) : "none"}
+          />
+        )}
+      </div>
+
+      <ContactsPanel
+        partnershipId={partnership.id}
+        contacts={contacts}
+        roles={active(lists.contact_role)}
+      />
+
+      {/* History on the left, what it has produced on the right. */}
+      <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <section className="card">
+          <div className="section-title">Activity log ({activity.length})</div>
           <div className="card-pad">
             <ActivityTrail
               entries={activity}
-              emptyHint="Nothing logged yet. Use Log contact above and the history builds itself."
+              emptyHint="Nothing logged yet. Use Log contact and the history builds itself."
             />
           </div>
         </section>
 
-        {/* Derived: counted from jobs, never stored on the partnership row. */}
-        <section className="card mb-3">
-          <div className="section-title">Referral Performance</div>
+        <section className="card">
+          <div className="section-title">Referrals</div>
           <div className="card-pad">
-            <StatGrid>
-              <Stat label="Jobs referred" value={String(referrals.length)} />
-              <Stat label="Completed" value={String(completed)} />
-              <Stat label="Revenue referred" value={money(revenue)} />
-              <Stat label="Last visit" value={dateDisplay(partnership.last_visit)} />
-            </StatGrid>
-          </div>
-        </section>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <div className="label">Jobs referred</div>
+                <div className="font-heading text-2xl font-extrabold">{referrals.length}</div>
+                <div className="text-xs text-[var(--text-faint)]">{completed} completed</div>
+              </div>
+              <div>
+                <div className="label">Revenue</div>
+                <div className="font-heading text-2xl font-extrabold">{money(revenue)}</div>
+                <div className="text-xs text-[var(--text-faint)]">
+                  last visit {dateDisplay(partnership.last_visit)}
+                </div>
+              </div>
+            </div>
 
-        <section className="card mb-3">
-          <div className="section-title">Referred Jobs ({referrals.length})</div>
-          <div className="card-pad">
             {referrals.length === 0 ? (
               <Empty>
-                No jobs credited yet. A job counts here once its inquiry source is set to
+                No jobs credited yet. A job counts here once its inquiry source is
                 Partnership Referral and this business is selected.
               </Empty>
             ) : (
-              <div className="scroll-x">
+              <div className="scroll-x mt-3">
                 <table className="table">
                   <thead>
                     <tr>
                       <th>Job</th>
                       <th>Date</th>
-                      <th>Customer</th>
                       <th>Status</th>
                       <th>Invoice</th>
                     </tr>
@@ -185,7 +175,6 @@ export default async function PartnershipDetailPage({
                           </Link>
                         </td>
                         <td className="whitespace-nowrap">{dateDisplay(r.date)}</td>
-                        <td>{r.customer_name || "—"}</td>
                         <td>{r.status}</td>
                         <td className="mono">{money(r.total_invoice_paid)}</td>
                       </tr>
@@ -196,11 +185,13 @@ export default async function PartnershipDetailPage({
             )}
           </div>
         </section>
+      </div>
 
+      <div id="edit">
         <PartnershipForm partnership={partnership} lists={lists} />
+      </div>
 
-        <DeletePartnershipButton id={partnership.id} name={partnership.business_name} />
-      </main>
-    </>
+      <DeletePartnershipButton id={partnership.id} name={partnership.business_name} />
+    </main>
   );
 }
