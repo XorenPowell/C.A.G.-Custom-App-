@@ -108,3 +108,55 @@ export async function completeScheduledAction(
   revalidatePath("/", "layout");
   return ok();
 }
+
+/**
+ * Records an action whenever it happened.
+ *
+ * One control, and the date decides where it lands: in the past or now it is
+ * history and goes to the activity trail; in the future it is a plan. Asking
+ * the dispatcher to classify it themselves would be asking them to know an
+ * implementation detail.
+ */
+export async function addAction(payload: {
+  partnership_id?: string | null;
+  job_id?: string | null;
+  kind: FollowUpKind;
+  /** UTC instant. */
+  at: string;
+  note: string | null;
+  outcome: string | null;
+}): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const partnershipId = payload.partnership_id || null;
+  const jobId = payload.job_id || null;
+  if (!!partnershipId === !!jobId) {
+    return fail("An action belongs to exactly one partnership or job.");
+  }
+  if (!payload.at) return fail("An action needs a date.");
+
+  const isFuture = new Date(payload.at).getTime() > Date.now();
+
+  if (isFuture) {
+    return addScheduledAction({
+      partnership_id: partnershipId,
+      job_id: jobId,
+      kind: payload.kind,
+      due_at: payload.at,
+      note: payload.note,
+    });
+  }
+
+  const { error } = await supabase.from("activity").insert({
+    partnership_id: partnershipId,
+    job_id: jobId,
+    kind: payload.kind,
+    outcome: orNull(payload.outcome),
+    note: orNull(payload.note),
+    occurred_at: payload.at,
+  });
+  if (error) return fail(error.message);
+
+  revalidatePath("/", "layout");
+  return ok();
+}
