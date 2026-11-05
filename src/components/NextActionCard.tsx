@@ -29,6 +29,13 @@ export default function NextActionCard({
   followUpNote,
   tone,
   dueLabel,
+  /**
+   * What the badge reads when nothing is booked, and whether that state is
+   * worth alarming about. A finished job with no callback is the correct end
+   * state; an open one is a leak.
+   */
+  emptyLabel = "nothing booked",
+  alarmWhenEmpty = true,
   children,
 }: {
   partnershipId?: string;
@@ -37,8 +44,11 @@ export default function NextActionCard({
   followUpNote: string | null;
   tone: Tone;
   dueLabel: string;
+  emptyLabel?: string;
+  alarmWhenEmpty?: boolean;
   children?: React.ReactNode;
 }) {
+  const alarming = tone === "none" && alarmWhenEmpty;
   const router = useRouter();
   const [pending, start] = useGlobalTransition();
 
@@ -78,11 +88,27 @@ export default function NextActionCard({
 
   return (
     <section
-      className={`card ${tone === "none" ? "border-[var(--color-danger)]" : "border-[var(--color-accent)]"}`}
+      className={`card ${
+        alarming
+          ? "border-[var(--color-danger)]"
+          : tone === "none"
+            ? ""
+            : "border-[var(--color-accent)]"
+      }`}
     >
       <div className="section-title flex items-center justify-between gap-2">
         <span>Next action</span>
-        <span className={`badge ${BADGE[tone]}`}>{tone === "none" ? "nothing booked" : dueLabel}</span>
+        <span
+          className={`badge ${
+            tone === "none"
+              ? alarming
+                ? BADGE.none
+                : BADGE.upcoming
+              : BADGE[tone]
+          }`}
+        >
+          {tone === "none" ? emptyLabel : dueLabel}
+        </span>
       </div>
 
       <div className="card-pad">

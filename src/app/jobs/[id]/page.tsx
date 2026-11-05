@@ -4,16 +4,17 @@ import JobForm from "@/components/JobForm";
 import CommsActions from "@/components/CommsActions";
 import ActivityTrail from "@/components/ActivityTrail";
 import LogContact from "@/components/LogContact";
+import NextActionCard from "@/components/NextActionCard";
 import DeleteJobButton from "./DeleteJobButton";
 import { getJob, getJobFinancialsOne } from "@/lib/jobs";
 import { getJobActivity } from "@/lib/activity";
-import { followUpLabel, followUpState, followUpTime } from "@/lib/follow-up";
+import { followUpLabel, followUpState } from "@/lib/follow-up";
 import { isJobOpen } from "@/lib/types";
 import { getEntitiesFull } from "@/lib/entities";
 import { getPartnerships } from "@/lib/partnerships";
 import { getLists, getSettings, getTemplates, lookup, nameMap, partnershipReferralId } from "@/lib/data";
 import { effectiveWorkerPay, netWorkerPay } from "@/lib/calc";
-import { dateLongDisplay, instantDisplay } from "@/lib/format";
+import { instantDisplay } from "@/lib/format";
 
 export default async function JobDetailPage({
   params,
@@ -92,52 +93,27 @@ export default async function JobDetailPage({
         </div>
 
         {/* Jobs leak the same way partnerships do: a deposit paid, then two
-            weeks of silence before the work starts. Same next-action rule. */}
-        <section
-          className={`card mb-3 ${
-            jobDue === "none"
-              ? jobOpen
-                ? "border-[var(--color-danger)]"
-                : ""
-              : "border-[var(--color-accent)]"
-          }`}
-        >
-          <div className="section-title flex items-center justify-between">
-            <span>Next action</span>
-            <span
-              className={`badge ${
-                jobDue === "overdue"
-                  ? "border-[var(--color-danger)] text-[var(--color-danger)]"
-                  : jobDue === "today"
-                    ? "border-[var(--color-warn)] text-[var(--color-warn)]"
-                    : jobDue === "none" && jobOpen
-                      ? "border-[var(--color-danger)] text-[var(--color-danger)]"
-                      : "border-[var(--color-line)] text-[var(--color-muted)]"
-              }`}
-            >
-              {jobDue === "none" ? (jobOpen ? "nothing booked" : job.status) : followUpLabel(job)}
-            </span>
-          </div>
-          <div className="card-pad">
-            {job.follow_up_at ? (
-              <>
-                <p className="text-sm">
-                  <strong>{dateLongDisplay(job.follow_up_at.slice(0, 10))}</strong>
-                  {followUpTime(job) ? ` at ${followUpTime(job)}` : ""}
-                </p>
-                {job.follow_up_note && (
-                  <p className="muted mt-1 text-sm">{job.follow_up_note}</p>
-                )}
-              </>
-            ) : jobOpen ? (
-              <p className="text-sm text-[var(--color-danger)]">
-                No callback booked. Nothing will bring this job back to you.
+            weeks of silence before the work starts. Same card, same rules. */}
+        <div className="mb-3">
+          <NextActionCard
+            jobId={job.id}
+            followUpAt={job.follow_up_at}
+            followUpNote={job.follow_up_note}
+            tone={jobDue}
+            dueLabel={followUpLabel(job)}
+            emptyLabel={jobOpen ? "nothing booked" : job.status}
+            alarmWhenEmpty={jobOpen}
+          >
+            {jobOpen ? (
+              <p className="note">
+                Chasing a deposit and confirming arrival are different calls — say which
+                in <strong>What for</strong> so the queue tells you why it is ringing.
               </p>
             ) : (
-              <p className="muted text-sm">
+              <p className="note">
                 This job is {job.status.toLowerCase()}, so no follow-up is expected. Book
-                one anyway if you want to chase a review or check in later — it will show
-                up in your calls like any other.
+                one anyway to chase a review or check in later and it will appear in your
+                calls like any other.
               </p>
             )}
             <div className="mt-3">
@@ -148,8 +124,8 @@ export default async function JobDetailPage({
                 compact
               />
             </div>
-          </div>
-        </section>
+          </NextActionCard>
+        </div>
 
         <section className="card mb-3">
           <div className="section-title">Activity ({activity.length})</div>
