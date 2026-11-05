@@ -8,6 +8,7 @@ import { NumberInput, Section, Select, TextArea, TextInput } from "@/components/
 import { savePartnership, type PartnershipPayload } from "@/app/actions/partnerships";
 import { optionsFor, type Lists } from "@/lib/lists";
 import { followUpDue, followUpLabel, todayLocal } from "@/lib/follow-up";
+import { chicagoDateTimeInputValue, chicagoLocalToUTCISO } from "@/lib/dates";
 import { dateLongDisplay } from "@/lib/format";
 import type { Partnership } from "@/lib/types";
 
@@ -43,7 +44,10 @@ export default function PartnershipForm({
     fliers_dropped_last_visit: str(partnership?.fliers_dropped_last_visit ?? 0),
     total_fliers_dropped: str(partnership?.total_fliers_dropped ?? 0),
     last_contact: partnership?.last_contact ?? "",
-    follow_up_days: str(partnership?.follow_up_days ?? ""),
+    follow_up_local: partnership?.follow_up_at
+      ? chicagoDateTimeInputValue(partnership.follow_up_at)
+      : "",
+    follow_up_note: partnership?.follow_up_note ?? "",
     notes: partnership?.notes ?? "",
   });
 
@@ -52,19 +56,33 @@ export default function PartnershipForm({
     setStatusMsg(null);
   }
 
+  // The form holds a Chicago-local datetime string; the column holds an
+  // instant. Converting here keeps the preview honest about which day the
+  // callback actually lands on.
   const followUpInput = {
-    last_contact: form.last_contact || null,
-    follow_up_days: form.follow_up_days === "" ? null : Number(form.follow_up_days),
+    follow_up_at: form.follow_up_local ? chicagoLocalToUTCISO(form.follow_up_local) : null,
   };
   const due = followUpDue(followUpInput);
   const dueLabel = followUpLabel(followUpInput);
 
+  /** Books the callback N days out at 9am, the usual case in one tap. */
+  function callBackIn(days: number) {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    patch({
+      follow_up_local: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T09:00`,
+    });
+  }
+
   function save() {
     start(async () => {
       setError(null);
+      const { follow_up_local, ...rest } = form;
       const payload: PartnershipPayload = {
         id: partnership?.id ?? null,
-        ...form,
+        ...rest,
+        follow_up_at: follow_up_local ? chicagoLocalToUTCISO(follow_up_local) : null,
       };
       const res = await savePartnership(payload);
       if (!res.ok) {
@@ -134,24 +152,50 @@ export default function PartnershipForm({
       <Section title="Follow-up">
         <div className="grid-form">
           <TextInput
+            label="Call back on"
+            type="datetime-local"
+            value={form.follow_up_local}
+            onChange={(e) => patch({ follow_up_local: e.target.value })}
+            hint="A booked moment, not an interval. Blank means nothing is scheduled."
+          />
+          <TextInput
             label="Last contact"
             type="date"
             value={form.last_contact}
             onChange={(e) => patch({ last_contact: e.target.value })}
             hint="Any outreach — call, email or visit."
           />
-          <NumberInput
-            label="Follow up in (days)"
-            step="1"
-            min={0}
-            placeholder="e.g. 14"
-            value={form.follow_up_days}
-            onChange={(e) => patch({ follow_up_days: e.target.value })}
-            hint="Counted from last contact."
-          />
         </div>
 
+        <TextInput
+          label="What the call is for"
+          value={form.follow_up_note}
+          onChange={(e) => patch({ follow_up_note: e.target.value })}
+          placeholder="Ask about the Q1 referral push"
+        />
+
         <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className="btn btn-sm" onClick={() => callBackIn(1)}>
+            Tomorrow
+          </button>
+          <button type="button" className="btn btn-sm" onClick={() => callBackIn(3)}>
+            +3 days
+          </button>
+          <button type="button" className="btn btn-sm" onClick={() => callBackIn(7)}>
+            +1 week
+          </button>
+          <button type="button" className="btn btn-sm" onClick={() => callBackIn(30)}>
+            +1 month
+          </button>
+          {form.follow_up_local && (
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => patch({ follow_up_local: "" })}
+            >
+              Clear
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-sm"
@@ -161,14 +205,13 @@ export default function PartnershipForm({
           </button>
         </div>
 
-        {due && (
+        {due ? (
           <p className="muted mt-2 text-sm">
             Next follow-up: <strong>{dateLongDisplay(due)}</strong> ({dueLabel})
           </p>
-        )}
-        {!due && form.follow_up_days && !form.last_contact && (
-          <p className="muted mt-2 text-sm">
-            Set a last contact date and the follow-up date will calculate from it.
+        ) : (
+          <p className="mt-2 text-sm text-[var(--color-warn)]">
+            No callback booked — this partnership will not appear in any follow-up list.
           </p>
         )}
       </Section>

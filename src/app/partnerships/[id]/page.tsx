@@ -2,17 +2,30 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import TopBar from "@/components/TopBar";
 import PartnershipForm from "@/components/PartnershipForm";
+import ActivityTrail from "@/components/ActivityTrail";
+import ContactsPanel from "@/components/ContactsPanel";
+import LogContact from "@/components/LogContact";
+import StageSelect from "@/components/StageSelect";
 import DeletePartnershipButton from "./DeletePartnershipButton";
 import { Empty, Stat, StatGrid } from "@/components/Detail";
-import { followUpLabel, getPartnership, getPartnershipReferrals } from "@/lib/partnerships";
-import { getLists, lookup, nameMap } from "@/lib/data";
+import {
+  followUpLabel,
+  followUpState,
+  followUpTime,
+  getPartnership,
+  getPartnershipReferrals,
+} from "@/lib/partnerships";
+import { getPartnershipActivity } from "@/lib/activity";
+import { getContactsFor } from "@/lib/contacts";
+import { active, getLists, lookup, nameMap } from "@/lib/data";
 import { stageTone } from "@/lib/lists";
-import { dateDisplay, money } from "@/lib/format";
+import { dateDisplay, dateLongDisplay, money } from "@/lib/format";
 
-const STAGE_TONE: Record<string, string> = {
-  good: "border-[var(--color-good)] text-[var(--color-good)]",
-  warn: "border-[var(--color-warn)] text-[var(--color-warn)]",
-  muted: "border-[var(--color-line)] text-[var(--color-muted)]",
+const DUE_TONE: Record<string, string> = {
+  overdue: "border-[var(--color-danger)] text-[var(--color-danger)]",
+  today: "border-[var(--color-warn)] text-[var(--color-warn)]",
+  upcoming: "border-[var(--color-line)] text-[var(--color-muted)]",
+  none: "border-[var(--color-danger)] text-[var(--color-danger)]",
 };
 
 export default async function PartnershipDetailPage({
@@ -21,10 +34,12 @@ export default async function PartnershipDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [partnership, lists, referrals] = await Promise.all([
+  const [partnership, lists, referrals, activity, contacts] = await Promise.all([
     getPartnership(id),
     getLists(),
     getPartnershipReferrals(id),
+    getPartnershipActivity(id),
+    getContactsFor(id),
   ]);
   if (!partnership) notFound();
 
@@ -32,6 +47,7 @@ export default async function PartnershipDetailPage({
   const revenue = referrals.reduce((s, r) => s + r.total_invoice_paid, 0);
   const completed = referrals.filter((r) => r.status === "Completed").length;
   const statusName = lookup(names, partnership.status_id);
+  const due = followUpState(partnership);
 
   return (
     <>
@@ -41,13 +57,91 @@ export default async function PartnershipDetailPage({
         backLabel="Partnerships"
       />
       <main className="page max-w-3xl">
+        {/* Stage is a dropdown, not a label: it moves often, and burying it
+            inside the Edit form made a routine change a three-step job. */}
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className={`badge ${STAGE_TONE[stageTone(statusName)]}`}>{statusName}</span>
-          <span className="muted text-sm">
-            Last contact {dateDisplay(partnership.last_contact)} · follow-up{" "}
-            {followUpLabel(partnership)}
+          <StageSelect
+            partnershipId={partnership.id}
+            currentId={partnership.status_id}
+            stages={active(lists.partnership_status)}
+            tone={stageTone(statusName)}
+          />
+          <span className="badge border-[var(--color-line)] text-[var(--color-muted)]">
+            {lookup(names, partnership.tier_id)}
+          </span>
+          <span className="badge border-[var(--color-line)] text-[var(--color-muted)]">
+            {lookup(names, partnership.zone_id)}
           </span>
         </div>
+
+        {/* The next action comes before the record itself. Across 117
+            partnerships, "what do I do about this one" is the live question. */}
+        <section
+          className={`card mb-3 ${due === "none" ? "border-[var(--color-danger)]" : "border-[var(--color-accent)]"}`}
+        >
+          <div className="section-title flex items-center justify-between">
+            <span>Next action</span>
+            <span className={`badge ${DUE_TONE[due]}`}>
+              {due === "none" ? "nothing booked" : followUpLabel(partnership)}
+            </span>
+          </div>
+          <div className="card-pad">
+            {partnership.follow_up_at ? (
+              <>
+                <p className="text-sm">
+                  <strong>{dateLongDisplay(partnership.follow_up_at.slice(0, 10))}</strong>
+                  {followUpTime(partnership) ? ` at ${followUpTime(partnership)}` : ""}
+                </p>
+                {partnership.follow_up_note && (
+                  <p className="muted mt-1 text-sm">{partnership.follow_up_note}</p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-[var(--color-danger)]">
+                No callback booked. This partnership appears in no follow-up list and will
+                not come back to you on its own.
+              </p>
+            )}
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {partnership.poc_phone && (
+                <a
+                  className="btn btn-sm"
+                  href={`tel:${partnership.poc_phone.replace(/\D/g, "")}`}
+                >
+                  Call {partnership.poc_name || "POC"}
+                </a>
+              )}
+              <span className="muted text-sm">
+                Last contact {dateDisplay(partnership.last_contact)}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <div className="mb-3">
+          <LogContact
+            partnershipId={partnership.id}
+            currentFollowUpAt={partnership.follow_up_at}
+            currentFollowUpNote={partnership.follow_up_note}
+          />
+        </div>
+
+        <ContactsPanel
+          partnershipId={partnership.id}
+          contacts={contacts}
+          roles={active(lists.contact_role)}
+        />
+
+        <section className="card mb-3">
+          <div className="section-title">Activity ({activity.length})</div>
+          <div className="card-pad">
+            <ActivityTrail
+              entries={activity}
+              emptyHint="Nothing logged yet. Use Log contact above and the history builds itself."
+            />
+          </div>
+        </section>
 
         {/* Derived: counted from jobs, never stored on the partnership row. */}
         <section className="card mb-3">

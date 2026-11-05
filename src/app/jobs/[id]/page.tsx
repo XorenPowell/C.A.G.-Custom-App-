@@ -2,13 +2,17 @@ import { notFound } from "next/navigation";
 import TopBar from "@/components/TopBar";
 import JobForm from "@/components/JobForm";
 import CommsActions from "@/components/CommsActions";
+import ActivityTrail from "@/components/ActivityTrail";
+import LogContact from "@/components/LogContact";
 import DeleteJobButton from "./DeleteJobButton";
 import { getJob, getJobFinancialsOne } from "@/lib/jobs";
+import { getJobActivity } from "@/lib/activity";
+import { followUpLabel, followUpState, followUpTime } from "@/lib/follow-up";
 import { getEntitiesFull } from "@/lib/entities";
 import { getPartnerships } from "@/lib/partnerships";
 import { getLists, getSettings, getTemplates, lookup, nameMap, partnershipReferralId } from "@/lib/data";
 import { effectiveWorkerPay, netWorkerPay } from "@/lib/calc";
-import { instantDisplay } from "@/lib/format";
+import { dateLongDisplay, instantDisplay } from "@/lib/format";
 
 export default async function JobDetailPage({
   params,
@@ -16,7 +20,7 @@ export default async function JobDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [job, lists, entities, partnerships, settings, templates, financials] =
+  const [job, lists, entities, partnerships, settings, templates, financials, activity] =
     await Promise.all([
       getJob(id),
       getLists(),
@@ -25,11 +29,13 @@ export default async function JobDetailPage({
       getSettings(),
       getTemplates(),
       getJobFinancialsOne(id),
+      getJobActivity(id),
     ]);
 
   if (!job) notFound();
 
   const names = nameMap(lists);
+  const jobDue = followUpState(job);
   const assigned = job.job_workers
     .map((w) => {
       const e = entities.find((entity) => entity.id === w.entity_id);
@@ -80,6 +86,64 @@ export default async function JobDetailPage({
             </span>
           )}
         </div>
+
+        {/* Jobs leak the same way partnerships do: a deposit paid, then two
+            weeks of silence before the work starts. Same next-action rule. */}
+        <section
+          className={`card mb-3 ${jobDue === "none" ? "border-[var(--color-danger)]" : "border-[var(--color-accent)]"}`}
+        >
+          <div className="section-title flex items-center justify-between">
+            <span>Next action</span>
+            <span
+              className={`badge ${
+                jobDue === "overdue"
+                  ? "border-[var(--color-danger)] text-[var(--color-danger)]"
+                  : jobDue === "today"
+                    ? "border-[var(--color-warn)] text-[var(--color-warn)]"
+                    : jobDue === "none"
+                      ? "border-[var(--color-danger)] text-[var(--color-danger)]"
+                      : "border-[var(--color-line)] text-[var(--color-muted)]"
+              }`}
+            >
+              {jobDue === "none" ? "nothing booked" : followUpLabel(job)}
+            </span>
+          </div>
+          <div className="card-pad">
+            {job.follow_up_at ? (
+              <>
+                <p className="text-sm">
+                  <strong>{dateLongDisplay(job.follow_up_at.slice(0, 10))}</strong>
+                  {followUpTime(job) ? ` at ${followUpTime(job)}` : ""}
+                </p>
+                {job.follow_up_note && (
+                  <p className="muted mt-1 text-sm">{job.follow_up_note}</p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-[var(--color-danger)]">
+                No callback booked. Nothing will bring this job back to you.
+              </p>
+            )}
+            <div className="mt-3">
+              <LogContact
+                jobId={job.id}
+                currentFollowUpAt={job.follow_up_at}
+                currentFollowUpNote={job.follow_up_note}
+                compact
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className="card mb-3">
+          <div className="section-title">Activity ({activity.length})</div>
+          <div className="card-pad">
+            <ActivityTrail
+              entries={activity}
+              emptyHint="Nothing logged yet. Log contact records what was said and books the next call."
+            />
+          </div>
+        </section>
 
         {/* Communication actions resolve templates against the saved record. */}
         <section className="card mb-3">

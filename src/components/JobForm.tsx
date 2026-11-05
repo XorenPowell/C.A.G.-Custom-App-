@@ -96,6 +96,7 @@ export default function JobForm({
     confirmed_arrival_date: job?.confirmed_arrival_date ?? "",
     confirmed_arrival_time: job?.confirmed_arrival_time?.slice(0, 5) ?? "",
     follow_up_local: job?.follow_up_at ? chicagoDateTimeInputValue(job.follow_up_at) : "",
+    follow_up_note: job?.follow_up_note ?? "",
     estimated_duration_minutes: str(job?.estimated_duration_minutes),
     total_invoice_paid: str(job?.total_invoice_paid ?? 0),
     pos_fee_percent: str(job?.pos_fee_percent ?? settings.default_pos_fee_percent),
@@ -128,6 +129,25 @@ export default function JobForm({
 
   function patchWindow(index: number, next: Partial<WindowState>) {
     setWindows((prev) => prev.map((w, i) => (i === index ? { ...w, ...next } : w)));
+    setStatusMsg(null);
+  }
+
+  /**
+   * Drops a window and closes the gap, so removing the first of three leaves
+   * two consecutively numbered windows rather than a blank slot followed by
+   * data. The backing array stays three long; the vacated slot moves to the
+   * end as a blank.
+   *
+   * Removing the last remaining window clears it rather than hiding it —
+   * there is always one slot on screen to type into. A window with no date is
+   * dropped on save, so clearing it is what deletes it from the job.
+   */
+  function removeWindow(index: number) {
+    setWindows((prev) => [
+      ...prev.filter((_, i) => i !== index),
+      { date: "", start_time: "", end_time: "" },
+    ]);
+    setWindowCount((n) => Math.max(1, n - 1));
     setStatusMsg(null);
   }
 
@@ -293,6 +313,7 @@ export default function JobForm({
         estimated_duration_minutes: form.estimated_duration_minutes || null,
         addresses,
         follow_up_at: form.follow_up_local ? chicagoLocalToUTCISO(form.follow_up_local) : null,
+        follow_up_note: form.follow_up_note,
         total_invoice_paid: form.total_invoice_paid,
         pos_fee_percent: form.pos_fee_percent,
         total_worker_payout_override: form.total_worker_payout_override || null,
@@ -468,7 +489,23 @@ export default function JobForm({
             </div>
             <p className="mt-1 text-xs text-[var(--color-muted)]">
               When to call this lead back. Blank means it won&rsquo;t show up anywhere. Shows on
-              Home under Calls Today when it falls today.
+              Home under Calls when it falls due.
+            </p>
+          </div>
+
+          <div className="field">
+            <label className="label" htmlFor="job-fu-note">
+              What the call is for
+            </label>
+            <input
+              id="job-fu-note"
+              className="input"
+              value={form.follow_up_note}
+              placeholder="Chase the deposit"
+              onChange={(e) => patch({ follow_up_note: e.target.value })}
+            />
+            <p className="mt-1 text-xs text-[var(--color-muted)]">
+              Chasing a deposit and confirming arrival are different calls.
             </p>
           </div>
         </div>
@@ -536,9 +573,25 @@ export default function JobForm({
             <div className="flex flex-col gap-2">
               {windows.slice(0, windowCount).map((w, i) => (
                 <details key={i} className="border border-[var(--color-line)]">
-                  <summary className="label cursor-pointer list-none p-2">
-                    Arrival window {i + 1}
-                    {w.date ? ` — ${windowSummary(w)}` : ""}
+                  <summary className="label flex cursor-pointer list-none items-center justify-between gap-2 p-2">
+                    <span className="min-w-0 truncate">
+                      Arrival window {i + 1}
+                      {w.date ? ` — ${windowSummary(w)}` : ""}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger shrink-0"
+                      aria-label={`Remove arrival window ${i + 1}`}
+                      onClick={(e) => {
+                        // The click would otherwise bubble to <summary> and
+                        // toggle the panel open as it is being removed.
+                        e.preventDefault();
+                        e.stopPropagation();
+                        removeWindow(i);
+                      }}
+                    >
+                      Remove
+                    </button>
                   </summary>
                   <div className="grid-form p-2 pt-0">
                     <TextInput

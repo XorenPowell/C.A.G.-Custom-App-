@@ -17,6 +17,7 @@ export const EMPTY_LISTS: Lists = {
   partnership_status: [],
   partnership_tier: [],
   conversation_outcome: [],
+  contact_role: [],
 };
 
 /** Options offered for new selections. Archived values stay resolvable. */

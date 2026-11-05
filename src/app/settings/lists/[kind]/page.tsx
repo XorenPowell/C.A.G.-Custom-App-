@@ -37,6 +37,11 @@ const META: Record<
     withDescription: true,
     descriptionLabel: "What this tier means (optional)",
   },
+  contact_role: {
+    title: "Contact Roles",
+    withDescription: false,
+    descriptionLabel: "",
+  },
   conversation_outcome: {
     title: "Conversation Outcomes",
     withDescription: false,

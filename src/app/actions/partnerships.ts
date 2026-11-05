@@ -11,12 +11,6 @@ function laterOf(a: string | null, b: string | null): string | null {
   return a >= b ? a : b;
 }
 
-/** Blank stays blank — a missing follow-up interval is not "0 days". */
-function toNullableInt(v: unknown): number | null {
-  if (v === null || v === undefined || String(v).trim() === "") return null;
-  const n = parseInt(String(v), 10);
-  return Number.isFinite(n) ? n : null;
-}
 
 export type PartnershipPayload = {
   id: string | null;
@@ -37,7 +31,8 @@ export type PartnershipPayload = {
   fliers_dropped_last_visit: number | string;
   total_fliers_dropped: number | string;
   last_contact: string | null;
-  follow_up_days: number | string | null;
+  follow_up_at: string | null;
+  follow_up_note: string | null;
   notes: string | null;
 };
 
@@ -67,7 +62,10 @@ export async function savePartnership(
     total_fliers_dropped: toInt(payload.total_fliers_dropped),
     // Visiting someone is contacting them, so a later visit date carries.
     last_contact: laterOf(payload.last_contact, payload.last_visit),
-    follow_up_days: toNullableInt(payload.follow_up_days),
+    // A booked instant. follow_up_days is left untouched on the row so 022
+    // stays reversible; nothing reads it any more.
+    follow_up_at: payload.follow_up_at || null,
+    follow_up_note: orNull(payload.follow_up_note),
     notes: orNull(payload.notes),
   };
 

@@ -1,17 +1,16 @@
 import Link from "next/link";
 import TopBar from "@/components/TopBar";
 import FilterBar, { FilterCheckbox, FilterSelect, FilterText } from "@/components/FilterBar";
-import ZoneMaturityCard from "@/components/ZoneMaturityCard";
 import {
   filterPartnerships,
   followUpLabel,
   followUpState,
   getPartnerships,
   getReferralCounts,
-  maturityTone,
   PARTNERSHIP_SORTS,
 } from "@/lib/partnerships";
-import { active, getLists, getSettings, lookup, nameMap } from "@/lib/data";
+import { active, getLists, lookup, nameMap } from "@/lib/data";
+import { getCampaigns, getPlacements, restockLabel, restockState } from "@/lib/campaigns";
 import { partnershipStageId, stageTone } from "@/lib/lists";
 import { dateDisplay, money, phoneDisplay } from "@/lib/format";
 import type { Partnership } from "@/lib/types";
@@ -45,12 +44,17 @@ export default async function PartnershipsPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const sp = await searchParams;
-  const [lists, all, referrals, settings] = await Promise.all([
+  const [lists, all, referrals, campaigns] = await Promise.all([
     getLists(),
     getPartnerships(),
     getReferralCounts(),
-    getSettings(),
+    getCampaigns(),
   ]);
+
+  // The campaign is shown where the work happens, not only on its own screen.
+  const campaign = campaigns[0] ?? null;
+  const placements = campaign ? await getPlacements(campaign.id) : [];
+  const placementByPartnership = new Map(placements.map((p) => [p.partnership_id, p]));
   const names = nameMap(lists);
 
   const rejectedId = partnershipStageId(lists, "Rejected");
@@ -60,11 +64,10 @@ export default async function PartnershipsPage({
   const excludeRejected =
     sp.excludeRejectedSubmitted === "1" ? sp.excludeRejected === "1" : true;
 
-  // The zone-maturity card is the one Zone control on this screen — picking
-  // a zone there also filters the list below. Defaults to the first zone
-  // when none is picked yet, so the card always has something to show.
-  const activeZones = active(lists.zone);
-  const zoneId = sp.zone || activeZones[0]?.id || null;
+  // Zone is an ordinary filter now. It used to be driven by the zone-maturity
+  // card, which forced a zone to always be selected and so quietly hid every
+  // partnership outside it.
+  const zoneId = sp.zone || "";
 
   function buildHref(next: Record<string, string>) {
     const params = new URLSearchParams();
@@ -78,8 +81,9 @@ export default async function PartnershipsPage({
     q: sp.q ?? "",
     status: sp.status ?? "",
     tier: sp.tier ?? "",
-    zone: zoneId ?? "",
+    zone: zoneId,
     due: sp.due ?? "",
+    view: sp.view ?? "",
     sort: sp.sort ?? "follow_up",
     excludeStatusId: excludeRejected ? rejectedId : null,
   };
@@ -88,7 +92,9 @@ export default async function PartnershipsPage({
     filters.q,
     filters.status,
     filters.tier,
+    filters.zone,
     filters.due,
+    filters.view,
     !excludeRejected,
   ].some(Boolean);
 
@@ -103,12 +109,8 @@ export default async function PartnershipsPage({
     const s = followUpState(p);
     return s === "overdue" || s === "today";
   }).length;
-
-  const zoneMatureCount = zoneId
-    ? all.filter((p) => p.zone_id === zoneId && p.status_id === matureId).length
-    : 0;
-  const maturityTarget = settings.mature_partnership_goal_per_zone || 30;
-  const maturityPercent = Math.round((zoneMatureCount / maturityTarget) * 100);
+  const noActionCount = all.filter((p) => !p.follow_up_at).length;
+  const neverCount = all.filter((p) => !p.last_contact).length;
 
   return (
     <>
@@ -121,25 +123,37 @@ export default async function PartnershipsPage({
         }
       />
       <main className="page">
-        <ZoneMaturityCard
-          zones={activeZones.map((z) => ({ id: z.id, name: z.name }))}
-          selectedZoneId={zoneId}
-          currentParams={sp}
-          percent={maturityPercent}
-          tone={maturityTone(maturityPercent)}
-        />
 
-        {/* Stage shortcuts — the common views without touching the filter form. */}
-        <div className="mb-3 flex flex-wrap gap-1">
+        {/* Saved views. Scrolls sideways rather than wrapping, so the list
+            itself stays above the fold on a phone. */}
+        <div className="mb-3 -mx-3 flex gap-1 overflow-x-auto px-3 md:mx-0 md:px-0 [&>*]:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <Link
-            href={buildHref({ status: "", due: "" })}
-            className={`btn btn-sm ${!filters.status && !filters.due ? "btn-primary" : ""}`}
+            href={buildHref({ status: "", due: "", view: "" })}
+            className={`btn btn-sm ${!filters.status && !filters.due && !filters.view ? "btn-primary" : ""}`}
           >
             All ({all.length})
           </Link>
+          <Link
+            href={buildHref({ due: "due", status: "", view: "" })}
+            className={`btn btn-sm ${filters.due === "due" ? "btn-primary" : ""}`}
+          >
+            Follow up now ({dueCount})
+          </Link>
+          <Link
+            href={buildHref({ view: "none", status: "", due: "" })}
+            className={`btn btn-sm ${filters.view === "none" ? "btn-primary" : ""}`}
+          >
+            No next action ({noActionCount})
+          </Link>
+          <Link
+            href={buildHref({ view: "never", status: "", due: "" })}
+            className={`btn btn-sm ${filters.view === "never" ? "btn-primary" : ""}`}
+          >
+            Never contacted ({neverCount})
+          </Link>
           {visitedId && (
             <Link
-              href={buildHref({ status: visitedId, due: "" })}
+              href={buildHref({ status: visitedId, due: "", view: "" })}
               className={`btn btn-sm ${filters.status === visitedId ? "btn-primary" : ""}`}
             >
               Visited ({visitedCount})
@@ -147,7 +161,7 @@ export default async function PartnershipsPage({
           )}
           {developingId && (
             <Link
-              href={buildHref({ status: developingId, due: "" })}
+              href={buildHref({ status: developingId, due: "", view: "" })}
               className={`btn btn-sm ${filters.status === developingId ? "btn-primary" : ""}`}
             >
               Developing ({developingCount})
@@ -155,24 +169,18 @@ export default async function PartnershipsPage({
           )}
           {matureId && (
             <Link
-              href={buildHref({ status: matureId, due: "" })}
+              href={buildHref({ status: matureId, due: "", view: "" })}
               className={`btn btn-sm ${filters.status === matureId ? "btn-primary" : ""}`}
             >
               Mature ({matureCount})
             </Link>
           )}
-          <Link
-            href={buildHref({ due: "due", status: "" })}
-            className={`btn btn-sm ${filters.due === "due" ? "btn-primary" : ""}`}
-          >
-            Follow up now ({dueCount})
-          </Link>
         </div>
 
         <FilterBar action="/partnerships" active={anyFilter}>
-          {/* Zone lives in the maturity card above, not this form — but the
-              form's plain GET submit still needs to carry it forward. */}
-          <input type="hidden" name="zone" value={zoneId ?? ""} />
+          {/* The saved-view row submits through the querystring, so the form
+              has to carry the current view forward on a plain GET submit. */}
+          <input type="hidden" name="view" value={filters.view} />
           <FilterText
             name="q"
             label="Search"
@@ -194,6 +202,12 @@ export default async function PartnershipsPage({
               { id: "overdue", name: "Overdue only" },
             ]}
             allLabel="Any"
+          />
+          <FilterSelect
+            name="zone"
+            label="Zone"
+            value={filters.zone}
+            options={active(lists.zone)}
           />
           <FilterSelect
             name="tier"
@@ -238,6 +252,11 @@ export default async function PartnershipsPage({
                 )}
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
                   <FollowUp p={p} />
+                  {placementByPartnership.has(p.id) && (
+                    <span className="badge border-[var(--color-line)] text-[var(--color-muted)]">
+                      SAFC {restockLabel(placementByPartnership.get(p.id)!)}
+                    </span>
+                  )}
                   <span className="muted">last contact {dateDisplay(p.last_contact)}</span>
                 </div>
                 <div className="mono mt-1 text-sm">
@@ -263,6 +282,7 @@ export default async function PartnershipsPage({
                   <th>Contact</th>
                   <th>Last contact</th>
                   <th>Follow-up</th>
+                  <th>SAFC</th>
                   <th>Tier</th>
                   <th>Referrals</th>
                   <th>Revenue</th>
@@ -292,6 +312,26 @@ export default async function PartnershipsPage({
                       <td className="whitespace-nowrap">
                         <FollowUp p={p} />
                       </td>
+                      <td className="whitespace-nowrap">
+                        {(() => {
+                          const pl = placementByPartnership.get(p.id);
+                          if (!pl) return <span className="muted text-xs">—</span>;
+                          const st = restockState(pl);
+                          return (
+                            <span
+                              className={`badge ${
+                                st === "overdue"
+                                  ? "border-[var(--color-danger)] text-[var(--color-danger)]"
+                                  : st === "today"
+                                    ? "border-[var(--color-warn)] text-[var(--color-warn)]"
+                                    : "border-[var(--color-line)] text-[var(--color-muted)]"
+                              }`}
+                            >
+                              {restockLabel(pl)}
+                            </span>
+                          );
+                        })()}
+                      </td>
                       <td className="text-xs">{lookup(names, p.tier_id)}</td>
                       <td className="mono">{ref?.jobs ?? 0}</td>
                       <td className="mono">{money(ref?.revenue ?? 0)}</td>
@@ -300,7 +340,7 @@ export default async function PartnershipsPage({
                 })}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="muted">
+                    <td colSpan={9} className="muted">
                       No partnerships match these filters.
                     </td>
                   </tr>
