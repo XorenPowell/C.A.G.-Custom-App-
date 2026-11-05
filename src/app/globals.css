@@ -215,3 +215,100 @@ textarea {
     @apply border-[var(--pill-active-border)] bg-[var(--pill-active-bg)] text-[var(--text)];
   }
 }
+
+/* ---------------------------------------------------------------------
+   Surface textures (Settings -> Appearance)
+
+   All CSS, no image files. Each is deliberately near-invisible: the job is
+   to stop a large dark panel reading as dead plastic, not to decorate. If
+   you can describe the pattern at a glance it is too strong.
+
+   Painted on <body> with background-attachment: fixed, so the texture
+   stays put while content scrolls over it — a moving texture is what makes
+   this sort of thing feel cheap.
+   ------------------------------------------------------------------- */
+
+/* Only the page pins its texture to the viewport; a swatch needs its
+   pattern to sit inside the swatch. */
+body {
+  background-color: var(--bg);
+  background-attachment: fixed;
+}
+
+/* Fine static. feTurbulence rendered once by the browser, no network cost. */
+[data-surface="grain"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+}
+
+/* Drafting paper. 34px so it never lines up with a card edge and buzzes. */
+[data-surface="grid"] {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.021) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.021) 1px, transparent 1px);
+  background-size: 34px 34px;
+}
+
+[data-surface="dots"] {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Colour pooled in the corners, pulled from the hero gradient so the app
+   stays one palette however those three tokens are set. */
+[data-surface="aurora"] {
+  background-image:
+    radial-gradient(60rem 40rem at 8% -10%, color-mix(in srgb, var(--hero-a) 30%, transparent), transparent 70%),
+    radial-gradient(50rem 36rem at 105% 5%, color-mix(in srgb, var(--hero-c) 24%, transparent), transparent 70%),
+    radial-gradient(70rem 50rem at 50% 115%, color-mix(in srgb, var(--hero-b) 22%, transparent), transparent 75%);
+}
+
+[data-surface="weave"] {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.016) 0 1px,
+    transparent 1px 7px
+  );
+}
+
+/* Light where you look, falling away at the edges. */
+[data-surface="vignette"] {
+  background-image:
+    radial-gradient(85rem 55rem at 50% -12%, rgba(255, 255, 255, 0.045), transparent 65%),
+    radial-gradient(60rem 60rem at 50% 120%, rgba(0, 0, 0, 0.32), transparent 70%);
+}
+
+/* ---- elevation: shadows on every .card --------------------------------
+   Two layers on the stronger steps — a tight contact shadow plus a wider
+   ambient one — because a single large blur reads as fog rather than lift.
+   ------------------------------------------------------------------- */
+body[data-elevation="soft"] .card,
+body[data-elevation="soft"] .row-repeat {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+body[data-elevation="lifted"] .card,
+body[data-elevation="lifted"] .row-repeat {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.28),
+    0 3px 8px -2px rgba(0, 0, 0, 0.4);
+}
+
+body[data-elevation="deep"] .card,
+body[data-elevation="deep"] .row-repeat {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 10px 26px -8px rgba(0, 0, 0, 0.6);
+}
+
+/* The sticky header sits above scrolling content, so it carries its own
+   shadow at every elevation above none. */
+body:not([data-elevation="none"]) header {
+  box-shadow: 0 4px 16px -8px rgba(0, 0, 0, 0.7);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  body[data-surface="aurora"],
+  body[data-surface="vignette"] {
+    background-image: none;
+  }
+}

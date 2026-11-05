@@ -74,6 +74,28 @@ export function isValidColorValue(v: string): boolean {
   return /^#[0-9a-fA-F]{6}$/.test(v.trim());
 }
 
+export type Preset = { id: string; label: string; hint: string };
+
+export const SURFACE_PRESETS: Preset[] = [
+  { id: "flat",    label: "Flat",            hint: "Plain colour. Nothing between you and the data." },
+  { id: "grain",   label: "Film grain",      hint: "Fine static. Takes the plastic edge off a flat dark panel." },
+  { id: "grid",    label: "Blueprint",       hint: "Faint 34px rule. Reads as drafting paper." },
+  { id: "dots",    label: "Dot matrix",      hint: "A whisper of a dot grid, like engineering pad." },
+  { id: "aurora",  label: "Aurora",          hint: "Soft colour wash in the corners, drawn from the hero gradient." },
+  { id: "weave",   label: "Diagonal weave",  hint: "45-degree hatching. Closest to a textile." },
+  { id: "vignette",label: "Vignette",        hint: "Light pools at the top, falls away at the edges." },
+];
+
+export const ELEVATION_PRESETS: Preset[] = [
+  { id: "none",   label: "None",   hint: "Borders only." },
+  { id: "soft",   label: "Soft",   hint: "Just enough to lift a card off the page." },
+  { id: "lifted", label: "Lifted", hint: "A clear step up. Panels read as cards." },
+  { id: "deep",   label: "Deep",   hint: "Strong separation. Best on the darkest backgrounds." },
+];
+
+const SURFACE_IDS = new Set(SURFACE_PRESETS.map((p) => p.id));
+const ELEVATION_IDS = new Set(ELEVATION_PRESETS.map((p) => p.id));
+
 /** Only known tokens with valid hex values survive — silently drops the rest. */
 export function sanitizeThemeOverrides(overrides: Record<string, string>): Record<string, string> {
   const clean: Record<string, string> = {};
@@ -82,14 +104,51 @@ export function sanitizeThemeOverrides(overrides: Record<string, string>): Recor
       clean[key] = value.trim().toLowerCase();
     }
   }
+  // Surface and elevation are preset ids, not colours. An unrecognised id is
+  // dropped rather than stored, so a stale or hand-edited value can never
+  // leave the app with no texture rule to match.
+  if (overrides.surface && SURFACE_IDS.has(overrides.surface)) {
+    clean.surface = overrides.surface;
+  }
+  if (overrides.elevation && ELEVATION_IDS.has(overrides.elevation)) {
+    clean.elevation = overrides.elevation;
+  }
   return clean;
 }
 
 /** Builds the `:root { --token: value; ... }` CSS text for the current overrides. */
 export function buildOverrideCss(overrides: Record<string, string>): string {
   const clean = sanitizeThemeOverrides(overrides);
-  const entries = Object.entries(clean);
+  // Only real custom properties belong in :root; surface/elevation are
+  // applied as data attributes on <body> instead.
+  const entries = Object.entries(clean).filter(([k]) => k.startsWith("--"));
   if (entries.length === 0) return "";
   const body = entries.map(([k, v]) => `${k}:${v};`).join("");
   return `:root{${body}}`;
+}
+
+
+/* ---------------------------------------------------------------------
+ * Surface and elevation
+ *
+ * These are presets, not free values: the texture CSS lives in globals.css
+ * behind a data attribute rather than being stored as a CSS string, so a
+ * saved setting can never inject arbitrary CSS and the textures stay
+ * readable, editable code.
+ * ------------------------------------------------------------------- */
+
+export const SURFACE_KEY = "surface";
+export const ELEVATION_KEY = "elevation";
+export const DEFAULT_SURFACE = "grain";
+export const DEFAULT_ELEVATION = "soft";
+
+
+export function readSurface(overrides: Record<string, string> | null | undefined): string {
+  const v = overrides?.[SURFACE_KEY];
+  return v && SURFACE_IDS.has(v) ? v : DEFAULT_SURFACE;
+}
+
+export function readElevation(overrides: Record<string, string> | null | undefined): string {
+  const v = overrides?.[ELEVATION_KEY];
+  return v && ELEVATION_IDS.has(v) ? v : DEFAULT_ELEVATION;
 }

@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Oswald } from "next/font/google";
 import { getSettings } from "@/lib/data";
-import { buildOverrideCss } from "@/lib/theme";
+import { buildOverrideCss, readElevation, readSurface } from "@/lib/theme";
 import { GlobalLoadingProvider } from "@/components/GlobalLoadingProvider";
 import AppHeader from "@/components/AppHeader";
 import "./globals.css";
@@ -44,10 +44,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // shows up immediately without a manual reload.
   const settings = await getSettings();
   const overrideCss = buildOverrideCss(settings.theme_overrides ?? {});
+  const surface = readSurface(settings.theme_overrides);
+  const elevation = readElevation(settings.theme_overrides);
 
   return (
     <html lang="en" className={`${inter.variable} ${oswald.variable}`}>
-      <body>
+      {/* Surface and elevation are data attributes rather than inline CSS:
+          the texture rules live in globals.css where they can be read and
+          edited, and a stored setting can never inject styles. */}
+      <body data-surface={surface} data-elevation={elevation}>
         {overrideCss && <style>{overrideCss}</style>}
         <GlobalLoadingProvider>
           {/* AppNav hides itself on /login, which is the only unauthenticated
