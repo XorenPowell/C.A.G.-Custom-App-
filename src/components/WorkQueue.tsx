@@ -23,10 +23,12 @@ export default function WorkQueue({
   calls,
   restocks,
   noAction,
+  failure,
 }: {
   calls: QueueItem[];
   restocks: QueueItem[];
   noAction: QueueItem[];
+  failure?: string | null;
 }) {
   const [tab, setTab] = useState<Tab>("calls");
   const items = tab === "calls" ? calls : tab === "restocks" ? restocks : noAction;
@@ -48,6 +50,25 @@ export default function WorkQueue({
       </span>
     </button>
   );
+
+  // An empty queue and a broken queue look identical, so say which it is.
+  if (failure) {
+    return (
+      <div className="card border-[var(--color-danger)]">
+        <div className="section-title">Work queue</div>
+        <div className="card-pad">
+          <p className="text-sm font-semibold text-[var(--color-danger)]">
+            The queue could not be loaded, so this is not &ldquo;nothing due&rdquo;.
+          </p>
+          <p className="muted mt-1 text-xs">{failure}</p>
+          <p className="muted mt-2 text-xs">
+            If this names a missing column, a migration has not been applied to this
+            database yet.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card">

@@ -61,6 +61,7 @@ export default function NextActionCard({
   const [note, setNote] = useState(followUpNote ?? "");
   const [kind, setKind] = useState<FollowUpKind>(followUpKind ?? "call");
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const dirty =
     (date ? `${date}T${time || "09:00"}` : "") !== initial ||
@@ -69,13 +70,20 @@ export default function NextActionCard({
 
   function save(nextDate = date, nextTime = time, nextNote = note, nextKind = kind) {
     start(async () => {
+      setError(null);
       const iso = nextDate ? chicagoLocalToUTCISO(`${nextDate}T${nextTime || "09:00"}`) : null;
-      await setNextAction(
+      const res = await setNextAction(
         partnershipId ? { partnership_id: partnershipId } : { job_id: jobId },
         iso,
         nextNote,
         nextKind,
       );
+      // The result used to be discarded, so a failed write left the card
+      // showing "unsaved" with no explanation and the edit quietly lost.
+      if (!res.ok) {
+        setError(res.error ?? "Could not save.");
+        return;
+      }
       setSaved(true);
       setTimeout(() => setSaved(false), 1800);
       router.refresh();
@@ -201,10 +209,21 @@ export default function NextActionCard({
               Clear
             </button>
           )}
+          {dirty && !pending && (
+            <button type="button" className="btn btn-sm btn-primary" onClick={() => save()}>
+              Save next action
+            </button>
+          )}
           <span className="self-center text-xs text-[var(--color-muted)]">
             {pending ? "saving…" : saved ? "saved" : dirty ? "unsaved" : ""}
           </span>
         </div>
+
+        {error && (
+          <p className="mt-2 border border-[var(--color-danger)] px-2 py-2 text-sm text-[var(--color-danger)]">
+            {error}
+          </p>
+        )}
 
         {children}
       </div>

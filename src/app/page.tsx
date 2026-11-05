@@ -150,7 +150,12 @@ export default async function HomePage() {
           />
         </div>
 
-        <WorkQueue calls={queue.calls} restocks={queue.restocks} noAction={queue.noAction} />
+        <WorkQueue
+          calls={queue.calls}
+          restocks={queue.restocks}
+          noAction={queue.noAction}
+          failure={queue.failure}
+        />
       </section>
 
 </>
