@@ -187,6 +187,7 @@ export type Partnership = {
    */
   follow_up_at: string | null;
   follow_up_note: string | null;
+  follow_up_kind: FollowUpKind;
   /** Retained so 022 stays reversible; nothing reads it any more. */
   follow_up_days: number | null;
   /** Stamped once, the first time status ever entered that stage. Never overwritten afterward. */
@@ -237,6 +238,22 @@ export type CampaignPlacement = {
 };
 
 export const ACTIVITY_KINDS = ["call", "text", "email", "visit", "restock", "note"] as const;
+
+/**
+ * What can be booked as a next action. Narrower than ACTIVITY_KINDS: a note
+ * is not something you schedule, and a restock is driven by its placement's
+ * own cadence rather than booked by hand.
+ */
+export const FOLLOW_UP_KINDS = ["call", "visit", "text", "email"] as const;
+export type FollowUpKind = (typeof FOLLOW_UP_KINDS)[number];
+
+/** Verb for the card heading, so it never reads "Call back on" for a visit. */
+export const FOLLOW_UP_LABELS: Record<FollowUpKind, { noun: string; when: string }> = {
+  call:  { noun: "Call",  when: "Call back on" },
+  visit: { noun: "Visit", when: "Visit on" },
+  text:  { noun: "Text",  when: "Text on" },
+  email: { noun: "Email", when: "Email on" },
+};
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
 
 /** Shared history for partnerships and jobs. Exactly one parent is ever set. */
@@ -285,6 +302,7 @@ export type Job = {
   follow_up_at: string | null;
   /** Why — chasing a deposit and confirming arrival are different calls. */
   follow_up_note: string | null;
+  follow_up_kind: FollowUpKind;
   /** Trigger-maintained: stamped the moment status becomes Completed, cleared if it moves back out. */
   completed_at: string | null;
   created_at: string;

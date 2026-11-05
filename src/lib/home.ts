@@ -73,6 +73,8 @@ export type QueueItem = {
   dueLabel: string;
   state: "overdue" | "today";
   phone: string | null;
+  /** call | visit | text | email — only set on queued contacts. */
+  followKind?: string;
 };
 
 function relLabel(due: string, today: string): string {
@@ -105,24 +107,36 @@ export async function getWorkQueue(): Promise<WorkQueue> {
   const [partnershipsRes, jobsRes, placementsRes] = await Promise.all([
     supabase
       .from("partnerships")
-      .select("id, business_name, follow_up_at, follow_up_note, poc_name, poc_phone, last_contact, status_id"),
+      .select("id, business_name, follow_up_at, follow_up_note, follow_up_kind, poc_name, poc_phone, last_contact, status_id"),
     supabase
       .from("jobs")
-      .select("id, job_id, customer_name, customer_phone, status, follow_up_at, follow_up_note"),
+      .select("id, job_id, customer_name, customer_phone, status, follow_up_at, follow_up_note, follow_up_kind"),
     supabase
       .from("campaign_placements")
       .select("id, partnership_id, location, cards_left, placed_on, last_restock_on, restock_interval_days, partnerships(business_name, poc_phone)")
       .is("removed_on", null),
   ]);
 
+  // A failed query must never render as an empty queue. "No calls due" on a
+  // book with 83 overdue partnerships is worse than an error page, because
+  // nothing about it looks wrong.
+  for (const [name, res] of [
+    ["partnerships", partnershipsRes],
+    ["jobs", jobsRes],
+    ["campaign_placements", placementsRes],
+  ] as const) {
+    if (res.error) throw new Error(`Work queue could not read ${name}: ${res.error.message}`);
+  }
+
   const partnerships = (partnershipsRes.data ?? []) as {
     id: string; business_name: string; follow_up_at: string | null;
-    follow_up_note: string | null; poc_name: string | null; poc_phone: string | null;
-    last_contact: string | null;
+    follow_up_note: string | null; follow_up_kind: string; poc_name: string | null;
+    poc_phone: string | null; last_contact: string | null;
   }[];
   const jobs = (jobsRes.data ?? []) as {
     id: string; job_id: string; customer_name: string | null; customer_phone: string | null;
     status: string; follow_up_at: string | null; follow_up_note: string | null;
+    follow_up_kind: string;
   }[];
   // The embedded join is typed as an array but is a single row, so it is
   // normalised here rather than asserted away at every use.
@@ -158,6 +172,7 @@ export async function getWorkQueue(): Promise<WorkQueue> {
       subtitle: p.follow_up_note || p.poc_name || "Follow-up",
       dueOn: due, dueLabel: relLabel(due, today),
       state: due < today ? "overdue" : "today", phone: p.poc_phone,
+      followKind: p.follow_up_kind,
     });
   }
 
@@ -181,6 +196,7 @@ export async function getWorkQueue(): Promise<WorkQueue> {
       subtitle: j.follow_up_note || `${j.job_id} · ${j.status}`,
       dueOn: due, dueLabel: relLabel(due, today),
       state: due < today ? "overdue" : "today", phone: j.customer_phone,
+      followKind: j.follow_up_kind,
     });
   }
 

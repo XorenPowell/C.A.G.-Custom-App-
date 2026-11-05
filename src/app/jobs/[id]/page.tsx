@@ -99,6 +99,7 @@ export default async function JobDetailPage({
             jobId={job.id}
             followUpAt={job.follow_up_at}
             followUpNote={job.follow_up_note}
+            followUpKind={job.follow_up_kind}
             tone={jobDue}
             dueLabel={followUpLabel(job)}
             emptyLabel={jobOpen ? "nothing booked" : job.status}

@@ -28,11 +28,12 @@ export async function getContacts(): Promise<ContactWithPartnership[]> {
 
 export async function getContactsFor(partnershipId: string): Promise<Contact[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("contacts")
     .select("*")
     .eq("partnership_id", partnershipId)
     .order("created_at");
+  if (error) throw new Error(`Could not read contacts: ${error.message}`);
   return (data ?? []) as Contact[];
 }
 

@@ -8,11 +8,12 @@ export type PlacementWithPartnership = CampaignPlacement & {
 
 export async function getCampaigns(): Promise<Campaign[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("campaigns")
     .select("*")
     .eq("active", true)
     .order("sort_order");
+  if (error) throw new Error(`Could not read campaigns: ${error.message}`);
   return (data ?? []) as Campaign[];
 }
 

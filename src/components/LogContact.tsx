@@ -7,7 +7,12 @@ import { logContact } from "@/app/actions/activity";
 import { ACTIVITY_KINDS } from "@/lib/types";
 import { OUTCOME_SUGGESTIONS } from "@/lib/activity-meta";
 import { chicagoDateTimeInputValue, chicagoLocalToUTCISO } from "@/lib/dates";
-import type { ActivityKind } from "@/lib/types";
+import {
+  FOLLOW_UP_KINDS,
+  FOLLOW_UP_LABELS,
+  type ActivityKind,
+  type FollowUpKind,
+} from "@/lib/types";
 
 const KIND_LABEL: Record<ActivityKind, string> = {
   call: "Call", text: "Text", email: "Email",
@@ -56,6 +61,7 @@ export default function LogContact({
   const [mode, setMode] = useState<"book" | "keep" | "clear">("book");
   const [nextLocal, setNextLocal] = useState(() => plusDays(7));
   const [nextNote, setNextNote] = useState(currentFollowUpNote ?? "");
+  const [nextKind, setNextKind] = useState<FollowUpKind>("call");
 
   function plusDays(days: number) {
     const d = new Date();
@@ -71,6 +77,7 @@ export default function LogContact({
     setMode("book");
     setNextLocal(plusDays(7));
     setNextNote(currentFollowUpNote ?? "");
+    setNextKind("call");
     setError(null);
   }
 
@@ -95,6 +102,7 @@ export default function LogContact({
                 ? chicagoLocalToUTCISO(nextLocal)
                 : null,
         next_follow_up_note: mode === "book" ? nextNote || null : mode === "clear" ? null : undefined,
+        next_follow_up_kind: mode === "book" ? nextKind : undefined,
       });
       if (!res.ok) {
         setError(res.error ?? "Could not save.");
@@ -216,10 +224,26 @@ export default function LogContact({
 
           {mode === "book" && (
             <>
+              <div className="field">
+                <span className="label">What kind</span>
+                <div className="-mx-1 flex gap-1 overflow-x-auto px-1 [&>*]:shrink-0">
+                  {FOLLOW_UP_KINDS.map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      className={`btn btn-sm ${nextKind === k ? "btn-primary" : ""}`}
+                      onClick={() => setNextKind(k)}
+                    >
+                      {FOLLOW_UP_LABELS[k].noun}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="grid-form">
                 <div className="field">
                   <label className="label" htmlFor="lc-next">
-                    Call back on
+                    {FOLLOW_UP_LABELS[nextKind].when}
                   </label>
                   <input
                     id="lc-next"

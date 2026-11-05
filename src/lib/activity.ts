@@ -7,21 +7,23 @@ export type { Activity, ActivityKind } from "@/lib/types";
 
 export async function getPartnershipActivity(partnershipId: string): Promise<Activity[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("activity")
     .select("*")
     .eq("partnership_id", partnershipId)
     .order("occurred_at", { ascending: false });
+  if (error) throw new Error(`Could not read activity: ${error.message}`);
   return (data ?? []) as Activity[];
 }
 
 export async function getJobActivity(jobId: string): Promise<Activity[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("activity")
     .select("*")
     .eq("job_id", jobId)
     .order("occurred_at", { ascending: false });
+  if (error) throw new Error(`Could not read activity: ${error.message}`);
   return (data ?? []) as Activity[];
 }
 
