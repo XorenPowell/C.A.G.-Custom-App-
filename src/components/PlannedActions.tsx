@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import {
-  addScheduledAction,
+  addAction,
   completeScheduledAction,
   deleteScheduledAction,
 } from "@/app/actions/scheduled";
@@ -37,8 +37,18 @@ export default function PlannedActions({
   const [error, setError] = useState<string | null>(null);
 
   const [kind, setKind] = useState<FollowUpKind>("call");
-  const [local, setLocal] = useState(() => plusDays(7));
+  const [local, setLocal] = useState(() => nowLocal());
   const [note, setNote] = useState("");
+  const [outcome, setOutcome] = useState("");
+
+  function nowLocal() {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  // Which half of the record this will land in, decided by the date alone.
+  const isFuture = local ? new Date(local).getTime() > Date.now() : false;
 
   function plusDays(days: number) {
     const d = new Date();
@@ -57,11 +67,12 @@ export default function PlannedActions({
     }
     start(async () => {
       setError(null);
-      const res = await addScheduledAction({
+      const res = await addAction({
         ...parent,
         kind,
-        due_at: chicagoLocalToUTCISO(local),
+        at: chicagoLocalToUTCISO(local),
         note: note || null,
+        outcome: outcome || null,
       });
       if (!res.ok) {
         setError(res.error ?? "Could not add.");
@@ -69,8 +80,9 @@ export default function PlannedActions({
       }
       setAdding(false);
       setKind("call");
-      setLocal(plusDays(7));
+      setLocal(nowLocal());
       setNote("");
+      setOutcome("");
       router.refresh();
     });
   }
@@ -97,15 +109,16 @@ export default function PlannedActions({
         <span className="label mb-0">Planned ({actions.length})</span>
         {!adding && (
           <button type="button" className="btn btn-sm" onClick={() => setAdding(true)}>
-            + Plan an action
+            + Add action
           </button>
         )}
       </div>
 
       {actions.length === 0 && !adding && (
         <p className="muted text-sm">
-          Nothing planned. Add as many as you like — the earliest one is what shows in
-          your work queue.
+          Nothing planned. <b>Add action</b> logs something that already happened or
+          books one for later — the date decides which. The earliest planned one is what
+          shows in your work queue.
         </p>
       )}
 
@@ -200,7 +213,7 @@ export default function PlannedActions({
           <div className="grid-form">
             <div className="field">
               <label className="label" htmlFor="pa-when">
-                {FOLLOW_UP_LABELS[kind].when}
+                When
               </label>
               <input
                 id="pa-when"
@@ -212,20 +225,50 @@ export default function PlannedActions({
             </div>
             <div className="field">
               <label className="label" htmlFor="pa-note">
-                What for
+                {isFuture ? "What for" : "Notes"}
               </label>
               <input
                 id="pa-note"
                 className="input"
                 value={note}
-                placeholder="Drop the new fliers"
+                placeholder={isFuture ? "Drop the new fliers" : "Asked about the vacant unit"}
                 onChange={(e) => setNote(e.target.value)}
               />
             </div>
           </div>
 
+          {!isFuture && (
+            <div className="field">
+              <label className="label" htmlFor="pa-outcome">
+                Outcome
+              </label>
+              <input
+                id="pa-outcome"
+                className="input"
+                value={outcome}
+                placeholder="Spoke with the manager"
+                onChange={(e) => setOutcome(e.target.value)}
+              />
+            </div>
+          )}
+
+          <p className={`note ${isFuture ? "" : "border-[var(--color-good)]"}`}>
+            {isFuture
+              ? "In the future, so this is booked as a plan and can appear in your work queue."
+              : "In the past, so this is logged straight to the history below. Nothing gets scheduled."}
+          </p>
+
           <div className="mb-2 flex flex-wrap gap-2">
-            {[1, 3, 7, 14, 30, 90].map((d) => (
+            <button type="button" className="btn btn-sm" onClick={() => setLocal(plusDays(-7))}>
+              Last week
+            </button>
+            <button type="button" className="btn btn-sm" onClick={() => setLocal(plusDays(-1))}>
+              Yesterday
+            </button>
+            <button type="button" className="btn btn-sm btn-primary" onClick={() => setLocal(nowLocal())}>
+              Now
+            </button>
+            {[1, 3, 7, 14, 30].map((d) => (
               <button
                 key={d}
                 type="button"
@@ -239,7 +282,7 @@ export default function PlannedActions({
 
           <div className="flex gap-2">
             <button type="button" className="btn btn-sm btn-primary" disabled={pending} onClick={add}>
-              {pending ? "Adding…" : "Add to plan"}
+              {pending ? "Saving…" : isFuture ? "Add to plan" : "Log it"}
             </button>
             <button type="button" className="btn btn-sm" onClick={() => setAdding(false)}>
               Cancel

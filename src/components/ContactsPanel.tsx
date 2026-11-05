@@ -132,6 +132,21 @@ export default function ContactsPanel({
                             Call
                           </a>
                         )}
+                        {c.email && !c.email_opt_out && (
+                          <a className="btn btn-sm" href={`mailto:${c.email}`}>
+                            Email
+                          </a>
+                        )}
+                        {c.phone && (
+                          <button
+                            type="button"
+                            className="btn btn-sm"
+                            title="Copy the number to paste into a dialler that does not handle tel: links"
+                            onClick={() => navigator.clipboard.writeText(c.phone!)}
+                          >
+                            Copy
+                          </button>
+                        )}
                         <button type="button" className="btn btn-sm" onClick={() => edit(c)}>
                           Edit
                         </button>
