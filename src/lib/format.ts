@@ -136,3 +136,17 @@ export function daysSince(iso: string | null | undefined): number | null {
   if (!iso) return null;
   return Math.floor((Date.now() - new Date(iso).getTime()) / (24 * 60 * 60 * 1000));
 }
+
+/**
+ * A compose link that works without the operating system's help.
+ *
+ * `mailto:` hands off to whatever is registered as the default mail client.
+ * Gmail in a browser registers nothing, so on a desktop the click often does
+ * nothing at all. This opens Gmail's web composer directly instead.
+ */
+export function composeUrl(to: string, subject?: string, body?: string): string {
+  const params = new URLSearchParams({ view: "cm", fs: "1", to });
+  if (subject) params.set("su", subject);
+  if (body) params.set("body", body);
+  return `https://mail.google.com/mail/?${params.toString()}`;
+}

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { deleteContact, saveContact, type ContactPayload } from "@/app/actions/contacts";
-import { phoneDisplay, phoneLinkTarget } from "@/lib/format";
+import { composeUrl, phoneDisplay, phoneLinkTarget } from "@/lib/format";
 import type { Contact, ListItem } from "@/lib/types";
 
 const blank = (partnershipId: string): ContactPayload => ({
@@ -133,7 +133,12 @@ export default function ContactsPanel({
                           </a>
                         )}
                         {c.email && !c.email_opt_out && (
-                          <a className="btn btn-sm" href={`mailto:${c.email}`}>
+                          <a
+                            className="btn btn-sm"
+                            href={composeUrl(c.email)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
                             Email
                           </a>
                         )}

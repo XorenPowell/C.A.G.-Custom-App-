@@ -269,11 +269,18 @@ function EmailComposer({
     "\n\n—\nCall A Guy Chicago · Chicago, IL\nReply STOP or email back to be removed from this list.";
   const full = body + FOOTER;
 
-  const mailto =
-    `mailto:?bcc=${encodeURIComponent(emails.join(","))}` +
-    `&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(full)}`;
-  // Most mail clients choke somewhere past ~2000 characters in a URL.
-  const tooLong = mailto.length > 1900;
+  // Gmail's web composer rather than mailto:, which only works when the
+  // operating system has a mail client registered — often it has none.
+  const params = new URLSearchParams({
+    view: "cm",
+    fs: "1",
+    bcc: emails.join(","),
+    su: subject,
+    body: full,
+  });
+  const composeHref = `https://mail.google.com/mail/?${params.toString()}`;
+  // Browsers start dropping URLs somewhere past a few thousand characters.
+  const tooLong = composeHref.length > 7000;
 
   async function copyAll() {
     await navigator.clipboard.writeText(emails.join(", "));
@@ -312,7 +319,7 @@ function EmailComposer({
 
           {tooLong && (
             <p className="mb-3 border border-[var(--color-warn)] px-2 py-2 text-sm text-[var(--color-warn)]">
-              This is too long for a mail link at {contacts.length} recipients. Copy the
+              Too long for a compose link at {contacts.length} recipients. Copy the
               addresses instead and paste them into the BCC field of a new message.
             </p>
           )}
@@ -322,8 +329,14 @@ function EmailComposer({
               {copied ? "Copied" : "Copy addresses"}
             </button>
             {!tooLong && (
-              <a className="btn btn-primary" href={mailto} onClick={onSent}>
-                Open in mail app
+              <a
+                className="btn btn-primary"
+                href={composeHref}
+                target="_blank"
+                rel="noreferrer"
+                onClick={onSent}
+              >
+                Open in Gmail
               </a>
             )}
             <button className="btn" onClick={async () => {
