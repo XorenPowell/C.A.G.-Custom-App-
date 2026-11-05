@@ -7,7 +7,8 @@ export type ListKind =
   | "vehicle_type"
   | "partnership_status"
   | "partnership_tier"
-  | "conversation_outcome";
+  | "conversation_outcome"
+  | "contact_role";
 
 export const JOB_STATUSES = [
   "Inquiry",
@@ -173,11 +174,74 @@ export type Partnership = {
   fliers_dropped_last_visit: number;
   total_fliers_dropped: number;
   last_contact: string | null;
+  /**
+   * The booked callback. Supersedes follow_up_days, which was an offset from
+   * last_contact and so moved every time contact was logged.
+   */
+  follow_up_at: string | null;
+  follow_up_note: string | null;
+  /** Retained so 022 stays reversible; nothing reads it any more. */
   follow_up_days: number | null;
   /** Stamped once, the first time status ever entered that stage. Never overwritten afterward. */
   developing_at: string | null;
   mature_at: string | null;
   notes: string | null;
+  created_at: string;
+};
+
+/** A person. Lives on its own so a stack of cards can be segmented by role. */
+export type Contact = {
+  id: string;
+  partnership_id: string | null;
+  name: string;
+  role_id: string | null;
+  title: string | null;
+  email: string | null;
+  phone: string | null;
+  source: string | null;
+  notes: string | null;
+  email_opt_out: boolean;
+  last_emailed_at: string | null;
+  created_at: string;
+};
+
+export type Campaign = {
+  id: string;
+  name: string;
+  short_name: string | null;
+  description: string | null;
+  target: number;
+  active: boolean;
+  sort_order: number;
+};
+
+/** One business carrying campaign material, with its own restock clock. */
+export type CampaignPlacement = {
+  id: string;
+  campaign_id: string;
+  partnership_id: string;
+  location: string | null;
+  placed_on: string;
+  last_restock_on: string | null;
+  restock_interval_days: number;
+  cards_left: number | null;
+  removed_on: string | null;
+  notes: string | null;
+};
+
+export const ACTIVITY_KINDS = ["call", "text", "email", "visit", "restock", "note"] as const;
+export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
+
+/** Shared history for partnerships and jobs. Exactly one parent is ever set. */
+export type Activity = {
+  id: string;
+  partnership_id: string | null;
+  job_id: string | null;
+  contact_id: string | null;
+  kind: ActivityKind;
+  outcome: string | null;
+  note: string | null;
+  occurred_at: string;
   created_at: string;
 };
 
@@ -212,6 +276,8 @@ export type Job = {
   google_calendar_event_id: string | null;
   /** When the dispatcher needs to call this lead back. Null means it doesn't show up anywhere. */
   follow_up_at: string | null;
+  /** Why — chasing a deposit and confirming arrival are different calls. */
+  follow_up_note: string | null;
   /** Trigger-maintained: stamped the moment status becomes Completed, cleared if it moves back out. */
   completed_at: string | null;
   created_at: string;

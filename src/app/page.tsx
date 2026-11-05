@@ -1,170 +1,83 @@
 import Link from "next/link";
 import { getDashboard } from "@/lib/dashboard";
-import { getBookedToday, getCallsToday } from "@/lib/home";
+import { getBookedToday, getWorkQueue } from "@/lib/home";
+import WorkQueue from "@/components/WorkQueue";
 import { getLists, getSettings, lookup, nameMap } from "@/lib/data";
-import {
-  RANGE_PRESETS,
-  payPeriodRange,
-  rangeLabel,
-  resolveRange,
-  type RangePreset,
-} from "@/lib/dates";
-import { instantTimeDisplay, money, timeDisplay } from "@/lib/format";
+import { getUser } from "@/lib/supabase/server";
+import { payPeriodRange } from "@/lib/dates";
+import { money, timeDisplay } from "@/lib/format";
 
-const NAV_ITEMS: { href: string; label: string; badge?: string }[] = [
-  { href: "/jobs", label: "Jobs" },
-  { href: "/roster", label: "Roster" },
-  { href: "/partnerships", label: "Partnerships" },
-  { href: "/face-to-face", label: "Work Face to Face", badge: "New" },
-  { href: "/settings", label: "Settings" },
-  { href: "/time-clock", label: "Clock In / Clock Out" },
-];
 
-export default async function HomePage({
-  searchParams,
+/** One number and its state. The mockup's tiles, using the app's own tokens. */
+function QueueTile({
+  label,
+  value,
+  sub,
+  alert,
 }: {
-  searchParams: Promise<Record<string, string | undefined>>;
+  label: string;
+  value: number;
+  sub: string;
+  alert: boolean;
 }) {
-  const sp = await searchParams;
-  // "Today" is the natural landing default here — unlike the detailed report,
-  // which defaults to "This Month" for a monthly business overview.
-  const preset = (RANGE_PRESETS as readonly string[]).includes(sp.preset ?? "")
-    ? (sp.preset as RangePreset)
-    : "Today";
-  const range = resolveRange(preset, sp.start, sp.end);
+  return (
+    <div className="card card-pad">
+      <div className="label">{label}</div>
+      <div
+        className={`font-heading text-[27px] font-extrabold leading-tight ${
+          alert ? "text-[var(--color-danger)]" : ""
+        }`}
+      >
+        {value}
+      </div>
+      <div className="text-xs text-[var(--text-faint)]">{sub}</div>
+    </div>
+  );
+}
 
-  const [lists, settings] = await Promise.all([getLists(), getSettings()]);
+export default async function HomePage() {
+  const [lists, settings, user] = await Promise.all([getLists(), getSettings(), getUser()]);
   const names = nameMap(lists);
 
-  const [data, bookedToday, callsToday] = await Promise.all([
-    getDashboard(range, names),
-    getBookedToday(),
-    getCallsToday(),
-  ]);
+  const [bookedToday, queue] = await Promise.all([getBookedToday(), getWorkQueue()]);
 
-  // Next payout is a fixed weekly cycle, not the selected range — the most
-  // recent occurrence of the configured start day through today, inclusive.
+  // Next payout survives the cull because it is a fixed weekly cycle, not a
+  // range the Reports screen can show without being reconfigured each time.
   const payPeriod = payPeriodRange(settings.pay_period_start_day ?? 5);
   const payoutData = await getDashboard(payPeriod, names);
 
+  const firstName = (user?.email ?? "there").split("@")[0].split(/[._-]/)[0];
+  const todayLabel = new Date().toLocaleDateString("en-US", {
+    timeZone: "America/Chicago",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
     <>
-      {/* ---------- hero ---------- */}
-      <section
-        className="relative overflow-hidden px-4 pb-8 pt-6 text-white"
-        style={{ background: "linear-gradient(155deg, var(--hero-a), var(--hero-b), var(--hero-c))" }}
-      >
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to top, rgba(10,11,13,0) 40%, rgba(10,11,13,0.55) 100%)",
-          }}
-        />
-        <div className="relative mx-auto max-w-6xl">
-          <div className="flex items-center justify-between text-sm text-white/70">
-            <span className="font-heading font-bold tracking-wide">C.A.G.</span>
-            <span>{rangeLabel(range)}</span>
-          </div>
-
-          <h1 className="font-heading mt-3 text-[30px] font-medium leading-tight">
-            Welcome, Xoren
-          </h1>
-
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-[var(--radius-card)] border border-white/10 bg-white/[0.07] p-3">
-              <div className="text-xs text-white/70">Total Jobs Completed</div>
-              <div className="font-heading mt-1 text-2xl font-semibold">
-                {data.jobsCompleted}
-              </div>
-            </div>
-            <div className="rounded-[var(--radius-card)] border border-white/10 bg-white/[0.07] p-3">
-              <div className="text-xs text-white/70">Commission</div>
-              <div className="font-heading mt-1 text-2xl font-semibold text-[var(--money)]">
-                {money(data.totalCommission)}
-              </div>
-            </div>
-            <div className="rounded-[var(--radius-card)] border border-white/10 bg-white/[0.07] p-3">
-              <div className="text-xs text-white/70">New Inquiries</div>
-              <div className="font-heading mt-1 text-2xl font-semibold">
-                {data.inquiriesGenerated}
-              </div>
-            </div>
-            <div className="rounded-[var(--radius-card)] border border-white/10 bg-white/[0.07] p-3">
-              <div className="text-xs text-white/70">Developing Partnerships</div>
-              <div className="font-heading mt-1 text-2xl font-semibold">
-                {data.developingPartnerships}
-              </div>
-            </div>
-          </div>
-
-          <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/80">
-            <span>
-              Next payout: <span className="font-heading font-semibold text-white">{money(payoutData.totalCommission)}</span>
+      {/* ---------- greeting ---------- */}
+      <section className="mx-auto max-w-6xl px-4 pt-5">
+        <h1 className="font-heading text-2xl font-bold md:text-3xl">
+          Welcome, {firstName}
+        </h1>
+        <p className="muted mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          <span>{todayLabel}</span>
+          <span>
+            Next payout:{" "}
+            <span className="font-heading font-semibold text-[var(--money)]">
+              {money(payoutData.totalCommission)}
             </span>
-            <span>
-              Total rev: <span className="font-heading font-semibold text-white">{money(data.totalRevenue)}</span>
-            </span>
-          </p>
-        </div>
-      </section>
-
-      {/* ---------- range selector ---------- */}
-      <section className="mx-auto max-w-6xl px-4 pt-4">
-        <form method="get" action="/">
-          <div className="flex flex-wrap gap-2">
-            {RANGE_PRESETS.filter((p) => p !== "Custom").map((p) => (
-              <button
-                key={p}
-                type="submit"
-                name="preset"
-                value={p}
-                className={`pill ${preset === p ? "pill-active" : ""}`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-          <details className="mt-2">
-            <summary className="cursor-pointer text-sm text-[var(--color-muted)] underline underline-offset-2">
-              Custom range
-            </summary>
-            <div className="mt-2 flex flex-wrap items-end gap-2">
-              <div className="field mb-0">
-                <label className="label" htmlFor="start">
-                  From
-                </label>
-                <input
-                  id="start"
-                  name="start"
-                  type="date"
-                  defaultValue={sp.start ?? ""}
-                  className="input"
-                />
-              </div>
-              <div className="field mb-0">
-                <label className="label" htmlFor="end">
-                  To
-                </label>
-                <input
-                  id="end"
-                  name="end"
-                  type="date"
-                  defaultValue={sp.end ?? ""}
-                  className="input"
-                />
-              </div>
-              <button type="submit" name="preset" value="Custom" className="btn btn-sm">
-                Apply custom range
-              </button>
-            </div>
-          </details>
-        </form>
+          </span>
+          <Link href="/reports" className="link">
+            Reports
+          </Link>
+        </p>
       </section>
 
       {/* ---------- booked today: full-bleed, always today, ignores the range above ---------- */}
-      <section className="mt-4 border-y border-[var(--border)] bg-[var(--panel)] py-4">
-        <div className="mx-auto max-w-6xl px-4">
+      <section className="mx-auto mt-4 max-w-6xl px-4">
+        <div className="card card-pad">
           <div className="mb-3 flex items-center gap-2">
             <span className="relative flex size-2.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--live)] opacity-75" />
@@ -209,80 +122,37 @@ export default async function HomePage({
         </div>
       </section>
 
-      {/* ---------- calls today: leads with a follow-up due today ---------- */}
-      <section className="mt-4 border-b border-[var(--border)] bg-[var(--panel)] py-4">
-        <div className="mx-auto max-w-6xl px-4">
-          <div className="mb-3 flex items-center gap-2">
-            <h2 className="font-heading flex-1 text-sm font-semibold uppercase tracking-wide">
-              Calls Today
-            </h2>
-            <span className="badge border-[var(--pill-border)] bg-[var(--pill-bg)] text-[var(--text)]">
-              {callsToday.length}
-            </span>
-          </div>
-
-          {callsToday.length === 0 ? (
-            <p className="muted text-sm">No follow-ups due today.</p>
-          ) : (
-            <div className="scroll-x flex gap-3 pb-1">
-              {callsToday.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/jobs/${c.id}`}
-                  className="flex w-64 shrink-0 flex-col justify-between rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--panel-raised)] p-3"
-                >
-                  <div>
-                    <div className="font-heading text-lg font-semibold">
-                      {instantTimeDisplay(c.follow_up_at)}
-                    </div>
-                    <div className="mt-0.5 text-sm text-[var(--text-muted)]">
-                      {c.customer_name || "No name"}
-                    </div>
-                    <div className="mt-1 truncate text-sm text-[var(--text-faint)]">
-                      {c.job_id}
-                    </div>
-                  </div>
-                  <div className="mt-2 flex h-10 items-center border-t border-dashed border-[var(--ticket-divider)] text-sm font-medium">
-                    {c.status}
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+      {/* ---------- work queue: partnerships, jobs and restocks ---------- */}
+      <section className="mx-auto mt-4 max-w-6xl px-4">
+        <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+          <QueueTile
+            label="Calls due"
+            value={queue.calls.length}
+            sub={
+              queue.calls.filter((c) => c.state === "overdue").length
+                ? `${queue.calls.filter((c) => c.state === "overdue").length} overdue`
+                : "on track"
+            }
+            alert={queue.calls.some((c) => c.state === "overdue")}
+          />
+          <QueueTile
+            label="Restocks due"
+            value={queue.restocks.length}
+            sub="SAFC stacks"
+            alert={queue.restocks.some((r) => r.state === "overdue")}
+          />
+          <QueueTile label="Booked today" value={bookedToday.length} sub="arrivals" alert={false} />
+          <QueueTile
+            label="No next action"
+            value={queue.noAction.length}
+            sub="nothing scheduled"
+            alert={queue.noAction.length > 0}
+          />
         </div>
+
+        <WorkQueue calls={queue.calls} restocks={queue.restocks} noAction={queue.noAction} />
       </section>
 
-      {/* ---------- navigation ---------- */}
-      <section className="mx-auto max-w-6xl px-4 py-4">
-        <nav className="flex flex-col gap-2">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="card flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-[var(--panel-raised)]"
-            >
-              <span className="flex items-center gap-2">
-                <span className="font-semibold">{item.label}</span>
-                {item.badge && (
-                  <span className="badge border-[var(--pill-active-border)] bg-[var(--pill-active-bg)] text-[var(--color-accent)]">
-                    {item.badge}
-                  </span>
-                )}
-              </span>
-              <span aria-hidden className="text-[var(--color-muted)]">
-                ›
-              </span>
-            </Link>
-          ))}
-        </nav>
-
-        <Link
-          href="/reports"
-          className="mt-3 inline-block text-sm text-[var(--color-muted)] underline underline-offset-2"
-        >
-          Full report →
-        </Link>
-      </section>
-    </>
+</>
   );
 }
