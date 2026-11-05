@@ -2,11 +2,18 @@ import Link from "next/link";
 import { getDashboard } from "@/lib/dashboard";
 import { getBookedToday, getWorkQueue } from "@/lib/home";
 import WorkQueue from "@/components/WorkQueue";
+import QueueDate from "@/components/QueueDate";
+import type { QueueItem } from "@/lib/home";
 import { getLists, getSettings, lookup, nameMap } from "@/lib/data";
 import { getUser } from "@/lib/supabase/server";
-import { payPeriodRange } from "@/lib/dates";
+import { payPeriodRange, todayISO } from "@/lib/dates";
 import { money, timeDisplay } from "@/lib/format";
 
+
+const overdueSub = (items: QueueItem[]) => {
+  const n = items.filter((i) => i.state === "overdue").length;
+  return n ? `${n} overdue` : "on track";
+};
 
 /** One number and its state. The mockup's tiles, using the app's own tokens. */
 function QueueTile({
@@ -35,11 +42,16 @@ function QueueTile({
   );
 }
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const sp = await searchParams;
   const [lists, settings, user] = await Promise.all([getLists(), getSettings(), getUser()]);
   const names = nameMap(lists);
 
-  const [bookedToday, queue] = await Promise.all([getBookedToday(), getWorkQueue()]);
+  const [bookedToday, queue] = await Promise.all([getBookedToday(), getWorkQueue(sp.due)]);
 
   // Next payout survives the cull because it is a fixed weekly cycle, not a
   // range the Reports screen can show without being reconfigured each time.
@@ -124,22 +136,20 @@ export default async function HomePage() {
 
       {/* ---------- work queue: partnerships, jobs and restocks ---------- */}
       <section className="mx-auto mt-4 max-w-6xl px-4">
+        <QueueDate asOf={queue.asOf} today={todayISO()} />
+
         <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
           <QueueTile
             label="Calls due"
             value={queue.calls.length}
-            sub={
-              queue.calls.filter((c) => c.state === "overdue").length
-                ? `${queue.calls.filter((c) => c.state === "overdue").length} overdue`
-                : "on track"
-            }
+            sub={overdueSub(queue.calls)}
             alert={queue.calls.some((c) => c.state === "overdue")}
           />
           <QueueTile
-            label="Restocks due"
-            value={queue.restocks.length}
-            sub="SAFC stacks"
-            alert={queue.restocks.some((r) => r.state === "overdue")}
+            label="Visits due"
+            value={queue.visits.length}
+            sub={overdueSub(queue.visits)}
+            alert={queue.visits.some((v) => v.state === "overdue")}
           />
           <QueueTile label="Booked today" value={bookedToday.length} sub="arrivals" alert={false} />
           <QueueTile
@@ -152,7 +162,7 @@ export default async function HomePage() {
 
         <WorkQueue
           calls={queue.calls}
-          restocks={queue.restocks}
+          visits={queue.visits}
           noAction={queue.noAction}
           failure={queue.failure}
         />

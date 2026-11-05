@@ -5,12 +5,12 @@ import { useState } from "react";
 import { phoneLinkTarget } from "@/lib/format";
 import type { QueueItem } from "@/lib/home";
 
-type Tab = "calls" | "restocks" | "none";
+type Tab = "calls" | "visits" | "none";
 
 const KIND_BADGE: Record<QueueItem["kind"], string> = {
   partnership: "PARTNER",
   job: "JOB",
-  restock: "STACK",
+  restock: "RESTOCK",
 };
 
 /**
@@ -21,17 +21,17 @@ const KIND_BADGE: Record<QueueItem["kind"], string> = {
  */
 export default function WorkQueue({
   calls,
-  restocks,
+  visits,
   noAction,
   failure,
 }: {
   calls: QueueItem[];
-  restocks: QueueItem[];
+  visits: QueueItem[];
   noAction: QueueItem[];
   failure?: string | null;
 }) {
   const [tab, setTab] = useState<Tab>("calls");
-  const items = tab === "calls" ? calls : tab === "restocks" ? restocks : noAction;
+  const items = tab === "calls" ? calls : tab === "visits" ? visits : noAction;
   const overdueCalls = calls.filter((c) => c.state === "overdue").length;
 
   const Pill = ({ id, label, n, warn }: { id: Tab; label: string; n: number; warn?: boolean }) => (
@@ -76,16 +76,16 @@ export default function WorkQueue({
 
       <div className="-mx-3 flex gap-1 overflow-x-auto px-3 pt-3 md:mx-0 md:px-4 [&>*]:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <Pill id="calls" label="Calls" n={calls.length} warn={overdueCalls > 0} />
-        <Pill id="restocks" label="Restocks" n={restocks.length} />
+        <Pill id="visits" label="Visits" n={visits.length} warn={visits.some((v) => v.state === "overdue")} />
         <Pill id="none" label="No next action" n={noAction.length} warn />
       </div>
 
       {items.length === 0 ? (
         <p className="muted card-pad text-sm">
           {tab === "calls"
-            ? "No calls due. Nice."
-            : tab === "restocks"
-              ? "No stacks need restocking."
+            ? "No calls due."
+            : tab === "visits"
+              ? "No visits or restocks due."
               : "Everything has a next step booked."}
         </p>
       ) : (
@@ -112,7 +112,7 @@ export default function WorkQueue({
                 <span className="badge ml-2 border-[var(--color-line)] text-[10px] text-[var(--text-faint)]">
                   {KIND_BADGE[it.kind]}
                 </span>
-                {it.followKind && it.followKind !== "call" && (
+                {tab === "calls" && it.followKind && it.followKind !== "call" && (
                   <span className="badge ml-1 border-[var(--color-accent)] text-[10px] text-[var(--color-accent)]">
                     {it.followKind.toUpperCase()}
                   </span>

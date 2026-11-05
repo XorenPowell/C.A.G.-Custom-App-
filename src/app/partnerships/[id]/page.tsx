@@ -11,6 +11,8 @@ import DeletePartnershipButton from "./DeletePartnershipButton";
 import { Empty } from "@/components/Detail";
 import { followUpLabel, followUpState, getPartnership, getPartnershipReferrals } from "@/lib/partnerships";
 import { getPartnershipActivity } from "@/lib/activity";
+import { getScheduledForPartnership } from "@/lib/scheduled";
+import PlannedActions from "@/components/PlannedActions";
 import { getCampaigns, getPlacements, restockLabel, restockState } from "@/lib/campaigns";
 import { getContactsFor } from "@/lib/contacts";
 import { active, getLists, lookup, nameMap } from "@/lib/data";
@@ -31,6 +33,7 @@ export default async function PartnershipDetailPage({
     getContactsFor(id),
     getCampaigns(),
   ]);
+  const planned = await getScheduledForPartnership(id);
   if (!partnership) notFound();
 
   const campaign = campaigns[0] ?? null;
@@ -126,6 +129,12 @@ export default async function PartnershipDetailPage({
         <section className="card">
           <div className="section-title">Activity log ({activity.length})</div>
           <div className="card-pad">
+            {/* The plan sits above the history, in the same column, so the
+                record reads forwards and backwards from now. */}
+            <PlannedActions partnershipId={partnership.id} actions={planned} />
+            <div className="mb-2 border-t border-[var(--color-line)] pt-2">
+              <span className="label mb-0">History</span>
+            </div>
             <ActivityTrail
               entries={activity}
               emptyHint="Nothing logged yet. Use Log contact and the history builds itself."

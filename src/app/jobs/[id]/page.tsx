@@ -8,6 +8,8 @@ import NextActionCard from "@/components/NextActionCard";
 import DeleteJobButton from "./DeleteJobButton";
 import { getJob, getJobFinancialsOne } from "@/lib/jobs";
 import { getJobActivity } from "@/lib/activity";
+import { getScheduledForJob } from "@/lib/scheduled";
+import PlannedActions from "@/components/PlannedActions";
 import { followUpLabel, followUpState } from "@/lib/follow-up";
 import { isJobOpen } from "@/lib/types";
 import { getEntitiesFull } from "@/lib/entities";
@@ -33,6 +35,7 @@ export default async function JobDetailPage({
       getJobFinancialsOne(id),
       getJobActivity(id),
     ]);
+  const planned = await getScheduledForJob(id);
 
   if (!job) notFound();
 
@@ -132,6 +135,10 @@ export default async function JobDetailPage({
         <section className="card mb-3">
           <div className="section-title">Activity ({activity.length})</div>
           <div className="card-pad">
+            <PlannedActions jobId={job.id} actions={planned} />
+            <div className="mb-2 border-t border-[var(--color-line)] pt-2">
+              <span className="label mb-0">History</span>
+            </div>
             <ActivityTrail
               entries={activity}
               emptyHint="Nothing logged yet. Log contact records what was said and books the next call."
