@@ -8,6 +8,7 @@ import DeleteJobButton from "./DeleteJobButton";
 import { getJob, getJobFinancialsOne } from "@/lib/jobs";
 import { getJobActivity } from "@/lib/activity";
 import { followUpLabel, followUpState, followUpTime } from "@/lib/follow-up";
+import { isJobOpen } from "@/lib/types";
 import { getEntitiesFull } from "@/lib/entities";
 import { getPartnerships } from "@/lib/partnerships";
 import { getLists, getSettings, getTemplates, lookup, nameMap, partnershipReferralId } from "@/lib/data";
@@ -36,6 +37,9 @@ export default async function JobDetailPage({
 
   const names = nameMap(lists);
   const jobDue = followUpState(job);
+  // A finished job with nothing booked is the correct end state, not a
+  // problem to flag in red.
+  const jobOpen = isJobOpen(job.status);
   const assigned = job.job_workers
     .map((w) => {
       const e = entities.find((entity) => entity.id === w.entity_id);
@@ -90,7 +94,13 @@ export default async function JobDetailPage({
         {/* Jobs leak the same way partnerships do: a deposit paid, then two
             weeks of silence before the work starts. Same next-action rule. */}
         <section
-          className={`card mb-3 ${jobDue === "none" ? "border-[var(--color-danger)]" : "border-[var(--color-accent)]"}`}
+          className={`card mb-3 ${
+            jobDue === "none"
+              ? jobOpen
+                ? "border-[var(--color-danger)]"
+                : ""
+              : "border-[var(--color-accent)]"
+          }`}
         >
           <div className="section-title flex items-center justify-between">
             <span>Next action</span>
@@ -100,12 +110,12 @@ export default async function JobDetailPage({
                   ? "border-[var(--color-danger)] text-[var(--color-danger)]"
                   : jobDue === "today"
                     ? "border-[var(--color-warn)] text-[var(--color-warn)]"
-                    : jobDue === "none"
+                    : jobDue === "none" && jobOpen
                       ? "border-[var(--color-danger)] text-[var(--color-danger)]"
                       : "border-[var(--color-line)] text-[var(--color-muted)]"
               }`}
             >
-              {jobDue === "none" ? "nothing booked" : followUpLabel(job)}
+              {jobDue === "none" ? (jobOpen ? "nothing booked" : job.status) : followUpLabel(job)}
             </span>
           </div>
           <div className="card-pad">
@@ -119,9 +129,15 @@ export default async function JobDetailPage({
                   <p className="muted mt-1 text-sm">{job.follow_up_note}</p>
                 )}
               </>
-            ) : (
+            ) : jobOpen ? (
               <p className="text-sm text-[var(--color-danger)]">
                 No callback booked. Nothing will bring this job back to you.
+              </p>
+            ) : (
+              <p className="muted text-sm">
+                This job is {job.status.toLowerCase()}, so no follow-up is expected. Book
+                one anyway if you want to chase a review or check in later — it will show
+                up in your calls like any other.
               </p>
             )}
             <div className="mt-3">

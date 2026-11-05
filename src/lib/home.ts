@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getJobEntityNames } from "@/lib/jobs";
 import { chicagoDateOf, todayISO } from "@/lib/dates";
+import { isJobOpen } from "@/lib/types";
 
 /**
  * Home screen data (spec: new home screen + theme system).
@@ -87,8 +88,15 @@ export type WorkQueue = {
   noAction: QueueItem[];
 };
 
-/** Live statuses only: a Completed or Lost job needs no callback. */
-const OPEN_JOB_STATUSES = ["Inquiry", "Quoted", "Booked"];
+/**
+ * Every job is fetched, not just the open ones.
+ *
+ * A callback booked on a finished job is deliberate — asking for a review,
+ * chasing a complaint — and filtering those out at the query meant such a
+ * callback was accepted by the form and then never surfaced anywhere. Only
+ * the "nothing scheduled" tab is restricted to open jobs, because a finished
+ * job genuinely does not need a next step.
+ */
 
 export async function getWorkQueue(): Promise<WorkQueue> {
   const supabase = await createClient();
@@ -100,8 +108,7 @@ export async function getWorkQueue(): Promise<WorkQueue> {
       .select("id, business_name, follow_up_at, follow_up_note, poc_name, poc_phone, last_contact, status_id"),
     supabase
       .from("jobs")
-      .select("id, job_id, customer_name, customer_phone, status, follow_up_at, follow_up_note")
-      .in("status", OPEN_JOB_STATUSES),
+      .select("id, job_id, customer_name, customer_phone, status, follow_up_at, follow_up_note"),
     supabase
       .from("campaign_placements")
       .select("id, partnership_id, location, cards_left, placed_on, last_restock_on, restock_interval_days, partnerships(business_name, poc_phone)")
@@ -156,6 +163,8 @@ export async function getWorkQueue(): Promise<WorkQueue> {
 
   for (const j of jobs) {
     if (!j.follow_up_at) {
+      // A finished job with nothing booked is correct, not a leak.
+      if (!isJobOpen(j.status)) continue;
       noAction.push({
         id: j.id, href: `/jobs/${j.id}`, kind: "job",
         title: j.customer_name || j.job_id,
