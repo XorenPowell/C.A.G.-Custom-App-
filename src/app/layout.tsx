@@ -3,6 +3,7 @@ import { Inter, Oswald } from "next/font/google";
 import { getSettings } from "@/lib/data";
 import { buildOverrideCss } from "@/lib/theme";
 import { GlobalLoadingProvider } from "@/components/GlobalLoadingProvider";
+import AppHeader from "@/components/AppHeader";
 import "./globals.css";
 
 // Oswald drives numeric stats, section titles, ticket times and headlines;
@@ -48,7 +49,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" className={`${inter.variable} ${oswald.variable}`}>
       <body>
         {overrideCss && <style>{overrideCss}</style>}
-        <GlobalLoadingProvider>{children}</GlobalLoadingProvider>
+        <GlobalLoadingProvider>
+          {/* AppNav hides itself on /login, which is the only unauthenticated
+              screen, so the header can live here unconditionally. */}
+          <AppHeader />
+          {children}
+        </GlobalLoadingProvider>
       </body>
     </html>
   );

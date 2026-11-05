@@ -119,7 +119,7 @@ export default async function PartnershipDetailPage({
           </div>
         </section>
 
-        <div className="mb-3">
+        <div className="mb-3 flex flex-wrap gap-2">
           <LogContact
             partnershipId={partnership.id}
             currentFollowUpAt={partnership.follow_up_at}

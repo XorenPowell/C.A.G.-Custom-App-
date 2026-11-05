@@ -12,16 +12,33 @@ import {
 } from "@/lib/dates";
 import { money, timeDisplay } from "@/lib/format";
 
-const NAV_ITEMS: { href: string; label: string; badge?: string }[] = [
-  { href: "/jobs", label: "Jobs" },
-  { href: "/roster", label: "Roster" },
-  { href: "/partnerships", label: "Partnerships" },
-  { href: "/contacts", label: "Contacts", badge: "New" },
-  { href: "/campaigns", label: "SAFC Campaign", badge: "New" },
-  { href: "/face-to-face", label: "Work Face to Face", badge: "New" },
-  { href: "/settings", label: "Settings" },
-  { href: "/time-clock", label: "Clock In / Clock Out" },
-];
+
+/** One number and its state. The mockup's tiles, using the app's own tokens. */
+function QueueTile({
+  label,
+  value,
+  sub,
+  alert,
+}: {
+  label: string;
+  value: number;
+  sub: string;
+  alert: boolean;
+}) {
+  return (
+    <div className="card card-pad">
+      <div className="label">{label}</div>
+      <div
+        className={`font-heading text-[27px] font-extrabold leading-tight ${
+          alert ? "text-[var(--color-danger)]" : ""
+        }`}
+      >
+        {value}
+      </div>
+      <div className="text-xs text-[var(--text-faint)]">{sub}</div>
+    </div>
+  );
+}
 
 export default async function HomePage({
   searchParams,
@@ -214,40 +231,35 @@ export default async function HomePage({
 
       {/* ---------- work queue: partnerships, jobs and restocks ---------- */}
       <section className="mx-auto mt-4 max-w-6xl px-4">
+        <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+          <QueueTile
+            label="Calls due"
+            value={queue.calls.length}
+            sub={
+              queue.calls.filter((c) => c.state === "overdue").length
+                ? `${queue.calls.filter((c) => c.state === "overdue").length} overdue`
+                : "on track"
+            }
+            alert={queue.calls.some((c) => c.state === "overdue")}
+          />
+          <QueueTile
+            label="Restocks due"
+            value={queue.restocks.length}
+            sub="SAFC stacks"
+            alert={queue.restocks.some((r) => r.state === "overdue")}
+          />
+          <QueueTile label="Booked today" value={bookedToday.length} sub="arrivals" alert={false} />
+          <QueueTile
+            label="No next action"
+            value={queue.noAction.length}
+            sub="nothing scheduled"
+            alert={queue.noAction.length > 0}
+          />
+        </div>
+
         <WorkQueue calls={queue.calls} restocks={queue.restocks} noAction={queue.noAction} />
       </section>
 
-      {/* ---------- navigation ---------- */}
-      <section className="mx-auto max-w-6xl px-4 py-4">
-        <nav className="flex flex-col gap-2">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="card flex min-h-14 items-center justify-between gap-3 px-4 py-3 hover:bg-[var(--panel-raised)]"
-            >
-              <span className="flex items-center gap-2">
-                <span className="font-semibold">{item.label}</span>
-                {item.badge && (
-                  <span className="badge border-[var(--pill-active-border)] bg-[var(--pill-active-bg)] text-[var(--color-accent)]">
-                    {item.badge}
-                  </span>
-                )}
-              </span>
-              <span aria-hidden className="text-[var(--color-muted)]">
-                ›
-              </span>
-            </Link>
-          ))}
-        </nav>
-
-        <Link
-          href="/reports"
-          className="mt-3 inline-block text-sm text-[var(--color-muted)] underline underline-offset-2"
-        >
-          Full report →
-        </Link>
-      </section>
-    </>
+</>
   );
 }
