@@ -1,6 +1,13 @@
 "use client";
 
-/** Sticky save bar. Stays reachable with a thumb on a long mobile form. */
+/**
+ * Floating save control.
+ *
+ * This was a full-width band pinned to the bottom, which spent the whole
+ * viewport width on one button and covered a row of whatever was underneath.
+ * Now it floats bottom-right, and the status rides beside it as a chip
+ * instead of claiming its own column.
+ */
 export default function SaveBar({
   onSave,
   pending,
@@ -16,22 +23,32 @@ export default function SaveBar({
   children?: React.ReactNode;
   label?: string;
 }) {
+  const message = error ?? status ?? null;
+
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[var(--color-line)] bg-[var(--color-surface)]">
-      <div className="mx-auto flex w-full max-w-6xl items-center gap-2 px-3 py-2 md:px-6">
-        <div className="min-w-0 flex-1 truncate text-sm">
-          {error ? (
-            <span className="font-semibold text-[var(--color-danger)]">{error}</span>
-          ) : status ? (
-            <span className="text-[var(--color-good)]">{status}</span>
-          ) : null}
-        </div>
+    // pointer-events-none on the wrapper so the page stays clickable
+    // everywhere the controls themselves are not.
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-end px-3 pb-3 md:px-6 md:pb-5">
+      <div className="pointer-events-auto flex items-center gap-2">
+        {message && (
+          <span
+            className={`rounded-[var(--radius-btn)] border px-2.5 py-1.5 text-xs font-semibold shadow-lg backdrop-blur ${
+              error
+                ? "border-[var(--color-danger)] bg-[var(--panel)] text-[var(--color-danger)]"
+                : "border-[var(--color-good)] bg-[var(--panel)] text-[var(--color-good)]"
+            }`}
+          >
+            {message}
+          </span>
+        )}
+
         {children}
+
         <button
           type="button"
           onClick={onSave}
           disabled={pending}
-          className="btn btn-primary shrink-0"
+          className="btn btn-primary shadow-lg"
         >
           {pending ? "Saving…" : label}
         </button>
