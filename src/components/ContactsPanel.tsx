@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { deleteContact, saveContact, type ContactPayload } from "@/app/actions/contacts";
-import { composeUrl, phoneDisplay, phoneLinkTarget } from "@/lib/format";
+import { phoneDisplay, phoneLinkTarget } from "@/lib/format";
+import EmailComposer from "@/components/EmailComposer";
 import type { Contact, ListItem } from "@/lib/types";
 
 const blank = (partnershipId: string): ContactPayload => ({
@@ -27,6 +28,7 @@ export default function ContactsPanel({
   const [pending, start] = useGlobalTransition();
   const [editing, setEditing] = useState<ContactPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [emailing, setEmailing] = useState<Contact | null>(null);
 
   const roleName = (id: string | null) => roles.find((r) => r.id === id)?.name ?? null;
 
@@ -133,14 +135,13 @@ export default function ContactsPanel({
                           </a>
                         )}
                         {c.email && !c.email_opt_out && (
-                          <a
+                          <button
+                            type="button"
                             className="btn btn-sm"
-                            href={composeUrl(c.email)}
-                            target="_blank"
-                            rel="noreferrer"
+                            onClick={() => setEmailing(c)}
                           >
                             Email
-                          </a>
+                          </button>
                         )}
                         {c.phone && (
                           <button
@@ -233,6 +234,16 @@ export default function ContactsPanel({
           </div>
         )}
       </div>
+      {emailing && (
+        <EmailComposer
+          recipients={[{ id: emailing.id, name: emailing.name, email: emailing.email }]}
+          onClose={() => setEmailing(null)}
+          onSent={() => {
+            setEmailing(null);
+            router.refresh();
+          }}
+        />
+      )}
     </section>
   );
 }

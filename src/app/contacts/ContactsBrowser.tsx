@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { markEmailed } from "@/app/actions/contacts";
+import EmailComposer from "@/components/EmailComposer";
 import { phoneDisplay, phoneLinkTarget } from "@/lib/format";
 import type { ContactWithPartnership } from "@/lib/contacts";
 import type { ListItem } from "@/lib/types";
@@ -234,124 +234,14 @@ export default function ContactsBrowser({
 
       {composing && (
         <EmailComposer
-          contacts={selectedMailable}
+          recipients={selectedMailable}
           onClose={() => setComposing(false)}
-          onSent={() => { setComposing(false); setSel(new Set()); }}
+          onSent={() => {
+            setComposing(false);
+            setSel(new Set());
+          }}
         />
       )}
     </>
-  );
-}
-
-/**
- * Composes in the app and hands off to the device's mail client, exactly like
- * the sms:/tel: actions elsewhere. Nothing is sent from a server, so this app
- * never carries a sending reputation — but CAN-SPAM still applies to what you
- * send, which is why the footer is built in and the opt-outs are excluded.
- */
-function EmailComposer({
-  contacts,
-  onClose,
-  onSent,
-}: {
-  contacts: ContactWithPartnership[];
-  onClose: () => void;
-  onSent: () => void;
-}) {
-  const [subject, setSubject] = useState("Quick intro — Call A Guy Chicago");
-  const [body, setBody] = useState(
-    `Hi there,\n\nI run Call A Guy Chicago — we handle moving, cleaning, junk removal and handyman work.\n\nIf a tenant ever needs a hand, we can usually be there same day.\n\n— Xoren`,
-  );
-  const [copied, setCopied] = useState(false);
-
-  const emails = contacts.map((c) => c.email!).filter(Boolean);
-  const FOOTER =
-    "\n\n—\nCall A Guy Chicago · Chicago, IL\nReply STOP or email back to be removed from this list.";
-  const full = body + FOOTER;
-
-  // Gmail's web composer rather than mailto:, which only works when the
-  // operating system has a mail client registered — often it has none.
-  const params = new URLSearchParams({
-    view: "cm",
-    fs: "1",
-    bcc: emails.join(","),
-    su: subject,
-    body: full,
-  });
-  const composeHref = `https://mail.google.com/mail/?${params.toString()}`;
-  // Browsers start dropping URLs somewhere past a few thousand characters.
-  const tooLong = composeHref.length > 7000;
-
-  async function copyAll() {
-    await navigator.clipboard.writeText(emails.join(", "));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4">
-      <div className="card max-h-[88vh] w-full max-w-2xl overflow-auto">
-        <div className="section-title flex items-center justify-between">
-          <span>Email {contacts.length} contacts</span>
-          <button className="btn btn-sm" onClick={onClose}>Close</button>
-        </div>
-        <div className="card-pad">
-          <div className="field">
-            <label className="label" htmlFor="em-sub">Subject</label>
-            <input id="em-sub" className="input" value={subject}
-              onChange={(e) => setSubject(e.target.value)} />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="em-body">Body</label>
-            <textarea id="em-body" className="textarea" rows={8} value={body}
-              onChange={(e) => setBody(e.target.value)} />
-          </div>
-
-          <div className="note mb-3">
-            <strong className="text-[var(--color-ink)]">Added automatically:</strong>
-            <pre className="mt-1 whitespace-pre-wrap font-sans">{FOOTER.trim()}</pre>
-            <p className="mt-2">
-              Every commercial email needs a working opt-out and a real postal address.
-              CAN-SPAM covers B2B the same as B2C, and a business card is not consent.
-              Contacts marked <em>no email</em> are already excluded.
-            </p>
-          </div>
-
-          {tooLong && (
-            <p className="mb-3 border border-[var(--color-warn)] px-2 py-2 text-sm text-[var(--color-warn)]">
-              Too long for a compose link at {contacts.length} recipients. Copy the
-              addresses instead and paste them into the BCC field of a new message.
-            </p>
-          )}
-
-          <div className="flex flex-wrap gap-2">
-            <button className="btn" onClick={copyAll}>
-              {copied ? "Copied" : "Copy addresses"}
-            </button>
-            {!tooLong && (
-              <a
-                className="btn btn-primary"
-                href={composeHref}
-                target="_blank"
-                rel="noreferrer"
-                onClick={onSent}
-              >
-                Open in Gmail
-              </a>
-            )}
-            <button className="btn" onClick={async () => {
-              await markEmailed(contacts.map((c) => c.id));
-              onSent();
-            }}>
-              Mark as emailed
-            </button>
-          </div>
-
-          <p className="muted mt-2 text-xs">
-            Addresses go in BCC so recipients never see each other.
-          </p>
-        </div>
-      </div>
-    </div>
   );
 }
