@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { setNextAction } from "@/app/actions/activity";
 import { chicagoDateTimeInputValue, chicagoLocalToUTCISO } from "@/lib/dates";
+import { FOLLOW_UP_KINDS, FOLLOW_UP_LABELS, type FollowUpKind } from "@/lib/types";
 
 type Tone = "overdue" | "today" | "upcoming" | "none";
 
@@ -27,18 +28,30 @@ export default function NextActionCard({
   jobId,
   followUpAt,
   followUpNote,
+  followUpKind,
   tone,
   dueLabel,
+  /**
+   * What the badge reads when nothing is booked, and whether that state is
+   * worth alarming about. A finished job with no callback is the correct end
+   * state; an open one is a leak.
+   */
+  emptyLabel = "nothing booked",
+  alarmWhenEmpty = true,
   children,
 }: {
   partnershipId?: string;
   jobId?: string;
   followUpAt: string | null;
   followUpNote: string | null;
+  followUpKind: FollowUpKind;
   tone: Tone;
   dueLabel: string;
+  emptyLabel?: string;
+  alarmWhenEmpty?: boolean;
   children?: React.ReactNode;
 }) {
+  const alarming = tone === "none" && alarmWhenEmpty;
   const router = useRouter();
   const [pending, start] = useGlobalTransition();
 
@@ -46,18 +59,22 @@ export default function NextActionCard({
   const [date, setDate] = useState(initial ? initial.slice(0, 10) : "");
   const [time, setTime] = useState(initial ? initial.slice(11, 16) : "09:00");
   const [note, setNote] = useState(followUpNote ?? "");
+  const [kind, setKind] = useState<FollowUpKind>(followUpKind ?? "call");
   const [saved, setSaved] = useState(false);
 
   const dirty =
-    (date ? `${date}T${time || "09:00"}` : "") !== initial || note !== (followUpNote ?? "");
+    (date ? `${date}T${time || "09:00"}` : "") !== initial ||
+    note !== (followUpNote ?? "") ||
+    kind !== (followUpKind ?? "call");
 
-  function save(nextDate = date, nextTime = time, nextNote = note) {
+  function save(nextDate = date, nextTime = time, nextNote = note, nextKind = kind) {
     start(async () => {
       const iso = nextDate ? chicagoLocalToUTCISO(`${nextDate}T${nextTime || "09:00"}`) : null;
       await setNextAction(
         partnershipId ? { partnership_id: partnershipId } : { job_id: jobId },
         iso,
         nextNote,
+        nextKind,
       );
       setSaved(true);
       setTimeout(() => setSaved(false), 1800);
@@ -73,22 +90,57 @@ export default function NextActionCard({
     const next = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     setDate(next);
     setTime("09:00");
-    save(next, "09:00", note);
+    save(next, "09:00", note, kind);
   }
 
   return (
     <section
-      className={`card ${tone === "none" ? "border-[var(--color-danger)]" : "border-[var(--color-accent)]"}`}
+      className={`card ${
+        alarming
+          ? "border-[var(--color-danger)]"
+          : tone === "none"
+            ? ""
+            : "border-[var(--color-accent)]"
+      }`}
     >
       <div className="section-title flex items-center justify-between gap-2">
         <span>Next action</span>
-        <span className={`badge ${BADGE[tone]}`}>{tone === "none" ? "nothing booked" : dueLabel}</span>
+        <span
+          className={`badge ${
+            tone === "none"
+              ? alarming
+                ? BADGE.none
+                : BADGE.upcoming
+              : BADGE[tone]
+          }`}
+        >
+          {tone === "none" ? emptyLabel : dueLabel}
+        </span>
       </div>
 
       <div className="card-pad">
+        <div className="field">
+          <span className="label">What kind</span>
+          <div className="-mx-1 flex gap-1 overflow-x-auto px-1 [&>*]:shrink-0">
+            {FOLLOW_UP_KINDS.map((k) => (
+              <button
+                key={k}
+                type="button"
+                className={`btn btn-sm ${kind === k ? "btn-primary" : ""}`}
+                onClick={() => {
+                  setKind(k);
+                  if (date) save(date, time, note, k);
+                }}
+              >
+                {FOLLOW_UP_LABELS[k].noun}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-x-3 sm:grid-cols-2">
           <div className="field">
-            <label className="label" htmlFor="na-date">Call back on</label>
+            <label className="label" htmlFor="na-date">{FOLLOW_UP_LABELS[kind].when}</label>
             <input
               id="na-date"
               type="date"

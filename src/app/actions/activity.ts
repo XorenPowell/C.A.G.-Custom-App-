@@ -20,6 +20,7 @@ export type LogContactPayload = {
    */
   next_follow_up_at?: string | null;
   next_follow_up_note?: string | null;
+  next_follow_up_kind?: string;
 };
 
 /**
@@ -57,13 +58,19 @@ export async function logContact(payload: LogContactPayload): Promise<ActionResu
   if (payload.next_follow_up_at !== undefined) {
     const table = partnershipId ? "partnerships" : "jobs";
     const id = partnershipId ?? jobId!;
-    const { error } = await supabase
-      .from(table)
-      .update({
-        follow_up_at: payload.next_follow_up_at || null,
-        follow_up_note: orNull(payload.next_follow_up_note ?? null),
-      })
-      .eq("id", id);
+    const patch: Record<string, string | null> = {
+      follow_up_at: payload.next_follow_up_at || null,
+    };
+    // Only touch the note when the caller actually decided about it, so
+    // "leave the current callback alone" leaves its reason alone too.
+    if (payload.next_follow_up_note !== undefined) {
+      patch.follow_up_note = orNull(payload.next_follow_up_note);
+    }
+    if (payload.next_follow_up_kind !== undefined) {
+      patch.follow_up_kind = payload.next_follow_up_kind;
+    }
+
+    const { error } = await supabase.from(table).update(patch).eq("id", id);
     if (error) return fail(error.message);
   }
 
@@ -113,6 +120,7 @@ export async function setNextAction(
   target: { partnership_id?: string; job_id?: string },
   followUpAt: string | null,
   note: string | null,
+  kind: string = "call",
 ): Promise<ActionResult> {
   const supabase = await createClient();
   const table = target.partnership_id ? "partnerships" : "jobs";
@@ -121,7 +129,11 @@ export async function setNextAction(
 
   const { error } = await supabase
     .from(table)
-    .update({ follow_up_at: followUpAt, follow_up_note: orNull(note) })
+    .update({
+      follow_up_at: followUpAt,
+      follow_up_note: orNull(note),
+      follow_up_kind: kind,
+    })
     .eq("id", id);
   if (error) return fail(error.message);
 

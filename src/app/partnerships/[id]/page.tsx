@@ -94,6 +94,7 @@ export default async function PartnershipDetailPage({
           partnershipId={partnership.id}
           followUpAt={partnership.follow_up_at}
           followUpNote={partnership.follow_up_note}
+          followUpKind={partnership.follow_up_kind}
           tone={due}
           dueLabel={followUpLabel(partnership)}
         >

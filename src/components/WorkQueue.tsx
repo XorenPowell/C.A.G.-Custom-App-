@@ -91,13 +91,23 @@ export default function WorkQueue({
                 <span className="badge ml-2 border-[var(--color-line)] text-[10px] text-[var(--text-faint)]">
                   {KIND_BADGE[it.kind]}
                 </span>
+                {it.followKind && it.followKind !== "call" && (
+                  <span className="badge ml-1 border-[var(--color-accent)] text-[10px] text-[var(--color-accent)]">
+                    {it.followKind.toUpperCase()}
+                  </span>
+                )}
                 <div className="muted truncate text-xs">{it.subtitle}</div>
               </div>
 
               <div className="ml-auto flex shrink-0 gap-1">
-                {it.phone && (
-                  <a className="btn btn-sm" href={`tel:${phoneLinkTarget(it.phone)}`}>
-                    Call
+                {/* A visit is not answered by dialling, so the shortcut only
+                    appears when the booked contact is actually a call or text. */}
+                {it.phone && (it.followKind ?? "call") !== "visit" && (
+                  <a
+                    className="btn btn-sm"
+                    href={`${it.followKind === "text" ? "sms" : "tel"}:${phoneLinkTarget(it.phone)}`}
+                  >
+                    {it.followKind === "text" ? "Text" : "Call"}
                   </a>
                 )}
                 <Link className="btn btn-sm" href={it.href}>
