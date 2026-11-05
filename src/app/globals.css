@@ -235,6 +235,18 @@ body {
   background-attachment: fixed;
 }
 
+/* The default. A soft grey lift from the top-left with a second, weaker
+   pool top-right, and a hint of grain over the top so the gradient has
+   something to sit in and never bands on a cheap panel. This is what the
+   hero band used to do for one section, applied to the whole app instead. */
+[data-surface="blend"] {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E"),
+    radial-gradient(75rem 48rem at 10% -10%, rgba(255, 255, 255, 0.055), transparent 60%),
+    radial-gradient(60rem 42rem at 98% 4%, rgba(255, 255, 255, 0.028), transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 45%);
+}
+
 /* Fine static. feTurbulence rendered once by the browser, no network cost. */
 [data-surface="grain"] {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");

@@ -52,11 +52,11 @@ export const THEME_TOKEN_GROUPS: ThemeTokenGroup[] = [
     ],
   },
   {
-    group: "Hero Gradient",
+    group: "Surface wash (Aurora)",
     tokens: [
-      { key: "--hero-a", label: "Gradient stop 1", default: "#0f3238" },
-      { key: "--hero-b", label: "Gradient stop 2", default: "#29233a" },
-      { key: "--hero-c", label: "Gradient stop 3", default: "#43203a" },
+      { key: "--hero-a", label: "Wash 1", default: "#0f3238" },
+      { key: "--hero-b", label: "Wash 2", default: "#29233a" },
+      { key: "--hero-c", label: "Wash 3", default: "#43203a" },
     ],
   },
 ];
@@ -77,6 +77,7 @@ export function isValidColorValue(v: string): boolean {
 export type Preset = { id: string; label: string; hint: string };
 
 export const SURFACE_PRESETS: Preset[] = [
+  { id: "blend",   label: "Grey blend",      hint: "Soft light from the top-left over fine grain. The default." },
   { id: "flat",    label: "Flat",            hint: "Plain colour. Nothing between you and the data." },
   { id: "grain",   label: "Film grain",      hint: "Fine static. Takes the plastic edge off a flat dark panel." },
   { id: "grid",    label: "Blueprint",       hint: "Faint 34px rule. Reads as drafting paper." },
@@ -139,7 +140,7 @@ export function buildOverrideCss(overrides: Record<string, string>): string {
 
 export const SURFACE_KEY = "surface";
 export const ELEVATION_KEY = "elevation";
-export const DEFAULT_SURFACE = "grain";
+export const DEFAULT_SURFACE = "blend";
 export const DEFAULT_ELEVATION = "soft";
 
 

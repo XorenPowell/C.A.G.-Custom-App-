@@ -57,32 +57,27 @@ export default async function HomePage() {
   return (
     <>
       {/* ---------- greeting ---------- */}
-      <section
-        className="px-4 py-5 text-white"
-        style={{ background: "linear-gradient(155deg, var(--hero-a), var(--hero-b), var(--hero-c))" }}
-      >
-        <div className="mx-auto max-w-6xl">
-          <h1 className="font-heading text-2xl font-bold md:text-3xl">
-            Welcome, {firstName}
-          </h1>
-          <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-white/80">
-            <span>{todayLabel}</span>
-            <span>
-              Next payout:{" "}
-              <span className="font-heading font-semibold text-white">
-                {money(payoutData.totalCommission)}
-              </span>
+      <section className="mx-auto max-w-6xl px-4 pt-5">
+        <h1 className="font-heading text-2xl font-bold md:text-3xl">
+          Welcome, {firstName}
+        </h1>
+        <p className="muted mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          <span>{todayLabel}</span>
+          <span>
+            Next payout:{" "}
+            <span className="font-heading font-semibold text-[var(--money)]">
+              {money(payoutData.totalCommission)}
             </span>
-            <Link href="/reports" className="text-white/90 underline underline-offset-2">
-              Reports
-            </Link>
-          </p>
-        </div>
+          </span>
+          <Link href="/reports" className="link">
+            Reports
+          </Link>
+        </p>
       </section>
 
       {/* ---------- booked today: full-bleed, always today, ignores the range above ---------- */}
-      <section className="mt-4 border-y border-[var(--border)] bg-[var(--panel)] py-4">
-        <div className="mx-auto max-w-6xl px-4">
+      <section className="mx-auto mt-4 max-w-6xl px-4">
+        <div className="card card-pad">
           <div className="mb-3 flex items-center gap-2">
             <span className="relative flex size-2.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--live)] opacity-75" />

@@ -68,13 +68,7 @@ export default async function CampaignsPage() {
       <main className="page">
         <p className="muted mb-3 text-sm">{campaign.description}</p>
 
-        <section
-          className="mb-3 rounded-[var(--radius-card)] border border-[var(--color-line)] p-4 text-white md:p-5"
-          style={{
-            background:
-              "linear-gradient(135deg, var(--hero-a), var(--hero-b) 55%, var(--hero-c))",
-          }}
-        >
+        <section className="card mb-3 p-4 md:p-5">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <div className="label">Stacks live</div>
