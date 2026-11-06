@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getJobEntityNames } from "@/lib/jobs";
-import { chicagoDateOf, todayISO } from "@/lib/dates";
+import { chicagoDateOf, chicagoTimeLabel, todayISO } from "@/lib/dates";
 import { isJobOpen } from "@/lib/types";
 
 /**
@@ -71,6 +71,13 @@ export type QueueItem = {
   /** Chicago calendar date the item is due. */
   dueOn: string;
   dueLabel: string;
+  /**
+   * The booked instant, when there is one. Restocks fall due on a date with
+   * no appointment attached, so they carry null rather than a made-up time.
+   */
+  dueAt: string | null;
+  /** Chicago wall-clock time of dueAt, e.g. "9:00 AM". */
+  dueTime: string | null;
   state: "overdue" | "today";
   phone: string | null;
   /** call | visit | text | email — only set on queued contacts. */
@@ -180,7 +187,8 @@ export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
         id: p.id, href: `/partnerships/${p.id}`, kind: "partnership",
         title: p.business_name,
         subtitle: p.last_contact ? `last contact ${p.last_contact}` : "never contacted",
-        dueOn: "", dueLabel: "nothing booked", state: "overdue", phone: p.poc_phone,
+        dueOn: "", dueLabel: "nothing booked", dueAt: null, dueTime: null,
+        state: "overdue", phone: p.poc_phone,
       });
       continue;
     }
@@ -191,6 +199,7 @@ export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
       title: p.business_name,
       subtitle: p.follow_up_note || p.poc_name || "Follow-up",
       dueOn: due, dueLabel: relLabel(due, today),
+      dueAt: p.follow_up_at, dueTime: chicagoTimeLabel(p.follow_up_at),
       state: due < today ? "overdue" : "today", phone: p.poc_phone,
       followKind: p.follow_up_kind,
     });
@@ -204,7 +213,8 @@ export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
         id: j.id, href: `/jobs/${j.id}`, kind: "job",
         title: j.customer_name || j.job_id,
         subtitle: `${j.job_id} · ${j.status}`,
-        dueOn: "", dueLabel: "nothing booked", state: "overdue", phone: j.customer_phone,
+        dueOn: "", dueLabel: "nothing booked", dueAt: null, dueTime: null,
+        state: "overdue", phone: j.customer_phone,
       });
       continue;
     }
@@ -215,6 +225,7 @@ export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
       title: j.customer_name || j.job_id,
       subtitle: j.follow_up_note || `${j.job_id} · ${j.status}`,
       dueOn: due, dueLabel: relLabel(due, today),
+      dueAt: j.follow_up_at, dueTime: chicagoTimeLabel(j.follow_up_at),
       state: due < today ? "overdue" : "today", phone: j.customer_phone,
       followKind: j.follow_up_kind,
     });
@@ -230,16 +241,20 @@ export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
       id: pl.id, href: `/partnerships/${pl.partnership_id}`, kind: "restock",
       title: pl.partnerships?.business_name ?? "—",
       subtitle: `${pl.location ?? "stack"}${pl.cards_left != null ? ` · ~${pl.cards_left} left` : ""}`,
-      dueOn: due, dueLabel: relLabel(due, today),
+      dueOn: due, dueLabel: relLabel(due, today), dueAt: null, dueTime: null,
       state: due < today ? "overdue" : "today",
       phone: pl.partnerships?.poc_phone ?? null,
       followKind: "visit",
     });
   }
 
-  // Most overdue first — the queue is worked top to bottom.
+  // Most overdue first — the queue is worked top to bottom. Within a day the
+  // booked time decides the order; a restock has no appointment, so it sorts
+  // to the end of its day rather than being given a time it does not have.
   const byDue = (a: QueueItem, b: QueueItem) =>
-    a.dueOn.localeCompare(b.dueOn) || a.title.localeCompare(b.title);
+    a.dueOn.localeCompare(b.dueOn) ||
+    (a.dueAt ?? "~").localeCompare(b.dueAt ?? "~") ||
+    a.title.localeCompare(b.title);
   calls.sort(byDue);
   visits.sort(byDue);
   noAction.sort((a, b) => a.title.localeCompare(b.title));

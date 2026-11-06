@@ -1,3 +1,4 @@
+import { chicagoTimeLabel } from "@/lib/dates";
 import type { Partnership } from "@/lib/types";
 
 /**
@@ -89,11 +90,7 @@ export function followUpLabel(p: FollowUpFields, today = todayLocal()): string {
 /** "9:00 AM" for the booked callback, or empty when none is set. */
 export function followUpTime(p: FollowUpFields): string {
   if (!p.follow_up_at) return "";
-  return new Date(p.follow_up_at).toLocaleTimeString("en-US", {
-    timeZone: "America/Chicago",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return chicagoTimeLabel(p.follow_up_at);
 }
 
 /** Nothing scheduled at all — the quiet leak the redesign surfaces. */

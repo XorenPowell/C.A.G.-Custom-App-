@@ -72,6 +72,15 @@ export function chicagoDateTimeInputValue(instant: string): string {
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour") === "24" ? "00" : get("hour")}:${get("minute")}`;
 }
 
+/** UTC instant -> Chicago wall-clock time, e.g. "9:00 AM". */
+export function chicagoTimeLabel(instant: string | Date): string {
+  return new Date(instant).toLocaleTimeString("en-US", {
+    timeZone: TIME_ZONE,
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 /** "YYYY-MM-DDTHH:mm" Chicago wall time -> UTC ISO instant. */
 export function chicagoLocalToUTCISO(local: string): string {
   // Parsed as if it were already UTC — just a fixed reference point to

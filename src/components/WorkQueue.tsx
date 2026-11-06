@@ -95,14 +95,25 @@ export default function WorkQueue({
               key={`${it.kind}-${it.id}`}
               className="flex flex-wrap items-center gap-2 border-t border-[var(--color-line-soft)] px-3 py-2.5 md:px-4"
             >
-              <span
-                className={`badge shrink-0 ${
-                  it.state === "overdue"
-                    ? "border-[var(--color-danger)] text-[var(--color-danger)]"
-                    : "border-[var(--color-warn)] text-[var(--color-warn)]"
-                }`}
-              >
-                {it.dueLabel}
+              {/* Day and time stack rather than sit side by side: the day is
+                  what orders the queue, the time is what the rest of the day
+                  gets planned around. A restock falls due on a date with no
+                  appointment, so it shows no time rather than a made-up one. */}
+              <span className="flex w-20 shrink-0 flex-col items-start gap-0.5">
+                <span
+                  className={`badge ${
+                    it.state === "overdue"
+                      ? "border-[var(--color-danger)] text-[var(--color-danger)]"
+                      : "border-[var(--color-warn)] text-[var(--color-warn)]"
+                  }`}
+                >
+                  {it.dueLabel}
+                </span>
+                {it.dueTime && (
+                  <span className="mono pl-0.5 text-[11px] text-[var(--text-faint)]">
+                    {it.dueTime}
+                  </span>
+                )}
               </span>
 
               <div className="min-w-0 flex-1 basis-full md:basis-auto">
