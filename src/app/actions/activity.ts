@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { fail, ok, orNull, type ActionResult } from "@/lib/persist";
+import { chicagoDateOf } from "@/lib/dates";
 import type { ActivityKind } from "@/lib/types";
+
+/** Kinds the database trigger counts as contact; mirrored here for the recompute. */
+const CONTACT_KINDS = ["call", "text", "email", "visit", "restock"] as const;
 
 export type LogContactPayload = {
   /** Exactly one of these. Enforced by a check constraint on the table too. */
@@ -70,12 +74,96 @@ export async function logContact(payload: LogContactPayload): Promise<ActionResu
   return ok();
 }
 
+/**
+ * Corrects an entry that was already logged.
+ *
+ * Logging happens mid-call, so the wrong time and a half-finished note are
+ * normal; without this the only repair was delete and re-log, which loses
+ * the entry's place in the history.
+ */
+export type ActivityEdit = {
+  /** UTC ISO instant. Omit to leave the time alone. */
+  occurred_at?: string;
+  outcome?: string | null;
+  note?: string | null;
+};
+
+export async function updateActivity(id: string, patch: ActivityEdit): Promise<ActionResult> {
+  const supabase = await createClient();
+
+  const row: Record<string, unknown> = {};
+  if (patch.occurred_at) row.occurred_at = patch.occurred_at;
+  if (patch.outcome !== undefined) row.outcome = orNull(patch.outcome);
+  if (patch.note !== undefined) row.note = orNull(patch.note);
+  if (Object.keys(row).length === 0) return ok(id);
+
+  const { data, error } = await supabase
+    .from("activity")
+    .update(row)
+    .eq("id", id)
+    .select("partnership_id")
+    .maybeSingle();
+  if (error) return fail(error.message);
+
+  await recomputeLastContact(supabase, (data as { partnership_id: string | null } | null)?.partnership_id ?? null);
+
+  revalidatePath("/", "layout");
+  return ok(id);
+}
+
 export async function deleteActivity(id: string): Promise<ActionResult> {
   const supabase = await createClient();
+
+  // Read the parent first: after the delete there is nothing left to ask.
+  const { data: before } = await supabase
+    .from("activity")
+    .select("partnership_id")
+    .eq("id", id)
+    .maybeSingle();
+
   const { error } = await supabase.from("activity").delete().eq("id", id);
   if (error) return fail(error.message);
+
+  await recomputeLastContact(supabase, (before as { partnership_id: string | null } | null)?.partnership_id ?? null);
+
   revalidatePath("/", "layout");
   return ok();
+}
+
+/**
+ * Re-derives last_contact from the trail.
+ *
+ * The database trigger only fires on insert and only ever moves the date
+ * forward, which is right for logging and wrong for correcting: backdating
+ * an entry would otherwise leave last_contact claiming a contact that no
+ * longer exists. Recomputing covers both directions.
+ *
+ * Nothing left to derive from leaves the existing date alone rather than
+ * clearing it — the pre-log history was seeded as `note` entries, which do
+ * not count as contact, so a blanket overwrite would erase real dates.
+ */
+async function recomputeLastContact(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  partnershipId: string | null,
+): Promise<void> {
+  if (!partnershipId) return;
+
+  const { data, error } = await supabase
+    .from("activity")
+    .select("occurred_at")
+    .eq("partnership_id", partnershipId)
+    .in("kind", [...CONTACT_KINDS])
+    .order("occurred_at", { ascending: false })
+    .limit(1);
+  if (error) return;
+
+  const latest = (data ?? [])[0] as { occurred_at: string } | undefined;
+  if (!latest) return;
+
+  await supabase
+    .from("partnerships")
+    .update({ last_contact: chicagoDateOf(latest.occurred_at) })
+    .eq("id", partnershipId);
 }
 
 /**
