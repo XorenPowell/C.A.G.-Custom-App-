@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { deleteContact, saveContact, type ContactPayload } from "@/app/actions/contacts";
 import { phoneDisplay, phoneLinkTarget } from "@/lib/format";
@@ -29,6 +29,34 @@ export default function ContactsPanel({
   const [editing, setEditing] = useState<ContactPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [emailing, setEmailing] = useState<Contact | null>(null);
+  /**
+   * Open by default: on most partnerships this is the first thing you
+   * want. Collapsible because on a business with four contacts it pushed
+   * the activity log off the screen, and remembered per browser so it
+   * stays however you last left it.
+   */
+  const [open, setOpen] = useState(true);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("contacts-panel-open");
+      if (saved !== null) setOpen(saved === "1");
+    } catch {
+      // Private windows and blocked site data throw here. The default stands.
+    }
+  }, []);
+
+  function toggle() {
+    setOpen((was) => {
+      const next = !was;
+      try {
+        window.localStorage.setItem("contacts-panel-open", next ? "1" : "0");
+      } catch {
+        // Not being able to remember the choice must not prevent making it.
+      }
+      return next;
+    });
+  }
 
   const roleName = (id: string | null) => roles.find((r) => r.id === id)?.name ?? null;
 
@@ -66,8 +94,16 @@ export default function ContactsPanel({
   return (
     <section className="card mb-3">
       <div className="section-title flex items-center justify-between">
-        <span>Contacts ({contacts.length})</span>
-        {!editing && (
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          className="flex items-center gap-2 text-left"
+        >
+          <span aria-hidden className="text-[var(--color-muted)]">{open ? "▾" : "▸"}</span>
+          <span>Contacts ({contacts.length})</span>
+        </button>
+        {!editing && open && (
           <button
             type="button"
             className="btn btn-sm"
@@ -81,6 +117,7 @@ export default function ContactsPanel({
         )}
       </div>
 
+      {open && (
       <div className="card-pad">
         {contacts.length === 0 && !editing && (
           <p className="muted text-sm">
@@ -234,6 +271,7 @@ export default function ContactsPanel({
           </div>
         )}
       </div>
+      )}
       {emailing && (
         <EmailComposer
           recipients={[{ id: emailing.id, name: emailing.name, email: emailing.email }]}

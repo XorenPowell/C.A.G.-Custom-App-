@@ -72,8 +72,6 @@ export function filterPartnerships(
       const hay = [
         p.business_name,
         p.address,
-        p.poc_name,
-        p.secondary_poc_name,
         p.notes,
       ]
         .filter(Boolean)

@@ -26,6 +26,15 @@ export default async function PartnershipsPage() {
     return acc;
   }, {});
 
+  // Search used to read the partnership's poc_name slot. Those slots are
+  // retired, so the names come from the contacts themselves — which also
+  // means searching a person now finds them however many there are.
+  const contactNames = contacts.reduce<Record<string, string[]>>((acc, c) => {
+    if (!c.partnership_id) return acc;
+    (acc[c.partnership_id] ??= []).push(c.name);
+    return acc;
+  }, {});
+
   // Everything the table needs is resolved here, so the browser stays a pure
   // filtering component with no further lookups.
   const rows: PartnershipRow[] = all.map((p) => {
@@ -37,6 +46,7 @@ export default async function PartnershipsPage() {
       stage_name: lookup(names, p.status_id),
       tier_name: lookup(names, p.tier_id),
       contact_count: contactCounts[p.id] ?? 0,
+      contact_names: (contactNames[p.id] ?? []).join(" "),
       referrals: ref?.jobs ?? 0,
       revenue: ref?.revenue ?? 0,
       safc_label: placement ? restockLabel(placement) : null,

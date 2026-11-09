@@ -171,12 +171,6 @@ export type Partnership = {
   zone_id: string | null;
   status_id: string | null;
   tier_id: string | null;
-  poc_name: string | null;
-  poc_phone: string | null;
-  poc_email: string | null;
-  secondary_poc_name: string | null;
-  secondary_poc_phone: string | null;
-  secondary_poc_email: string | null;
   last_visit: string | null;
   cards_dropped_last_visit: number;
   total_cards_dropped: number;

@@ -11,6 +11,8 @@ export type PartnershipRow = Partnership & {
   stage_name: string;
   tier_name: string;
   contact_count: number;
+  /** Every contact's name, for search. Replaces the retired poc_name slot. */
+  contact_names: string;
   referrals: number;
   revenue: number;
   safc_label: string | null;
@@ -89,7 +91,7 @@ export default function PartnershipsBrowser({
       if (stage && r.status_id !== stage) return false;
       if (tier && r.tier_id !== tier) return false;
       if (needle) {
-        const hay = [r.business_name, r.address, r.poc_name, r.notes, r.zone_name]
+        const hay = [r.business_name, r.address, r.contact_names, r.notes, r.zone_name]
           .filter(Boolean).join(" ").toLowerCase();
         if (!hay.includes(needle)) return false;
       }
