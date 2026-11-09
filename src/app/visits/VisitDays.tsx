@@ -4,7 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useGlobalTransition } from "@/lib/useGlobalTransition";
-import { addScheduledAction, updateScheduledAction, deleteScheduledAction } from "@/app/actions/scheduled";
+import {
+  addScheduledAction,
+  updateScheduledAction,
+  deleteScheduledAction,
+  resequenceVisits,
+} from "@/app/actions/scheduled";
 import { chicagoLocalToUTCISO, TIME_STEP_SECONDS } from "@/lib/dates";
 import type { VisitDay, VisitStop } from "@/lib/visits";
 
@@ -97,12 +102,71 @@ function DayRow({
 
       {expanded && (
         <div className="border-t border-[var(--color-line)]">
+          <DayTools day={day} />
           {day.stops.map((stop) => (
             <StopRow key={stop.id} stop={stop} date={day.date} />
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * What you do with a day once you can see it: walk it in a sensible order,
+ * or hand it to Maps.
+ */
+function DayTools({ day }: { day: VisitDay }) {
+  const router = useRouter();
+  const [pending, start] = useGlobalTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Deal the businesses into the slots they already occupy.
+   *
+   * The times stay put and the order changes, so re-ordering a day never
+   * makes it start earlier or run later than it was booked to.
+   */
+  function sortByRoute() {
+    if (!day.routedIds) return;
+    const booked = day.stops.filter((s) => s.source === "scheduled");
+    const slots = booked.map((s) => s.due_at).filter((t): t is string => !!t).sort();
+    if (slots.length !== day.routedIds.length) return;
+
+    start(async () => {
+      setError(null);
+      const res = await resequenceVisits(
+        day.routedIds!.map((id, i) => ({ id, due_at: slots[i] })),
+      );
+      if (!res.ok) {
+        setError(res.error ?? "Could not re-order.");
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  if (!day.routedIds && !day.mapsHref) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-line-soft)] px-3.5 py-2 md:px-4">
+      {day.routedIds && (
+        <button type="button" className="btn btn-sm" disabled={pending} onClick={sortByRoute}>
+          {pending ? "…" : "Sort by route"}
+        </button>
+      )}
+      {day.mapsHref && (
+        <a className="btn btn-sm" href={day.mapsHref} target="_blank" rel="noreferrer">
+          Open in Maps
+        </a>
+      )}
+      <span className="muted text-xs">
+        {day.routedIds
+          ? "These stops are booked out of walking order."
+          : "Already in walking order."}
+      </span>
+      {error && <span className="text-xs text-[var(--color-danger)]">{error}</span>}
+    </div>
   );
 }
 

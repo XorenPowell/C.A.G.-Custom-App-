@@ -18,6 +18,9 @@ export type VisitStop = {
   address: string | null;
   zone_id: string | null;
   zone_name: string;
+  /** Null until scripts/geocode.mjs has placed the business. */
+  latitude: number | null;
+  longitude: number | null;
   /** UTC instant; null for a restock that has not been given a time yet. */
   due_at: string | null;
   note: string | null;
@@ -35,6 +38,14 @@ export type VisitDay = {
   /** Zones represented, most-visited first. A day is usually one. */
   zones: { name: string; count: number }[];
   overdue: boolean;
+  /**
+   * The booked stops in walking order, when that differs from the order
+   * they are booked in. Null means the day is already in a sensible
+   * order, or too few stops are geocoded to say.
+   */
+  routedIds: string[] | null;
+  /** Google Maps directions for the day, in its current order. */
+  mapsHref: string | null;
 };
 
 function chicagoDay(instant: string): string {
@@ -93,11 +104,11 @@ export async function getVisitDays(): Promise<VisitDay[]> {
 
   const { data: partnerships } = await supabase
     .from("partnerships")
-    .select("id, business_name, address, zone_id")
+    .select("id, business_name, address, zone_id, latitude, longitude")
     .in("id", ids);
 
   const byId = new Map(
-    ((partnerships ?? []) as { id: string; business_name: string; address: string | null; zone_id: string | null }[])
+    ((partnerships ?? []) as { id: string; business_name: string; address: string | null; zone_id: string | null; latitude: number | null; longitude: number | null }[])
       .map((p) => [p.id, p]),
   );
 
@@ -113,6 +124,8 @@ export async function getVisitDays(): Promise<VisitDay[]> {
       address: biz.address,
       zone_id: biz.zone_id,
       zone_name: biz.zone_id ? (zoneName.get(biz.zone_id) ?? "No zone") : "No zone",
+      latitude: biz.latitude,
+      longitude: biz.longitude,
       due_at: p.due_at,
       note: p.note,
       source: "scheduled",
@@ -139,6 +152,8 @@ export async function getVisitDays(): Promise<VisitDay[]> {
       address: biz.address,
       zone_id: biz.zone_id,
       zone_name: biz.zone_id ? (zoneName.get(biz.zone_id) ?? "No zone") : "No zone",
+      latitude: biz.latitude,
+      longitude: biz.longitude,
       due_at: `${due}T15:00:00.000Z`, // noon Chicago, a placeholder until timed
       note: pl.cards_left != null ? `Restock — about ${pl.cards_left} left` : "Restock",
       source: "restock",
@@ -159,6 +174,12 @@ export async function getVisitDays(): Promise<VisitDay[]> {
       list.sort((a, b) => (a.due_at ?? "").localeCompare(b.due_at ?? ""));
       const counts = new Map<string, number>();
       for (const s of list) counts.set(s.zone_name, (counts.get(s.zone_name) ?? 0) + 1);
+      // Only booked stops can be re-sequenced: a restock has no row of its
+      // own until it is given a time, so it keeps its place in the day.
+      const booked = list.filter((s) => s.source === "scheduled");
+      const routed = routeOrder(booked);
+      const changed = routed.some((s, i) => s.id !== booked[i].id);
+
       return {
         date,
         stops: list,
@@ -166,6 +187,8 @@ export async function getVisitDays(): Promise<VisitDay[]> {
           .map(([name, count]) => ({ name, count }))
           .sort((a, b) => b.count - a.count),
         overdue: date < today,
+        routedIds: changed ? routed.map((s) => s.id) : null,
+        mapsHref: mapsUrl(list),
       };
     })
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -183,4 +206,89 @@ export function nextDayInZone(days: VisitDay[], zoneName: string, from: string):
     (d) => d.date >= from && d.zones.some((z) => z.name === zoneName),
   );
   return match?.date ?? null;
+}
+
+/* =====================================================================
+ * Walking the day in the order the street is in
+ * ===================================================================== */
+
+/** Straight-line km between two points. Good enough to order a dozen stops. */
+function km(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLon = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  return 6371 * 2 * Math.asin(Math.sqrt(h));
+}
+
+type Placed = VisitStop & { latitude: number; longitude: number };
+
+function isPlaced(s: VisitStop): s is Placed {
+  return s.latitude != null && s.longitude != null;
+}
+
+/**
+ * The day's stops, re-ordered into a sensible walk.
+ *
+ * Nearest-neighbour from the first stop. Not the optimal tour, but for the
+ * three-to-twelve stops of one neighbourhood the difference is a street
+ * corner, and it needs no service, no key and no network call — which
+ * matters more at 8am than optimality does.
+ *
+ * Stops with no coordinates keep their place at the end rather than being
+ * dropped: an ungeocoded business is still somewhere you have to go.
+ */
+export function routeOrder(stops: VisitStop[]): VisitStop[] {
+  const placed = stops.filter(isPlaced);
+  const unplaced = stops.filter((s) => !isPlaced(s));
+  if (placed.length < 3) return stops;
+
+  const remaining = placed.slice(1);
+  const walk: Placed[] = [placed[0]];
+  while (remaining.length > 0) {
+    const from = walk[walk.length - 1];
+    let best = 0;
+    let bestKm = Infinity;
+    for (let i = 0; i < remaining.length; i++) {
+      const d = km(from, remaining[i]);
+      if (d < bestKm) {
+        bestKm = d;
+        best = i;
+      }
+    }
+    walk.push(remaining.splice(best, 1)[0]);
+  }
+  return [...walk, ...unplaced];
+}
+
+/** True when the route order differs from the order given. */
+export function wouldReorder(stops: VisitStop[]): boolean {
+  const routed = routeOrder(stops);
+  return routed.some((s, i) => s.id !== stops[i].id);
+}
+
+/**
+ * A Google Maps directions link for the day, in the order given.
+ *
+ * Addresses go in as text, so this needs no geocoding and no API key —
+ * Maps resolves them itself. The URL form takes an origin, a destination
+ * and up to nine waypoints between, which is more stops than a day holds.
+ */
+export function mapsUrl(stops: VisitStop[]): string | null {
+  const points = stops.map((s) => s.address?.trim()).filter((a): a is string => !!a);
+  if (points.length < 2) return null;
+
+  const full = (a: string) => (/(IL|Illinois)/i.test(a) ? a : `${a}, Chicago, IL`);
+  const params = new URLSearchParams({
+    api: "1",
+    origin: full(points[0]),
+    destination: full(points[points.length - 1]),
+    travelmode: "driving",
+  });
+  const between = points.slice(1, -1).slice(0, 9);
+  if (between.length > 0) params.set("waypoints", between.map(full).join("|"));
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
