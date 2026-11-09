@@ -17,7 +17,7 @@ import { todayISO } from "@/lib/dates";
 import PlannedActions from "@/components/PlannedActions";
 import { getCampaigns, getPlacements, restockLabel, restockState } from "@/lib/campaigns";
 import { getContactsFor } from "@/lib/contacts";
-import { active, getLists, lookup, nameMap } from "@/lib/data";
+import { active, getLists, getSettings, lookup, nameMap } from "@/lib/data";
 import { stageTone } from "@/lib/lists";
 import { dateDisplay, money } from "@/lib/format";
 
@@ -27,14 +27,16 @@ export default async function PartnershipDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [partnership, lists, referrals, activity, contacts, campaigns] = await Promise.all([
+  const [partnership, lists, referrals, activity, contacts, campaigns, settings] = await Promise.all([
     getPartnership(id),
     getLists(),
     getPartnershipReferrals(id),
     getPartnershipActivity(id),
     getContactsFor(id),
     getCampaigns(),
+    getSettings(),
   ]);
+  const presets = settings.next_action_presets ?? undefined;
   const planned = await getScheduledForPartnership(id);
   const visitDays = await getVisitDays();
   if (!partnership) notFound();
@@ -105,6 +107,7 @@ export default async function PartnershipDetailPage({
             partnershipId={partnership.id}
             currentFollowUpAt={partnership.follow_up_at}
             currentFollowUpNote={partnership.follow_up_note}
+            presets={presets}
           />
         </div>
       </div>
@@ -121,6 +124,7 @@ export default async function PartnershipDetailPage({
           nextZoneDay={zoneDay}
           tone={due}
           dueLabel={followUpLabel(partnership)}
+          presets={presets}
         >
           <p className="muted mt-2 text-xs">
             Last contact {dateDisplay(partnership.last_contact)}. Log contact records what
@@ -152,7 +156,7 @@ export default async function PartnershipDetailPage({
           <div className="card-pad">
             {/* The plan sits above the history, in the same column, so the
                 record reads forwards and backwards from now. */}
-            <PlannedActions partnershipId={partnership.id} actions={planned} />
+            <PlannedActions partnershipId={partnership.id} actions={planned} presets={presets} />
             <div className="mb-2 border-t border-[var(--color-line)] pt-2">
               <span className="label mb-0">History</span>
             </div>

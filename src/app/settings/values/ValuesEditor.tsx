@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import SaveBar from "@/components/SaveBar";
-import { NumberInput, Select } from "@/components/Form";
+import { NumberInput, Select, TextInput } from "@/components/Form";
 import { saveSettingsValues, type SettingsValues } from "@/app/actions/settings";
 import { WEEKDAY_NAMES } from "@/lib/dates";
 import type { Settings } from "@/lib/types";
@@ -18,6 +18,7 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
     daily_inquiries_goal: settings.daily_inquiries_goal,
     daily_partnerships_goal: settings.daily_partnerships_goal,
     pay_period_start_day: settings.pay_period_start_day,
+    next_action_presets: (settings.next_action_presets ?? [1, 3, 7, 30]).join(", "),
   });
   const [pending, start] = useGlobalTransition();
   const [status, setStatus] = useState<string | null>(null);
@@ -105,6 +106,12 @@ export default function ValuesEditor({ settings }: { settings: Settings }) {
               </option>
             ))}
           </Select>
+          <TextInput
+            label="Next action presets (days)"
+            value={values.next_action_presets}
+            onChange={(e) => patch({ next_action_presets: e.target.value })}
+            hint="The quick-pick buttons on Next action, Log contact and Planned actions. Comma-separated days from today, up to 8. 1 reads as Tomorrow, 7 as +1 week."
+          />
         </div>
       </div>
 

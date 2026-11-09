@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { setNextAction } from "@/app/actions/activity";
 import { TIME_STEP_SECONDS, chicagoDateTimeInputValue, chicagoLocalToUTCISO } from "@/lib/dates";
+import DatePresets, { DEFAULT_PRESETS } from "@/components/DatePresets";
 import { FOLLOW_UP_KINDS, FOLLOW_UP_LABELS, type FollowUpKind } from "@/lib/types";
 
 type Tone = "overdue" | "today" | "upcoming" | "none";
@@ -41,6 +42,8 @@ export default function NextActionCard({
   /** Zone of this record, and the next date already being walked there. */
   zoneName,
   nextZoneDay,
+  /** Day offsets for the quick-pick buttons, from Settings. */
+  presets = DEFAULT_PRESETS,
   children,
 }: {
   partnershipId?: string;
@@ -54,6 +57,7 @@ export default function NextActionCard({
   alarmWhenEmpty?: boolean;
   zoneName?: string | null;
   nextZoneDay?: string | null;
+  presets?: number[];
   children?: React.ReactNode;
 }) {
   const alarming = tone === "none" && alarmWhenEmpty;
@@ -189,18 +193,7 @@ export default function NextActionCard({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="btn btn-sm" disabled={pending} onClick={() => inDays(1)}>
-            Tomorrow
-          </button>
-          <button type="button" className="btn btn-sm" disabled={pending} onClick={() => inDays(3)}>
-            +3 days
-          </button>
-          <button type="button" className="btn btn-sm" disabled={pending} onClick={() => inDays(7)}>
-            +1 week
-          </button>
-          <button type="button" className="btn btn-sm" disabled={pending} onClick={() => inDays(30)}>
-            +1 month
-          </button>
+          <DatePresets presets={presets} onPick={inDays} disabled={pending} />
           {/* Booking a visit is really choosing which run it joins, so the
               useful date is "when am I next in that neighbourhood". */}
           {kind === "visit" && nextZoneDay && nextZoneDay !== date && (

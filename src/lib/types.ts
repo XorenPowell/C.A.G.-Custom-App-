@@ -67,6 +67,8 @@ export type Settings = {
   face_to_face_daily_goal: number;
   /** Partnerships zone-maturity card: every zone's target count of Mature-status partnerships. */
   mature_partnership_goal_per_zone: number;
+  /** Day offsets behind the next-action quick-pick buttons, e.g. [1,3,7,30]. */
+  next_action_presets: number[];
   /** Per-token color overrides from the Appearance settings screen. Empty object = shipped defaults. */
   theme_overrides: Record<string, string>;
 };

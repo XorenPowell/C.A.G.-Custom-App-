@@ -36,6 +36,7 @@ export default async function JobDetailPage({
       getJobActivity(id),
     ]);
   const planned = await getScheduledForJob(id);
+  const presets = settings.next_action_presets ?? undefined;
 
   if (!job) notFound();
 
@@ -112,6 +113,7 @@ export default async function JobDetailPage({
             dueLabel={followUpLabel(job)}
             emptyLabel={jobOpen ? "nothing booked" : job.status}
             alarmWhenEmpty={jobOpen}
+            presets={presets}
           >
             {jobOpen ? (
               <p className="note">
@@ -132,6 +134,7 @@ export default async function JobDetailPage({
                 currentFollowUpAt={job.follow_up_at}
                 currentFollowUpNote={job.follow_up_note}
                 compact
+                presets={presets}
               />
             </div>
           </NextActionCard>
@@ -140,7 +143,7 @@ export default async function JobDetailPage({
         <section className="card mb-3">
           <div className="section-title">Activity ({activity.length})</div>
           <div className="card-pad">
-            <PlannedActions jobId={job.id} actions={planned} />
+            <PlannedActions jobId={job.id} actions={planned} presets={presets} />
             <div className="mb-2 border-t border-[var(--color-line)] pt-2">
               <span className="label mb-0">History</span>
             </div>

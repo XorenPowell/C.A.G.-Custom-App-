@@ -7,6 +7,7 @@ import { logContact } from "@/app/actions/activity";
 import { ACTIVITY_KINDS } from "@/lib/types";
 import { OUTCOME_SUGGESTIONS } from "@/lib/activity-meta";
 import { TIME_STEP_SECONDS, chicagoDateTimeInputValue, chicagoLocalToUTCISO } from "@/lib/dates";
+import DatePresets, { DEFAULT_PRESETS } from "@/components/DatePresets";
 import {
   FOLLOW_UP_KINDS,
   FOLLOW_UP_LABELS,
@@ -33,6 +34,8 @@ export default function LogContact({
   currentFollowUpNote,
   defaultKind = "call",
   compact = false,
+  /** Day offsets for the quick-pick buttons, from Settings. */
+  presets = DEFAULT_PRESETS,
 }: {
   partnershipId?: string;
   jobId?: string;
@@ -40,6 +43,7 @@ export default function LogContact({
   currentFollowUpNote: string | null;
   defaultKind?: ActivityKind;
   compact?: boolean;
+  presets?: number[];
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -267,16 +271,7 @@ export default function LogContact({
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                {[1, 3, 7, 14, 30].map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    className="btn btn-sm"
-                    onClick={() => setNextLocal(plusDays(d))}
-                  >
-                    {d === 1 ? "Tomorrow" : `+${d}d`}
-                  </button>
-                ))}
+                <DatePresets presets={presets} onPick={(d) => setNextLocal(plusDays(d))} />
               </div>
               {!nextLocal && (
                 <p className="note border-[var(--color-warn)] text-[var(--color-warn)]">
