@@ -18,11 +18,18 @@ alter table settings
 
 -- A preset of 0 or less would book a callback in the past on every click,
 -- and beyond a year the button is noise.
+--
+-- Written with `<= all(...)` rather than a NOT EXISTS over unnest: a check
+-- constraint may not contain a subquery, and `scalar op all (array)` is a
+-- plain expression that says the same thing.
+--
+-- cardinality rather than array_length, because array_length('{}', 1)
+-- returns NULL, and a NULL check passes — an empty preset list would have
+-- slipped through and left the card with no quick picks at all.
 alter table settings drop constraint if exists settings_next_action_presets_sane;
 alter table settings add constraint settings_next_action_presets_sane
   check (
-    array_length(next_action_presets, 1) between 1 and 8
-    and not exists (
-      select 1 from unnest(next_action_presets) d where d < 1 or d > 365
-    )
+    cardinality(next_action_presets) between 1 and 8
+    and 1 <= all (next_action_presets)
+    and 365 >= all (next_action_presets)
   );
