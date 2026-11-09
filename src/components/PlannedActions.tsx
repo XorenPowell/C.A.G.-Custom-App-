@@ -235,7 +235,7 @@ export default function PlannedActions({
                 id="pa-note"
                 className="input"
                 value={note}
-                placeholder={isFuture ? "Drop the new fliers" : "Asked about the vacant unit"}
+                placeholder={isFuture ? "Drop the new cards" : "Asked about the vacant unit"}
                 onChange={(e) => setNote(e.target.value)}
               />
             </div>

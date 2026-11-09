@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ActivityTrail from "@/components/ActivityTrail";
 import ContactsPanel from "@/components/ContactsPanel";
+import CardsPanel, { type CardsSummary } from "@/components/CardsPanel";
 import LogContact from "@/components/LogContact";
 import NextActionCard from "@/components/NextActionCard";
 import PartnershipForm from "@/components/PartnershipForm";
@@ -11,6 +12,7 @@ import DeletePartnershipButton from "./DeletePartnershipButton";
 import { Empty } from "@/components/Detail";
 import { followUpLabel, followUpState, getPartnership, getPartnershipReferrals } from "@/lib/partnerships";
 import { getPartnershipActivity } from "@/lib/activity";
+import { pickUpRate } from "@/lib/cards";
 import { getScheduledForPartnership } from "@/lib/scheduled";
 import { getVisitDays, nextDayInZone } from "@/lib/visits";
 import { todayISO } from "@/lib/dates";
@@ -65,6 +67,23 @@ export default async function PartnershipDetailPage({
           zoneName,
           todayISO(),
         );
+  // Cards are summed from the visits rather than read off the partnership,
+  // so the figures cannot disagree with the trail they are counted from.
+  const visits = activity.filter((a) => a.kind === "visit");
+  const withCards = visits
+    .filter((v) => v.cards_dropped != null)
+    .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
+  const rate = pickUpRate(visits);
+  const cards: CardsSummary = {
+    total: activity.reduce((sum, a) => sum + (a.cards_dropped ?? 0), 0),
+    lastVisit: visits[0]?.occurred_at ?? null,
+    lastDrop: withCards[0]?.cards_dropped ?? null,
+    lastFound: withCards[0]?.cards_found ?? null,
+    visits: visits.length,
+    perWeek: rate?.perWeek ?? null,
+    basis: rate?.basis ?? null,
+  };
+
   const due = followUpState(partnership);
 
   return (
@@ -149,6 +168,8 @@ export default async function PartnershipDetailPage({
         roles={active(lists.contact_role)}
       />
 
+      <CardsPanel summary={cards} />
+
       {/* History on the left, what it has produced on the right. */}
       <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         <section className="card">
@@ -180,7 +201,7 @@ export default async function PartnershipDetailPage({
                 <div className="label">Revenue</div>
                 <div className="font-heading text-2xl font-extrabold">{money(revenue)}</div>
                 <div className="text-xs text-[var(--text-faint)]">
-                  last visit {dateDisplay(partnership.last_visit)}
+                  last visit {cards.lastVisit ? dateDisplay(cards.lastVisit) : "—"}
                 </div>
               </div>
             </div>

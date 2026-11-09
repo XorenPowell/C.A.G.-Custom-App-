@@ -12,6 +12,8 @@ export type ListItemDraft = {
   description: string | null;
   /** conversation_outcome only. Blank stays blank — a missing default is not 0. */
   default_intent_level: number | string | null;
+  /** conversation_outcome only: cards handed over when this outcome is picked. */
+  default_cards: number | string | null;
   /** service_category only. */
   details_template: string | null;
   sort_order: number;
@@ -37,12 +39,15 @@ export async function saveList(
 
   for (const [index, item] of named.entries()) {
     const intentLevel = toNullableNum(item.default_intent_level);
+    const defaultCards = toNullableNum(item.default_cards);
     const row = {
       kind,
       name: item.name.trim(),
       description: orNull(item.description),
       default_intent_level:
         intentLevel === null ? null : Math.min(10, Math.max(0, intentLevel)),
+      default_cards:
+        defaultCards === null ? null : Math.min(100, Math.max(0, defaultCards)),
       details_template: orNull(item.details_template),
       sort_order: (index + 1) * 10,
       archived: item.archived,

@@ -57,9 +57,18 @@ export async function savePlacement(payload: PlacementPayload): Promise<ActionRe
  * Records a restock and pushes the clock forward in one step, and logs it on
  * the partnership's trail so a visit shows up in its history.
  */
+/**
+ * Restocking is a visit, not a kind of its own.
+ *
+ * 029 folded the two together, so this writes a visit carrying the cards
+ * it dropped and what was still on the stack when it got there — the
+ * same shape Log contact produces, so the trail and the card ledger see
+ * one kind of event however it was recorded.
+ */
 export async function markRestocked(
   placementId: string,
   cardsLeft: number | null,
+  cardsDropped: number | null = null,
 ): Promise<ActionResult> {
   const supabase = await createClient();
 
@@ -81,8 +90,10 @@ export async function markRestocked(
 
   await supabase.from("activity").insert({
     partnership_id: (placement as { partnership_id: string }).partnership_id,
-    kind: "restock",
-    outcome: cardsLeft == null ? "Restocked" : `Restocked — ${cardsLeft} left before top-up`,
+    kind: "visit",
+    outcome: "Refilled the stack",
+    cards_dropped: cardsDropped,
+    cards_found: cardsLeft,
   });
 
   revalidatePath("/campaigns");

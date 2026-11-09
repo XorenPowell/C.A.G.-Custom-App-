@@ -57,6 +57,8 @@ function TrailEntry({ entry }: { entry: Activity }) {
   const [when, setWhen] = useState(() => chicagoDateTimeInputValue(entry.occurred_at));
   const [outcome, setOutcome] = useState(entry.outcome ?? "");
   const [note, setNote] = useState(entry.note ?? "");
+  const [dropped, setDropped] = useState(str(entry.cards_dropped));
+  const [found, setFound] = useState(str(entry.cards_found));
 
   const meta = ACTIVITY_META[entry.kind] ?? ACTIVITY_META.note;
   const occurred = new Date(entry.occurred_at);
@@ -66,6 +68,8 @@ function TrailEntry({ entry }: { entry: Activity }) {
     setWhen(chicagoDateTimeInputValue(entry.occurred_at));
     setOutcome(entry.outcome ?? "");
     setNote(entry.note ?? "");
+    setDropped(str(entry.cards_dropped));
+    setFound(str(entry.cards_found));
     setError(null);
     setEditing(true);
   }
@@ -77,6 +81,8 @@ function TrailEntry({ entry }: { entry: Activity }) {
         occurred_at: when ? chicagoLocalToUTCISO(when) : undefined,
         outcome: outcome.trim() || null,
         note: note.trim() || null,
+        cards_dropped: dropped,
+        cards_found: found,
       });
       if (!res.ok) {
         setError(res.error ?? "Could not save.");
@@ -157,6 +163,31 @@ function TrailEntry({ entry }: { entry: Activity }) {
             </div>
           </div>
 
+          {entry.kind === "visit" && (
+            <div className="grid-form">
+              <div className="field">
+                <label className="label" htmlFor={`act-drop-${entry.id}`}>Cards dropped</label>
+                <input
+                  id={`act-drop-${entry.id}`}
+                  className="input"
+                  inputMode="numeric"
+                  value={dropped}
+                  onChange={(e) => setDropped(e.target.value.replace(/\D/g, ""))}
+                />
+              </div>
+              <div className="field">
+                <label className="label" htmlFor={`act-found-${entry.id}`}>Cards still there</label>
+                <input
+                  id={`act-found-${entry.id}`}
+                  className="input"
+                  inputMode="numeric"
+                  value={found}
+                  onChange={(e) => setFound(e.target.value.replace(/\D/g, ""))}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="field">
             <label className="label" htmlFor={`act-note-${entry.id}`}>
               Notes
@@ -232,6 +263,17 @@ function TrailEntry({ entry }: { entry: Activity }) {
             </button>
           </div>
 
+          {(entry.cards_dropped != null || entry.cards_found != null) && (
+            <p className="mt-1 text-xs text-[var(--color-muted)]">
+              {entry.cards_dropped != null && (
+                <span className="mono">{entry.cards_dropped} dropped</span>
+              )}
+              {entry.cards_dropped != null && entry.cards_found != null && " · "}
+              {entry.cards_found != null && (
+                <span className="mono">{entry.cards_found} still there</span>
+              )}
+            </p>
+          )}
           {entry.note && (
             <p className="mt-1 whitespace-pre-wrap text-sm text-[var(--color-muted)]">
               {entry.note}
@@ -242,4 +284,9 @@ function TrailEntry({ entry }: { entry: Activity }) {
       )}
     </li>
   );
+}
+
+/** Numeric column to input value. Zero is a real count, so only null blanks. */
+function str(n: number | null): string {
+  return n == null ? "" : String(n);
 }

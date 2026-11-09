@@ -30,11 +30,6 @@ export default function PartnershipForm({
     zone_id: partnership?.zone_id ?? "",
     status_id: partnership?.status_id ?? "",
     tier_id: partnership?.tier_id ?? "",
-    last_visit: partnership?.last_visit ?? "",
-    cards_dropped_last_visit: str(partnership?.cards_dropped_last_visit ?? 0),
-    total_cards_dropped: str(partnership?.total_cards_dropped ?? 0),
-    fliers_dropped_last_visit: str(partnership?.fliers_dropped_last_visit ?? 0),
-    total_fliers_dropped: str(partnership?.total_fliers_dropped ?? 0),
     last_contact: partnership?.last_contact ?? "",
     notes: partnership?.notes ?? "",
   });
@@ -112,45 +107,6 @@ export default function PartnershipForm({
               </option>
             ))}
           </Select>
-        </div>
-      </Section>
-
-      <Section title="Visits & Collateral">
-        <div className="grid-form">
-          <TextInput
-            label="Last visit"
-            type="date"
-            value={form.last_visit}
-            onChange={(e) => patch({ last_visit: e.target.value })}
-          />
-          <NumberInput
-            label="Cards dropped last visit"
-            step="1"
-            min={0}
-            value={form.cards_dropped_last_visit}
-            onChange={(e) => patch({ cards_dropped_last_visit: e.target.value })}
-          />
-          <NumberInput
-            label="Total cards dropped"
-            step="1"
-            min={0}
-            value={form.total_cards_dropped}
-            onChange={(e) => patch({ total_cards_dropped: e.target.value })}
-          />
-          <NumberInput
-            label="Fliers dropped last visit"
-            step="1"
-            min={0}
-            value={form.fliers_dropped_last_visit}
-            onChange={(e) => patch({ fliers_dropped_last_visit: e.target.value })}
-          />
-          <NumberInput
-            label="Total fliers dropped"
-            step="1"
-            min={0}
-            value={form.total_fliers_dropped}
-            onChange={(e) => patch({ total_fliers_dropped: e.target.value })}
-          />
         </div>
       </Section>
 

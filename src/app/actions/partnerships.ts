@@ -19,11 +19,6 @@ export type PartnershipPayload = {
   zone_id: string | null;
   status_id: string | null;
   tier_id: string | null;
-  last_visit: string | null;
-  cards_dropped_last_visit: number | string;
-  total_cards_dropped: number | string;
-  fliers_dropped_last_visit: number | string;
-  total_fliers_dropped: number | string;
   last_contact: string | null;
   notes: string | null;
 };
@@ -41,13 +36,10 @@ export async function savePartnership(
     zone_id: payload.zone_id || null,
     status_id: payload.status_id || null,
     tier_id: payload.tier_id || null,
-    last_visit: payload.last_visit || null,
-    cards_dropped_last_visit: toInt(payload.cards_dropped_last_visit),
-    total_cards_dropped: toInt(payload.total_cards_dropped),
-    fliers_dropped_last_visit: toInt(payload.fliers_dropped_last_visit),
-    total_fliers_dropped: toInt(payload.total_fliers_dropped),
-    // Visiting someone is contacting them, so a later visit date carries.
-    last_contact: laterOf(payload.last_contact, payload.last_visit),
+    // last_visit and the card totals are no longer edited here: a visit is
+    // logged on the activity trail and carries its own card count, so the
+    // form writing them too would put the two out of step.
+    last_contact: payload.last_contact || null,
     // A booked instant. follow_up_days is left untouched on the row so 022
     // stays reversible; nothing reads it any more.
     notes: orNull(payload.notes),

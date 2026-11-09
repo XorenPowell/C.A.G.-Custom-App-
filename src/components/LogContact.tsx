@@ -16,8 +16,7 @@ import {
 } from "@/lib/types";
 
 const KIND_LABEL: Record<ActivityKind, string> = {
-  call: "Call", text: "Text", email: "Email",
-  visit: "Visit", restock: "Restock", note: "Note",
+  call: "Call", text: "Text", email: "Email", visit: "Visit", note: "Note",
 };
 
 /**
@@ -53,6 +52,9 @@ export default function LogContact({
   const [kind, setKind] = useState<ActivityKind>(defaultKind);
   const [outcome, setOutcome] = useState("");
   const [note, setNote] = useState("");
+  /** Visits only. A restock is a visit, so this covers both. */
+  const [cardsDropped, setCardsDropped] = useState("");
+  const [cardsFound, setCardsFound] = useState("");
   /**
    * book  — set a new callback (the default)
    * keep  — leave whatever is already booked untouched
@@ -78,6 +80,8 @@ export default function LogContact({
     setKind(defaultKind);
     setOutcome("");
     setNote("");
+    setCardsDropped("");
+    setCardsFound("");
     setMode("book");
     setNextLocal(plusDays(7));
     setNextNote(currentFollowUpNote ?? "");
@@ -94,6 +98,8 @@ export default function LogContact({
         kind,
         outcome: outcome || null,
         note: note || null,
+        cards_dropped: kind === "visit" ? cardsDropped : null,
+        cards_found: kind === "visit" ? cardsFound : null,
         // Scheduling off means "there is deliberately nothing next", which
         // has to clear the existing callback rather than leave it stale.
         // undefined leaves the record's callback alone; null clears it.
@@ -197,6 +203,38 @@ export default function LogContact({
             onChange={(e) => setNote(e.target.value)}
           />
         </div>
+
+        {/* Every visit drops cards, so the count is asked for here rather
+            than left to be remembered on the campaign screen later. */}
+        {kind === "visit" && (
+          <div className="grid-form">
+            <div className="field">
+              <label className="label" htmlFor="lc-cards">Cards dropped</label>
+              <input
+                id="lc-cards"
+                className="input"
+                inputMode="numeric"
+                value={cardsDropped}
+                placeholder="25"
+                onChange={(e) => setCardsDropped(e.target.value.replace(/\D/g, ""))}
+              />
+            </div>
+            <div className="field">
+              <label className="label" htmlFor="lc-found">Cards still there</label>
+              <input
+                id="lc-found"
+                className="input"
+                inputMode="numeric"
+                value={cardsFound}
+                placeholder="0"
+                onChange={(e) => setCardsFound(e.target.value.replace(/\D/g, ""))}
+              />
+              <span className="muted text-xs">
+                What was left on arrival. Feeds the pick-up estimate.
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="border-t border-[var(--color-line)] pt-3">
           <span className="label">Then what</span>

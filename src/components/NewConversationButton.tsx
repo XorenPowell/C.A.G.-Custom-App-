@@ -19,6 +19,7 @@ export default function NewConversationButton({
   const [open, setOpen] = useState(false);
   const [outcomeId, setOutcomeId] = useState("");
   const [intentLevel, setIntentLevel] = useState("5");
+  const [cards, setCards] = useState("1");
   const [error, setError] = useState<string | null>(null);
 
   const options = active(outcomes);
@@ -27,6 +28,7 @@ export default function NewConversationButton({
     setError(null);
     setOutcomeId("");
     setIntentLevel("5");
+    setCards("1");
     setOpen(true);
   }
 
@@ -35,6 +37,12 @@ export default function NewConversationButton({
     const picked = options.find((o) => o.id === id);
     if (picked?.default_intent_level != null) {
       setIntentLevel(String(picked.default_intent_level));
+    }
+    // Most outcomes hand over exactly one card; "not interested" hands
+    // over none. The outcome knows which, so the count fills itself in
+    // and only needs touching when the conversation was unusual.
+    if (picked?.default_cards != null) {
+      setCards(String(picked.default_cards));
     }
   }
 
@@ -45,7 +53,7 @@ export default function NewConversationButton({
     }
     start(async () => {
       setError(null);
-      const res = await logConversation(sessionId, outcomeId, intentLevel);
+      const res = await logConversation(sessionId, outcomeId, intentLevel, cards);
       if (!res.ok) {
         setError(res.error ?? "Could not log conversation.");
         return;
@@ -98,6 +106,17 @@ export default function NewConversationButton({
                 value={intentLevel}
                 onChange={(e) => setIntentLevel(e.target.value)}
                 className="w-full accent-[var(--color-accent)]"
+              />
+            </div>
+
+            <div className="field">
+              <label className="label" htmlFor="nc-cards">Cards handed over</label>
+              <input
+                id="nc-cards"
+                className="input"
+                inputMode="numeric"
+                value={cards}
+                onChange={(e) => setCards(e.target.value.replace(/\D/g, ""))}
               />
             </div>
 

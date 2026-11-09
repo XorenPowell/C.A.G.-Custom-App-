@@ -10,12 +10,11 @@ import type { ActivityKind } from "@/lib/types";
 
 /** What each kind is called, and the dot colour it gets on the trail. */
 export const ACTIVITY_META: Record<ActivityKind, { label: string; tone: string }> = {
-  call:    { label: "Call",    tone: "var(--color-accent)" },
-  text:    { label: "Text",    tone: "var(--color-accent)" },
-  email:   { label: "Email",   tone: "var(--color-warn)" },
-  visit:   { label: "Visit",   tone: "var(--color-good)" },
-  restock: { label: "Restock", tone: "#a98bd8" },
-  note:    { label: "Note",    tone: "var(--color-muted)" },
+  call:  { label: "Call",  tone: "var(--color-accent)" },
+  text:  { label: "Text",  tone: "var(--color-accent)" },
+  email: { label: "Email", tone: "var(--color-warn)" },
+  visit: { label: "Visit", tone: "var(--color-good)" },
+  note:  { label: "Note",  tone: "var(--color-muted)" },
 };
 
 /**
@@ -24,10 +23,13 @@ export const ACTIVITY_META: Record<ActivityKind, { label: string; tone: string }
  * later, not a value anything filters or reports on.
  */
 export const OUTCOME_SUGGESTIONS: Record<ActivityKind, string[]> = {
-  call:    ["Spoke with POC", "Left voicemail", "No answer", "Asked to call back", "Wrong number"],
-  text:    ["Sent text", "Replied", "No reply"],
-  email:   ["Sent email", "Replied", "Bounced"],
-  visit:   ["Dropped cards", "Met the manager", "Front desk only", "Nobody available"],
-  restock: ["Refilled the stack", "Topped up", "Stack was empty", "Stack was gone"],
-  note:    [],
+  call:  ["Spoke with POC", "Left voicemail", "No answer", "Asked to call back", "Wrong number"],
+  text:  ["Sent text", "Replied", "No reply"],
+  email: ["Sent email", "Replied", "Bounced"],
+  // Restocking folded in here when it stopped being a kind of its own.
+  visit: [
+    "Dropped cards", "Met the manager", "Front desk only", "Nobody available",
+    "Refilled the stack", "Stack was empty", "Stack was gone",
+  ],
+  note:  [],
 };

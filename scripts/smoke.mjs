@@ -70,6 +70,7 @@ const ROUTES = [
   "/", "/jobs", "/jobs/new", `/jobs/${ids.job}`,
   "/partnerships", "/partnerships/new", `/partnerships/${ids.partnership}`,
   "/contacts", "/campaigns", "/visits",
+  "/cards",
   "/roster", "/roster/new", `/roster/${ids.entity}`, `/roster/${ids.entity}/edit`,
   "/reports", "/time-clock", "/face-to-face",
   "/settings", "/settings/values", "/settings/templates", "/settings/equipment",
