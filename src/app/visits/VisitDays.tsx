@@ -2,16 +2,20 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import {
   addScheduledAction,
   updateScheduledAction,
   deleteScheduledAction,
-  resequenceVisits,
 } from "@/app/actions/scheduled";
+import { sortVisitDayByRoute, clearVisitDayOrder } from "@/app/actions/visits";
+import { mapsLegs } from "@/lib/maps";
 import { chicagoLocalToUTCISO, TIME_STEP_SECONDS } from "@/lib/dates";
 import type { VisitDay, VisitStop } from "@/lib/visits";
+
+/** One start address per browser, not per day: it is usually the same place. */
+const START_KEY = "visit-run-start";
 
 /**
  * A day of walking, as a day of walking.
@@ -113,59 +117,130 @@ function DayRow({
 }
 
 /**
- * What you do with a day once you can see it: walk it in a sensible order,
- * or hand it to Maps.
+ * Where the day starts, and what that makes of the order.
+ *
+ * The start address lives here rather than in Settings because it is not
+ * always the same place — some runs start from home, some from the last
+ * job of the morning. It is remembered per browser so the common case
+ * needs no typing.
  */
 function DayTools({ day }: { day: VisitDay }) {
   const router = useRouter();
   const [pending, start] = useGlobalTransition();
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [from, setFrom] = useState("");
+
+  useEffect(() => {
+    try {
+      setFrom(window.localStorage.getItem(START_KEY) ?? "");
+    } catch {
+      // Private windows throw. An empty box is a fine fallback.
+    }
+  }, []);
+
+  const booked = day.stops.filter((s) => s.source === "scheduled");
 
   /**
-   * Deal the businesses into the slots they already occupy.
+   * Order the day by where the stops are, not by when they are.
    *
-   * The times stay put and the order changes, so re-ordering a day never
-   * makes it start earlier or run later than it was booked to.
+   * Everything lands at 9:00 when a run is booked, so there is no time to
+   * sort by — the order is the whole point. Times are left alone.
    */
   function sortByRoute() {
-    if (!day.routedIds) return;
-    const booked = day.stops.filter((s) => s.source === "scheduled");
-    const slots = booked.map((s) => s.due_at).filter((t): t is string => !!t).sort();
-    if (slots.length !== day.routedIds.length) return;
-
     start(async () => {
       setError(null);
-      const res = await resequenceVisits(
-        day.routedIds!.map((id, i) => ({ id, due_at: slots[i] })),
-      );
+      setNotice(null);
+      try {
+        window.localStorage.setItem(START_KEY, from);
+      } catch {
+        // Not remembering it must not stop the sort.
+      }
+      const res = await sortVisitDayByRoute(booked.map((s) => s.id), from);
       if (!res.ok) {
-        setError(res.error ?? "Could not re-order.");
+        setError(res.error ?? "Could not sort.");
         return;
+      }
+      if (res.unplaced && res.unplaced.length > 0) {
+        setNotice(
+          `${res.unplaced.length} stop${res.unplaced.length === 1 ? "" : "s"} had no coordinates ` +
+            `and stayed at the end: ${res.unplaced.join(", ")}`,
+        );
       }
       router.refresh();
     });
   }
 
-  if (!day.routedIds && !day.mapsHref) return null;
+  function clearOrder() {
+    start(async () => {
+      setError(null);
+      setNotice(null);
+      const res = await clearVisitDayOrder(booked.map((s) => s.id));
+      if (!res.ok) setError(res.error ?? "Could not clear.");
+      router.refresh();
+    });
+  }
+
+  const legs = mapsLegs(from, day.stops.map((s) => s.address));
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b border-[var(--color-line-soft)] px-3.5 py-2 md:px-4">
-      {day.routedIds && (
-        <button type="button" className="btn btn-sm" disabled={pending} onClick={sortByRoute}>
-          {pending ? "…" : "Sort by route"}
+    <div className="border-b border-[var(--color-line-soft)] px-3.5 py-2.5 md:px-4">
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="field mb-0 min-w-0 flex-1 basis-56">
+          <label className="label" htmlFor={`run-from-${day.date}`}>
+            Starting from
+          </label>
+          <input
+            id={`run-from-${day.date}`}
+            className="input"
+            value={from}
+            placeholder="4700 N Racine Ave"
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </div>
+
+        <button
+          type="button"
+          className="btn btn-sm btn-primary"
+          disabled={pending || booked.length < 2}
+          onClick={sortByRoute}
+        >
+          {pending ? "Sorting…" : "Sort by route"}
         </button>
+
+        {day.sorted && (
+          <button type="button" className="btn btn-sm" disabled={pending} onClick={clearOrder}>
+            Clear order
+          </button>
+        )}
+
+        {legs.map((leg) => (
+          <a
+            key={leg.href}
+            className="btn btn-sm"
+            href={leg.href}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {legs.length === 1 ? "Open in Maps" : `Maps ${leg.from}–${leg.to}`}
+          </a>
+        ))}
+      </div>
+
+      <p className="muted mt-1.5 text-xs">
+        {day.sorted
+          ? "In walking order from the address above. Re-sort after adding a stop."
+          : "Orders the stops so the day runs in one direction rather than back and forth."}
+        {legs.length > 1 &&
+          ` Maps takes nine stops to a link, so this run opens as ${legs.length} legs.`}
+      </p>
+
+      {notice && <p className="note mt-2 text-xs">{notice}</p>}
+      {error && (
+        <p className="mt-2 border border-[var(--color-danger)] px-2 py-1.5 text-xs text-[var(--color-danger)]">
+          {error}
+        </p>
       )}
-      {day.mapsHref && (
-        <a className="btn btn-sm" href={day.mapsHref} target="_blank" rel="noreferrer">
-          Open in Maps
-        </a>
-      )}
-      <span className="muted text-xs">
-        {day.routedIds
-          ? "These stops are booked out of walking order."
-          : "Already in walking order."}
-      </span>
-      {error && <span className="text-xs text-[var(--color-danger)]">{error}</span>}
     </div>
   );
 }

@@ -40,7 +40,7 @@ export default async function PartnershipDetailPage({
   ]);
   const presets = settings.next_action_presets ?? undefined;
   const planned = await getScheduledForPartnership(id);
-  const visitDays = await getVisitDays();
+  const { days: visitDays } = await getVisitDays();
   if (!partnership) notFound();
 
   const campaign = campaigns[0] ?? null;

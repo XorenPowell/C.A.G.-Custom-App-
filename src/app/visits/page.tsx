@@ -4,7 +4,7 @@ import { todayISO } from "@/lib/dates";
 import VisitDays from "./VisitDays";
 
 export default async function VisitsPage() {
-  const days = await getVisitDays();
+  const { days, failure } = await getVisitDays();
   const today = todayISO();
 
   const upcoming = days.filter((d) => !d.overdue);
@@ -19,11 +19,26 @@ export default async function VisitsPage() {
     <>
       <TopBar title="Visits" back={null} />
       <main className="page max-w-4xl">
+        {failure && (
+          <div className="card mb-3 border-[var(--color-danger)]">
+            <div className="card-pad">
+              <p className="text-sm font-semibold text-[var(--color-danger)]">
+                The visit book could not be loaded, so this is not an empty week.
+              </p>
+              <p className="muted mt-1 text-xs">{failure}</p>
+              <p className="muted mt-2 text-xs">
+                If this names a missing table or column, a migration has not been applied
+                to this database yet.
+              </p>
+            </div>
+          </div>
+        )}
+
         <p className="muted mb-3 text-sm">
           {stops} stop{stops === 1 ? "" : "s"} across {days.length} day
           {days.length === 1 ? "" : "s"}
           {restocks > 0 && ` · ${restocks} restock${restocks === 1 ? "" : "s"} folded in`}.
-          Expand a day to re-time its stops; saving re-orders them.
+          Expand a day to put it in walking order or open it in Maps.
         </p>
 
         {overdue.length > 0 && (

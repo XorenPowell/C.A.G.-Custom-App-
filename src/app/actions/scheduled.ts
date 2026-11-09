@@ -161,28 +161,3 @@ export async function addAction(payload: {
   return ok();
 }
 
-/**
- * Re-stamps a day's booked visits onto a new order.
- *
- * The times themselves do not move — the 9:00, 9:30 and 10:15 slots stay
- * exactly where they are, and the businesses are dealt into them in
- * walking order. Re-ordering a day should not quietly make it longer or
- * start it earlier.
- */
-export async function resequenceVisits(
-  order: { id: string; due_at: string }[],
-): Promise<ActionResult> {
-  if (order.length === 0) return ok();
-  const supabase = await createClient();
-
-  for (const { id, due_at } of order) {
-    const { error } = await supabase
-      .from("scheduled_actions")
-      .update({ due_at })
-      .eq("id", id);
-    if (error) return fail(error.message);
-  }
-
-  revalidatePath("/", "layout");
-  return ok();
-}
