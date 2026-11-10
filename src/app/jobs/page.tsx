@@ -46,8 +46,10 @@ export default async function JobsPage({
   ]);
   const names = nameMap(lists);
 
-  const sort = sp.sort ?? "arrival_date";
-  const dir: "asc" | "desc" = sp.dir === undefined ? "asc" : sp.dir === "asc" ? "asc" : "desc";
+  // These have to match getJobList's own defaults exactly, or the form
+  // would describe an ordering the rows are not actually in.
+  const sort = sp.sort ?? "created_at";
+  const dir: "asc" | "desc" = sp.dir === "asc" ? "asc" : "desc";
   const anyFilter = [
     sp.q,
     sp.status,
@@ -97,7 +99,7 @@ export default async function JobsPage({
           <FilterSelect
             name="status"
             label="Status"
-            value={sp.status ?? "Booked"}
+            value={sp.status ?? ""}
             options={JOB_STATUSES.map((s) => ({ id: s, name: s }))}
           />
           <FilterText name="from" label="Invoiced from" value={sp.from ?? ""} type="date" />
