@@ -27,11 +27,17 @@ export type CardDrop = {
 
 export type CardLedger = {
   receipts: CardReceipt[];
+  /** Stock counts, newest first. Each one corrected the balance on its date. */
+  counts: CardReceipt[];
   drops: CardDrop[];
   received: number;
   dropped: number;
+  /** The running total of every correction a count has made. */
+  adjustment: number;
   /** What should still be in the boot. */
   remaining: number;
+  /** The most recent count, for saying how long the figure has been trusted. */
+  lastCount: CardReceipt | null;
   /** Cards a day, measured since the most recent batch was collected. */
   burnPerDay: number | null;
   /** Calendar date the stock runs out at the current rate. */
@@ -68,12 +74,17 @@ export async function getCardLedger(): Promise<CardLedger> {
   }
   if (failures.length > 0) {
     return {
-      receipts: [], drops: [], received: 0, dropped: 0, remaining: 0,
+      receipts: [], counts: [], drops: [], received: 0, dropped: 0,
+      adjustment: 0, remaining: 0, lastCount: null,
       burnPerDay: null, runsOut: null, failure: failures.join(" · "),
     };
   }
 
-  const receipts = (receiptRes.data ?? []) as CardReceipt[];
+  // One table, two kinds of line. Rows written before migration 032 have
+  // no kind at all, and those are collections.
+  const rows = (receiptRes.data ?? []) as CardReceipt[];
+  const receipts = rows.filter((r) => r.kind !== "count");
+  const counts = rows.filter((r) => r.kind === "count");
   const names = new Map(
     ((partnershipRes.data ?? []) as { id: string; business_name: string }[])
       .map((p) => [p.id, p.business_name]),
@@ -106,11 +117,16 @@ export async function getCardLedger(): Promise<CardLedger> {
 
   const received = receipts.reduce((s, r) => s + r.quantity, 0);
   const dropped = drops.reduce((s, d) => s + d.quantity, 0);
+  const adjustment = counts.reduce((s, c) => s + c.quantity, 0);
 
-  // Measured from the most recent collection rather than over all time:
-  // the rate that matters is the current one, and the seeded history
-  // carries dates from a sheet that was not kept daily.
-  const since = receipts[0]?.received_on ?? null;
+  // Measured from the most recent collection or count rather than over
+  // all time: the rate that matters is the current one, and the seeded
+  // history carries dates from a sheet that was not kept daily. A count
+  // anchors it too, because it is the other moment the stock was known.
+  const anchors = [receipts[0]?.received_on, counts[0]?.received_on].filter(
+    (d): d is string => !!d,
+  );
+  const since = anchors.length > 0 ? anchors.sort().reverse()[0] : null;
   let burnPerDay: number | null = null;
   if (since) {
     const days = Math.max(
@@ -126,7 +142,10 @@ export async function getCardLedger(): Promise<CardLedger> {
     burnPerDay = out > 0 ? out / days : null;
   }
 
-  const remaining = received - dropped;
+  // Collected, less what went out, plus every correction a count has
+  // made. A drop logged after a count still subtracts, so the corrected
+  // figure keeps counting down on its own.
+  const remaining = received - dropped + adjustment;
   let runsOut: string | null = null;
   if (burnPerDay && burnPerDay > 0 && remaining > 0) {
     const d = new Date(`${todayISO()}T00:00:00Z`);
@@ -134,7 +153,19 @@ export async function getCardLedger(): Promise<CardLedger> {
     runsOut = d.toISOString().slice(0, 10);
   }
 
-  return { receipts, drops, received, dropped, remaining, burnPerDay, runsOut, failure: null };
+  return {
+    receipts,
+    counts,
+    drops,
+    received,
+    dropped,
+    adjustment,
+    remaining,
+    lastCount: counts[0] ?? null,
+    burnPerDay,
+    runsOut,
+    failure: null,
+  };
 }
 
 /**

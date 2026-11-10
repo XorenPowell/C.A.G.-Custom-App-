@@ -93,9 +93,12 @@ export type JobListResult = {
 export async function getJobList(f: JobFilters): Promise<JobListResult> {
   const supabase = await createClient();
 
+  // Newest first, by when the job was created. The list is read far more
+  // often to see what just came in than to plan a day, and an unsorted
+  // arrival date buries every job that has not been booked yet.
   const sort: SortField = (SORT_FIELDS.find((s) => s.value === f.sort)?.value ??
-    "arrival_date") as SortField;
-  const ascending = f.dir === undefined ? true : f.dir === "asc";
+    "created_at") as SortField;
+  const ascending = f.dir === "asc";
   const page = Math.max(1, parseInt(f.page ?? "1", 10) || 1);
 
   let jobIdsForEntity: string[] | null = null;
@@ -124,10 +127,10 @@ export async function getJobList(f: JobFilters): Promise<JobListResult> {
       { count: "exact" },
     );
 
-  // Fresh navigation (no `status` param) defaults to Booked; an explicit "All"
-  // selection from the filter form comes through as "" and is respected.
-  const status = f.status === undefined ? "Booked" : f.status;
-  if (status) query = query.eq("status", status);
+  // No status filter unless one is asked for. Defaulting to Booked hid
+  // every inquiry and quote behind a dropdown, which made the list look
+  // like it had lost them.
+  if (f.status) query = query.eq("status", f.status);
   if (f.category) query = query.eq("service_category_id", f.category);
   if (f.source) query = query.eq("inquiry_source_id", f.source);
   if (f.zone) query = query.eq("zone_id", f.zone);
