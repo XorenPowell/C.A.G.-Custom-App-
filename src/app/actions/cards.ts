@@ -4,6 +4,18 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { fail, ok, orNull, toInt, type ActionResult } from "@/lib/persist";
 
+/**
+ * PostgREST reports a column it cannot see as a schema-cache miss, which
+ * reads like a bug in the app rather than a migration that has not been
+ * run. Name the file instead, since that is the whole of the fix.
+ */
+function missingSchema(message: string): string {
+  if (/kind|counted_total/.test(message) && /schema cache|does not exist/i.test(message)) {
+    return `${message} — migration 032 has not been applied to this database yet.`;
+  }
+  return message;
+}
+
 export type ReceiptPayload = {
   received_on: string;
   quantity: number | string;
@@ -30,7 +42,7 @@ export async function addCardReceipt(payload: ReceiptPayload): Promise<ActionRes
     .select("id")
     .single();
 
-  if (error) return fail(error.message);
+  if (error) return fail(missingSchema(error.message));
   revalidatePath("/", "layout");
   return ok((data as { id: string }).id);
 }
@@ -83,7 +95,7 @@ export async function recordCardCount(payload: CountPayload): Promise<ActionResu
     .select("id")
     .single();
 
-  if (error) return fail(error.message);
+  if (error) return fail(missingSchema(error.message));
   revalidatePath("/", "layout");
   return ok((data as { id: string }).id);
 }

@@ -66,3 +66,9 @@ alter table card_receipts add constraint card_receipts_counted_total_check
     (kind = 'count' and counted_total is not null and counted_total >= 0)
     or (kind = 'receipt' and counted_total is null)
   );
+
+-- PostgREST answers from a cached copy of the schema and does not always
+-- notice new columns on its own. Without this the app keeps reporting
+-- "could not find the 'counted_total' column" against a database that
+-- has it.
+notify pgrst, 'reload schema';
