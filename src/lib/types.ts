@@ -41,6 +41,8 @@ export type ListItem = {
   kind: ListKind;
   name: string;
   description: string | null;
+  /** conversation_outcome only: cards handed over when this outcome is picked. */
+  default_cards: number | null;
   /** conversation_outcome only: pre-fills a conversation's intent level when this outcome is picked. */
   default_intent_level: number | null;
   /** service_category only: pre-fills a job's Details when this category is picked and Details is empty. */
@@ -65,8 +67,8 @@ export type Settings = {
   pay_period_start_day: number;
   /** Work Face to Face: conversations-per-day target. Resets with the calendar day. */
   face_to_face_daily_goal: number;
-  /** Partnerships zone-maturity card: every zone's target count of Mature-status partnerships. */
-  mature_partnership_goal_per_zone: number;
+  /** Day offsets behind the next-action quick-pick buttons, e.g. [1,3,7,30]. */
+  next_action_presets: number[];
   /** Per-token color overrides from the Appearance settings screen. Empty object = shipped defaults. */
   theme_overrides: Record<string, string>;
 };
@@ -169,17 +171,6 @@ export type Partnership = {
   zone_id: string | null;
   status_id: string | null;
   tier_id: string | null;
-  poc_name: string | null;
-  poc_phone: string | null;
-  poc_email: string | null;
-  secondary_poc_name: string | null;
-  secondary_poc_phone: string | null;
-  secondary_poc_email: string | null;
-  last_visit: string | null;
-  cards_dropped_last_visit: number;
-  total_cards_dropped: number;
-  fliers_dropped_last_visit: number;
-  total_fliers_dropped: number;
   last_contact: string | null;
   /**
    * The booked callback. Supersedes follow_up_days, which was an offset from
@@ -237,7 +228,12 @@ export type CampaignPlacement = {
   notes: string | null;
 };
 
-export const ACTIVITY_KINDS = ["call", "text", "email", "visit", "restock", "note"] as const;
+/**
+ * A restock is not a kind of its own: it is a visit to a business that
+ * happens to have a stack. Two kinds for one event meant two queues and
+ * two lists. Collapsed in 029.
+ */
+export const ACTIVITY_KINDS = ["call", "text", "email", "visit", "note"] as const;
 
 /**
  * What can be booked as a next action. Narrower than ACTIVITY_KINDS: a note
@@ -266,6 +262,20 @@ export type Activity = {
   outcome: string | null;
   note: string | null;
   occurred_at: string;
+  /** Cards left at the business on this visit. */
+  cards_dropped: number | null;
+  /** Cards still sitting there on arrival — the restock observation. */
+  cards_found: number | null;
+  created_at: string;
+};
+
+/** A batch of cards collected from the printer. The ledger's income side. */
+export type CardReceipt = {
+  id: string;
+  received_on: string;
+  quantity: number;
+  source: string | null;
+  note: string | null;
   created_at: string;
 };
 
@@ -432,5 +442,7 @@ export type FaceToFaceConversation = {
   outcome_id: string | null;
   /** 1-10 slider: how interested the dispatcher judged them to be. */
   intent_level: number;
+  /** Cards handed over. Defaults from the outcome; editable per conversation. */
+  cards_dropped: number;
   created_at: string;
 };

@@ -33,6 +33,8 @@ export default function PlacementCard({
   const [placedOn, setPlacedOn] = useState(placement?.placed_on ?? todayLocal());
   const [interval, setIntervalDays] = useState(String(placement?.restock_interval_days ?? 14));
   const [cards, setCards] = useState(placement?.cards_left == null ? "" : String(placement.cards_left));
+  /** How many went on the stack this time. Feeds the card ledger. */
+  const [dropped, setDropped] = useState("");
 
   const badge =
     tone === "overdue"
@@ -109,6 +111,12 @@ export default function PlacementCard({
               onChange={(e) => setIntervalDays(e.target.value.replace(/\D/g, ""))} onBlur={persist} />
           </div>
           <div className="field">
+            <label className="label" htmlFor="pc-drop">Cards to drop</label>
+            <input id="pc-drop" className="input" inputMode="numeric" value={dropped}
+              placeholder="25"
+              onChange={(e) => setDropped(e.target.value.replace(/\D/g, ""))} />
+          </div>
+          <div className="field">
             <label className="label" htmlFor="pc-cards">Cards left (est.)</label>
             <input id="pc-cards" className="input" inputMode="numeric" value={cards}
               onChange={(e) => setCards(e.target.value.replace(/\D/g, ""))} onBlur={persist} />
@@ -122,7 +130,12 @@ export default function PlacementCard({
             disabled={pending}
             onClick={() =>
               start(async () => {
-                await markRestocked(placement.id, cards === "" ? null : Number(cards));
+                await markRestocked(
+                  placement.id,
+                  cards === "" ? null : Number(cards),
+                  dropped === "" ? null : Number(dropped),
+                );
+                setDropped("");
                 router.refresh();
               })
             }

@@ -149,12 +149,7 @@ export default async function ReportsPage({
             <Stat
               label="Cards dropped"
               value={num(data.cardsDropped, 0)}
-              sub="running total"
-            />
-            <Stat
-              label="Fliers dropped"
-              value={num(data.fliersDropped, 0)}
-              sub="running total"
+              sub="in this range"
             />
           </StatGrid>
           <div className="mt-3">
@@ -181,7 +176,7 @@ export default async function ReportsPage({
           the job&rsquo;s invoice/arrival date. Inquiries, conversion and referrals are scoped
           by the date the job was created. New partnerships use their signed date —
           partnership leads with no signed date are excluded from every figure on this
-          screen. Cards and fliers are lifetime running totals across signed partnerships.
+          screen. Cards dropped counts visits and face-to-face conversations in the selected range.
         </p>
       </main>
     </>

@@ -63,12 +63,17 @@ export async function logConversation(
   sessionId: string,
   outcomeId: string,
   intentLevel: number | string,
+  cardsDropped: number | string = 1,
 ): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("face_to_face_conversations").insert({
     session_id: sessionId,
     outcome_id: outcomeId,
     intent_level: Math.min(10, Math.max(0, toInt(intentLevel, 5))),
+    // Cards handed over on the street count against the same stock as
+    // cards left at a business, so they are recorded here rather than
+    // being the one drop the ledger cannot see.
+    cards_dropped: Math.min(100, Math.max(0, toInt(cardsDropped, 1))),
   });
   if (error) return fail(error.message);
 
@@ -80,6 +85,7 @@ export async function updateConversation(
   id: string,
   outcomeId: string | null,
   intentLevel: number | string,
+  cardsDropped?: number | string,
 ): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase
@@ -87,6 +93,9 @@ export async function updateConversation(
     .update({
       outcome_id: outcomeId,
       intent_level: Math.min(10, Math.max(0, toInt(intentLevel, 5))),
+      ...(cardsDropped === undefined
+        ? {}
+        : { cards_dropped: Math.min(100, Math.max(0, toInt(cardsDropped, 1))) }),
     })
     .eq("id", id);
   if (error) return fail(error.message);

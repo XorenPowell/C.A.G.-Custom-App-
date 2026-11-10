@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getJobEntityNames } from "@/lib/jobs";
-import { chicagoDateOf, todayISO } from "@/lib/dates";
+import { chicagoDateOf, chicagoTimeLabel, todayISO } from "@/lib/dates";
 import { isJobOpen } from "@/lib/types";
 
 /**
@@ -71,6 +71,13 @@ export type QueueItem = {
   /** Chicago calendar date the item is due. */
   dueOn: string;
   dueLabel: string;
+  /**
+   * The booked instant, when there is one. Restocks fall due on a date with
+   * no appointment attached, so they carry null rather than a made-up time.
+   */
+  dueAt: string | null;
+  /** Chicago wall-clock time of dueAt, e.g. "9:00 AM". */
+  dueTime: string | null;
   state: "overdue" | "today";
   phone: string | null;
   /** call | visit | text | email — only set on queued contacts. */
@@ -114,17 +121,18 @@ export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
   const supabase = await createClient();
   const today = asOf && /^\d{4}-\d{2}-\d{2}$/.test(asOf) ? asOf : todayISO();
 
-  const [partnershipsRes, jobsRes, placementsRes] = await Promise.all([
+  const [partnershipsRes, jobsRes, placementsRes, contactsRes] = await Promise.all([
     supabase
       .from("partnerships")
-      .select("id, business_name, follow_up_at, follow_up_note, follow_up_kind, poc_name, poc_phone, last_contact, status_id"),
+      .select("id, business_name, follow_up_at, follow_up_note, follow_up_kind, last_contact, status_id"),
     supabase
       .from("jobs")
       .select("id, job_id, customer_name, customer_phone, status, follow_up_at, follow_up_note, follow_up_kind"),
     supabase
       .from("campaign_placements")
-      .select("id, partnership_id, location, cards_left, placed_on, last_restock_on, restock_interval_days, partnerships(business_name, poc_phone)")
+      .select("id, partnership_id, location, cards_left, placed_on, last_restock_on, restock_interval_days, partnerships(business_name)")
       .is("removed_on", null),
+    supabase.from("contacts").select("partnership_id, name, phone, created_at"),
   ]);
 
   // A failed query must never render as an empty queue: "No calls due" on a
@@ -136,6 +144,7 @@ export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
     ["partnerships", partnershipsRes],
     ["jobs", jobsRes],
     ["campaign_placements", placementsRes],
+    ["contacts", contactsRes],
   ] as const) {
     if (res.error) failures.push(`${name}: ${res.error.message}`);
   }
@@ -145,9 +154,21 @@ export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
 
   const partnerships = (partnershipsRes.data ?? []) as {
     id: string; business_name: string; follow_up_at: string | null;
-    follow_up_note: string | null; follow_up_kind: string; poc_name: string | null;
-    poc_phone: string | null; last_contact: string | null;
+    follow_up_note: string | null; follow_up_kind: string; last_contact: string | null;
   }[];
+
+  // Who to ring. The two fixed poc slots on partnerships were retired in
+  // 028, so this is the first contact carrying a phone — oldest first, so
+  // the number stops moving every time a contact is added.
+  const reach = new Map<string, { name: string; phone: string | null }>();
+  for (const c of ((contactsRes.data ?? []) as {
+    partnership_id: string | null; name: string; phone: string | null; created_at: string;
+  }[]).sort((a, b) => a.created_at.localeCompare(b.created_at))) {
+    if (!c.partnership_id) continue;
+    const held = reach.get(c.partnership_id);
+    if (!held) reach.set(c.partnership_id, { name: c.name, phone: c.phone });
+    else if (!held.phone && c.phone) reach.set(c.partnership_id, { name: c.name, phone: c.phone });
+  }
   const jobs = (jobsRes.data ?? []) as {
     id: string; job_id: string; customer_name: string | null; customer_phone: string | null;
     status: string; follow_up_at: string | null; follow_up_note: string | null;
@@ -158,8 +179,8 @@ export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
   const placements = ((placementsRes.data ?? []) as unknown as {
     id: string; partnership_id: string; location: string | null; cards_left: number | null;
     placed_on: string; last_restock_on: string | null; restock_interval_days: number;
-    partnerships: { business_name: string; poc_phone: string | null }
-      | { business_name: string; poc_phone: string | null }[]
+    partnerships: { business_name: string }
+      | { business_name: string }[]
       | null;
   }[]).map((r) => ({
     ...r,
@@ -180,7 +201,8 @@ export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
         id: p.id, href: `/partnerships/${p.id}`, kind: "partnership",
         title: p.business_name,
         subtitle: p.last_contact ? `last contact ${p.last_contact}` : "never contacted",
-        dueOn: "", dueLabel: "nothing booked", state: "overdue", phone: p.poc_phone,
+        dueOn: "", dueLabel: "nothing booked", dueAt: null, dueTime: null,
+        state: "overdue", phone: reach.get(p.id)?.phone ?? null,
       });
       continue;
     }
@@ -189,9 +211,10 @@ export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
     place({
       id: p.id, href: `/partnerships/${p.id}`, kind: "partnership",
       title: p.business_name,
-      subtitle: p.follow_up_note || p.poc_name || "Follow-up",
+      subtitle: p.follow_up_note || reach.get(p.id)?.name || "Follow-up",
       dueOn: due, dueLabel: relLabel(due, today),
-      state: due < today ? "overdue" : "today", phone: p.poc_phone,
+      dueAt: p.follow_up_at, dueTime: chicagoTimeLabel(p.follow_up_at),
+      state: due < today ? "overdue" : "today", phone: reach.get(p.id)?.phone ?? null,
       followKind: p.follow_up_kind,
     });
   }
@@ -204,7 +227,8 @@ export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
         id: j.id, href: `/jobs/${j.id}`, kind: "job",
         title: j.customer_name || j.job_id,
         subtitle: `${j.job_id} · ${j.status}`,
-        dueOn: "", dueLabel: "nothing booked", state: "overdue", phone: j.customer_phone,
+        dueOn: "", dueLabel: "nothing booked", dueAt: null, dueTime: null,
+        state: "overdue", phone: j.customer_phone,
       });
       continue;
     }
@@ -215,6 +239,7 @@ export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
       title: j.customer_name || j.job_id,
       subtitle: j.follow_up_note || `${j.job_id} · ${j.status}`,
       dueOn: due, dueLabel: relLabel(due, today),
+      dueAt: j.follow_up_at, dueTime: chicagoTimeLabel(j.follow_up_at),
       state: due < today ? "overdue" : "today", phone: j.customer_phone,
       followKind: j.follow_up_kind,
     });
@@ -230,16 +255,20 @@ export async function getWorkQueue(asOf?: string): Promise<WorkQueue> {
       id: pl.id, href: `/partnerships/${pl.partnership_id}`, kind: "restock",
       title: pl.partnerships?.business_name ?? "—",
       subtitle: `${pl.location ?? "stack"}${pl.cards_left != null ? ` · ~${pl.cards_left} left` : ""}`,
-      dueOn: due, dueLabel: relLabel(due, today),
+      dueOn: due, dueLabel: relLabel(due, today), dueAt: null, dueTime: null,
       state: due < today ? "overdue" : "today",
-      phone: pl.partnerships?.poc_phone ?? null,
+      phone: reach.get(pl.partnership_id)?.phone ?? null,
       followKind: "visit",
     });
   }
 
-  // Most overdue first — the queue is worked top to bottom.
+  // Most overdue first — the queue is worked top to bottom. Within a day the
+  // booked time decides the order; a restock has no appointment, so it sorts
+  // to the end of its day rather than being given a time it does not have.
   const byDue = (a: QueueItem, b: QueueItem) =>
-    a.dueOn.localeCompare(b.dueOn) || a.title.localeCompare(b.title);
+    a.dueOn.localeCompare(b.dueOn) ||
+    (a.dueAt ?? "~").localeCompare(b.dueAt ?? "~") ||
+    a.title.localeCompare(b.title);
   calls.sort(byDue);
   visits.sort(byDue);
   noAction.sort((a, b) => a.title.localeCompare(b.title));

@@ -70,6 +70,7 @@ const ROUTES = [
   "/", "/jobs", "/jobs/new", `/jobs/${ids.job}`,
   "/partnerships", "/partnerships/new", `/partnerships/${ids.partnership}`,
   "/contacts", "/campaigns", "/visits",
+  "/cards",
   "/roster", "/roster/new", `/roster/${ids.entity}`, `/roster/${ids.entity}/edit`,
   "/reports", "/time-clock", "/face-to-face",
   "/settings", "/settings/values", "/settings/templates", "/settings/equipment",
@@ -84,7 +85,12 @@ for (const path of ROUTES) {
   try {
     const r = await fetch(BASE + path, { headers: { cookie: COOKIE }, redirect: "manual" });
     const body = r.status === 200 ? await r.text() : "";
-    const loggedOut = r.status === 307 && (r.headers.get("location") || "").includes("/login");
+    // A rejected cookie does not always redirect: the login form renders
+    // at 200, and every route then "passes" while showing nothing. That
+    // made a whole broken run look green once.
+    const loggedOut =
+      (r.status === 307 && (r.headers.get("location") || "").includes("/login")) ||
+      (path !== "/login" && body.includes('name="password"'));
     const serverError = body.includes("Application error") ||
                         body.includes("Internal Server Error") ||
                         body.includes("digest\":");

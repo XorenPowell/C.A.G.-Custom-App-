@@ -2,12 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { fail, ok, orNull, type ActionResult } from "@/lib/persist";
+import { fail, ok, orNull, toNullableNum, type ActionResult } from "@/lib/persist";
 import { chicagoDateOf } from "@/lib/dates";
 import type { ActivityKind } from "@/lib/types";
 
-/** Kinds the database trigger counts as contact; mirrored here for the recompute. */
-const CONTACT_KINDS = ["call", "text", "email", "visit", "restock"] as const;
+/**
+ * Kinds the database trigger counts as contact; mirrored here for the
+ * recompute. `restock` was one of these until 029 folded it into `visit`.
+ */
+const CONTACT_KINDS = ["call", "text", "email", "visit"] as const;
 
 export type LogContactPayload = {
   /** Exactly one of these. Enforced by a check constraint on the table too. */
@@ -16,6 +19,9 @@ export type LogContactPayload = {
   kind: ActivityKind;
   outcome: string | null;
   note: string | null;
+  /** Visits only. Cards left at the business, and cards still there on arrival. */
+  cards_dropped?: number | string | null;
+  cards_found?: number | string | null;
   /** Chicago-local datetime string; defaults to now when blank. */
   occurred_local?: string | null;
   /**
@@ -54,6 +60,8 @@ export async function logContact(payload: LogContactPayload): Promise<ActionResu
     outcome: orNull(payload.outcome),
     note: orNull(payload.note),
     occurred_at: occurredAt,
+    cards_dropped: toNullableNum(payload.cards_dropped),
+    cards_found: toNullableNum(payload.cards_found),
   });
   if (logError) return fail(logError.message);
 
@@ -86,6 +94,8 @@ export type ActivityEdit = {
   occurred_at?: string;
   outcome?: string | null;
   note?: string | null;
+  cards_dropped?: number | string | null;
+  cards_found?: number | string | null;
 };
 
 export async function updateActivity(id: string, patch: ActivityEdit): Promise<ActionResult> {
@@ -95,6 +105,8 @@ export async function updateActivity(id: string, patch: ActivityEdit): Promise<A
   if (patch.occurred_at) row.occurred_at = patch.occurred_at;
   if (patch.outcome !== undefined) row.outcome = orNull(patch.outcome);
   if (patch.note !== undefined) row.note = orNull(patch.note);
+  if (patch.cards_dropped !== undefined) row.cards_dropped = toNullableNum(patch.cards_dropped);
+  if (patch.cards_found !== undefined) row.cards_found = toNullableNum(patch.cards_found);
   if (Object.keys(row).length === 0) return ok(id);
 
   const { data, error } = await supabase

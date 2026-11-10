@@ -104,7 +104,7 @@ export type DashboardData = {
   maturePartnerships: number;
   referralsProduced: number;
   cardsDropped: number;
-  fliersDropped: number;
+
   partnershipsByTier: { label: string; value: number }[];
   partnershipsByStage: { label: string; value: number }[];
 
@@ -122,20 +122,34 @@ export async function getDashboard(
 
   const financials = await fetchFinancials(supabase, jobIds);
 
+  // Cards used to be a lifetime running total on each partnership, so
+  // "cards dropped" ignored the range selector entirely. Every drop is
+  // dated now, so the figure finally answers the question actually asked
+  // of it: how many went out in this period.
+  const [visitCardsRes, f2fCardsRes] = await Promise.all([
+    supabase.from("activity").select("occurred_at, cards_dropped").not("cards_dropped", "is", null),
+    supabase.from("face_to_face_conversations").select("occurred_at, cards_dropped").gt("cards_dropped", 0),
+  ]);
+  const cardsDropped =
+    ((visitCardsRes.data ?? []) as { occurred_at: string; cards_dropped: number }[])
+      .filter((r) => within(r.occurred_at, range))
+      .reduce((s, r) => s + r.cards_dropped, 0) +
+    ((f2fCardsRes.data ?? []) as { occurred_at: string; cards_dropped: number }[])
+      .filter((r) => within(r.occurred_at, range))
+      .reduce((s, r) => s + r.cards_dropped, 0);
+
   const partnerships = await pageAll<{
     id: string;
     status_id: string | null;
     last_contact: string | null;
     tier_id: string | null;
-    total_cards_dropped: number;
-    total_fliers_dropped: number;
     developing_at: string | null;
     mature_at: string | null;
   }>((from, to) =>
     supabase
       .from("partnerships")
       .select(
-        "id, status_id, last_contact, tier_id, total_cards_dropped, total_fliers_dropped, developing_at, mature_at",
+        "id, status_id, last_contact, tier_id, developing_at, mature_at",
       )
       .range(from, to),
   );
@@ -198,9 +212,7 @@ export async function getDashboard(
     developingPartnerships: partnerships.filter((p) => within(p.developing_at, range)).length,
     maturePartnerships: partnerships.filter((p) => within(p.mature_at, range)).length,
     referralsProduced: created.filter((j) => j.partnership_id).length,
-    // Running totals across the whole roster of partnerships, per spec.
-    cardsDropped: partnerships.reduce((s, p) => s + (p.total_cards_dropped ?? 0), 0),
-    fliersDropped: partnerships.reduce((s, p) => s + (p.total_fliers_dropped ?? 0), 0),
+    cardsDropped,
     partnershipsByTier: tally(
       partnerships.map((p) => ({ key: p.tier_id, value: 1 })),
       names,

@@ -9,6 +9,7 @@ import {
   deleteScheduledAction,
 } from "@/app/actions/scheduled";
 import { TIME_STEP_SECONDS, chicagoLocalToUTCISO } from "@/lib/dates";
+import DatePresets, { DEFAULT_PRESETS } from "@/components/DatePresets";
 import { todayLocal } from "@/lib/follow-up";
 import { ACTIVITY_META } from "@/lib/activity-meta";
 import { FOLLOW_UP_KINDS, FOLLOW_UP_LABELS, type FollowUpKind } from "@/lib/types";
@@ -26,10 +27,13 @@ export default function PlannedActions({
   partnershipId,
   jobId,
   actions,
+  /** Day offsets for the forward quick-picks, from Settings. */
+  presets = DEFAULT_PRESETS,
 }: {
   partnershipId?: string;
   jobId?: string;
   actions: ScheduledAction[];
+  presets?: number[];
 }) {
   const router = useRouter();
   const [pending, start] = useGlobalTransition();
@@ -231,7 +235,7 @@ export default function PlannedActions({
                 id="pa-note"
                 className="input"
                 value={note}
-                placeholder={isFuture ? "Drop the new fliers" : "Asked about the vacant unit"}
+                placeholder={isFuture ? "Drop the new cards" : "Asked about the vacant unit"}
                 onChange={(e) => setNote(e.target.value)}
               />
             </div>
@@ -268,16 +272,7 @@ export default function PlannedActions({
             <button type="button" className="btn btn-sm btn-primary" onClick={() => setLocal(nowLocal())}>
               Now
             </button>
-            {[1, 3, 7, 14, 30].map((d) => (
-              <button
-                key={d}
-                type="button"
-                className="btn btn-sm"
-                onClick={() => setLocal(plusDays(d))}
-              >
-                {d === 1 ? "Tomorrow" : `+${d}d`}
-              </button>
-            ))}
+            <DatePresets presets={presets} onPick={(d) => setLocal(plusDays(d))} />
           </div>
 
           <div className="flex gap-2">

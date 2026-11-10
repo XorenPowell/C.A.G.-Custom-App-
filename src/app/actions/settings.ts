@@ -12,6 +12,8 @@ export type ListItemDraft = {
   description: string | null;
   /** conversation_outcome only. Blank stays blank — a missing default is not 0. */
   default_intent_level: number | string | null;
+  /** conversation_outcome only: cards handed over when this outcome is picked. */
+  default_cards: number | string | null;
   /** service_category only. */
   details_template: string | null;
   sort_order: number;
@@ -37,12 +39,15 @@ export async function saveList(
 
   for (const [index, item] of named.entries()) {
     const intentLevel = toNullableNum(item.default_intent_level);
+    const defaultCards = toNullableNum(item.default_cards);
     const row = {
       kind,
       name: item.name.trim(),
       description: orNull(item.description),
       default_intent_level:
         intentLevel === null ? null : Math.min(10, Math.max(0, intentLevel)),
+      default_cards:
+        defaultCards === null ? null : Math.min(100, Math.max(0, defaultCards)),
       details_template: orNull(item.details_template),
       sort_order: (index + 1) * 10,
       archived: item.archived,
@@ -135,7 +140,29 @@ export type SettingsValues = {
   daily_inquiries_goal: number;
   daily_partnerships_goal: number;
   pay_period_start_day: number;
+  /** Typed as a comma-separated string; parsed and cleaned on save. */
+  next_action_presets: string;
 };
+
+/**
+ * "1, 3, 7, 30" -> [1,3,7,30].
+ *
+ * Deduped and sorted so the buttons always read left to right, and capped
+ * at eight because the row wraps on a phone past that. An unparseable or
+ * empty entry falls back to the shipped set rather than saving nothing,
+ * which would leave the card with no quick picks at all.
+ */
+function parsePresets(raw: string): number[] {
+  const days = [
+    ...new Set(
+      String(raw)
+        .split(/[,\s]+/)
+        .map((p) => parseInt(p, 10))
+        .filter((n) => Number.isFinite(n) && n >= 1 && n <= 365),
+    ),
+  ].sort((a, b) => a - b);
+  return days.length > 0 ? days.slice(0, 8) : [1, 3, 7, 30];
+}
 
 export async function saveSettingsValues(values: SettingsValues): Promise<ActionResult> {
   const supabase = await createClient();
@@ -150,6 +177,7 @@ export async function saveSettingsValues(values: SettingsValues): Promise<Action
       daily_inquiries_goal: toInt(values.daily_inquiries_goal),
       daily_partnerships_goal: toInt(values.daily_partnerships_goal),
       pay_period_start_day: toInt(values.pay_period_start_day, 5),
+      next_action_presets: parsePresets(values.next_action_presets),
     })
     .eq("id", true);
 

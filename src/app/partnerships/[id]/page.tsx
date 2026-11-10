@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ActivityTrail from "@/components/ActivityTrail";
 import ContactsPanel from "@/components/ContactsPanel";
+import CardsPanel, { type CardsSummary } from "@/components/CardsPanel";
 import LogContact from "@/components/LogContact";
 import NextActionCard from "@/components/NextActionCard";
 import PartnershipForm from "@/components/PartnershipForm";
@@ -11,13 +12,14 @@ import DeletePartnershipButton from "./DeletePartnershipButton";
 import { Empty } from "@/components/Detail";
 import { followUpLabel, followUpState, getPartnership, getPartnershipReferrals } from "@/lib/partnerships";
 import { getPartnershipActivity } from "@/lib/activity";
+import { pickUpRate } from "@/lib/cards";
 import { getScheduledForPartnership } from "@/lib/scheduled";
 import { getVisitDays, nextDayInZone } from "@/lib/visits";
 import { todayISO } from "@/lib/dates";
 import PlannedActions from "@/components/PlannedActions";
 import { getCampaigns, getPlacements, restockLabel, restockState } from "@/lib/campaigns";
 import { getContactsFor } from "@/lib/contacts";
-import { active, getLists, lookup, nameMap } from "@/lib/data";
+import { active, getLists, getSettings, lookup, nameMap } from "@/lib/data";
 import { stageTone } from "@/lib/lists";
 import { dateDisplay, money } from "@/lib/format";
 
@@ -27,16 +29,18 @@ export default async function PartnershipDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [partnership, lists, referrals, activity, contacts, campaigns] = await Promise.all([
+  const [partnership, lists, referrals, activity, contacts, campaigns, settings] = await Promise.all([
     getPartnership(id),
     getLists(),
     getPartnershipReferrals(id),
     getPartnershipActivity(id),
     getContactsFor(id),
     getCampaigns(),
+    getSettings(),
   ]);
+  const presets = settings.next_action_presets ?? undefined;
   const planned = await getScheduledForPartnership(id);
-  const visitDays = await getVisitDays();
+  const { days: visitDays } = await getVisitDays();
   if (!partnership) notFound();
 
   const campaign = campaigns[0] ?? null;
@@ -63,6 +67,23 @@ export default async function PartnershipDetailPage({
           zoneName,
           todayISO(),
         );
+  // Cards are summed from the visits rather than read off the partnership,
+  // so the figures cannot disagree with the trail they are counted from.
+  const visits = activity.filter((a) => a.kind === "visit");
+  const withCards = visits
+    .filter((v) => v.cards_dropped != null)
+    .sort((a, b) => b.occurred_at.localeCompare(a.occurred_at));
+  const rate = pickUpRate(visits);
+  const cards: CardsSummary = {
+    total: activity.reduce((sum, a) => sum + (a.cards_dropped ?? 0), 0),
+    lastVisit: visits[0]?.occurred_at ?? null,
+    lastDrop: withCards[0]?.cards_dropped ?? null,
+    lastFound: withCards[0]?.cards_found ?? null,
+    visits: visits.length,
+    perWeek: rate?.perWeek ?? null,
+    basis: rate?.basis ?? null,
+  };
+
   const due = followUpState(partnership);
 
   return (
@@ -105,6 +126,7 @@ export default async function PartnershipDetailPage({
             partnershipId={partnership.id}
             currentFollowUpAt={partnership.follow_up_at}
             currentFollowUpNote={partnership.follow_up_note}
+            presets={presets}
           />
         </div>
       </div>
@@ -121,6 +143,7 @@ export default async function PartnershipDetailPage({
           nextZoneDay={zoneDay}
           tone={due}
           dueLabel={followUpLabel(partnership)}
+          presets={presets}
         >
           <p className="muted mt-2 text-xs">
             Last contact {dateDisplay(partnership.last_contact)}. Log contact records what
@@ -145,6 +168,8 @@ export default async function PartnershipDetailPage({
         roles={active(lists.contact_role)}
       />
 
+      <CardsPanel summary={cards} />
+
       {/* History on the left, what it has produced on the right. */}
       <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         <section className="card">
@@ -152,7 +177,7 @@ export default async function PartnershipDetailPage({
           <div className="card-pad">
             {/* The plan sits above the history, in the same column, so the
                 record reads forwards and backwards from now. */}
-            <PlannedActions partnershipId={partnership.id} actions={planned} />
+            <PlannedActions partnershipId={partnership.id} actions={planned} presets={presets} />
             <div className="mb-2 border-t border-[var(--color-line)] pt-2">
               <span className="label mb-0">History</span>
             </div>
@@ -176,7 +201,7 @@ export default async function PartnershipDetailPage({
                 <div className="label">Revenue</div>
                 <div className="font-heading text-2xl font-extrabold">{money(revenue)}</div>
                 <div className="text-xs text-[var(--text-faint)]">
-                  last visit {dateDisplay(partnership.last_visit)}
+                  last visit {cards.lastVisit ? dateDisplay(cards.lastVisit) : "—"}
                 </div>
               </div>
             </div>

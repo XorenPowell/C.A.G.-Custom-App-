@@ -18,6 +18,7 @@ const ITEMS = [
   { href: "/contacts", label: "Contacts" },
   { href: "/visits", label: "Visits" },
   { href: "/campaigns", label: "SAFC" },
+  { href: "/cards", label: "Cards" },
   { href: "/roster", label: "Roster" },
   { href: "/face-to-face", label: "F2F" },
   { href: "/reports", label: "Reports" },
