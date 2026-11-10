@@ -273,7 +273,12 @@ export type Activity = {
 export type CardReceipt = {
   id: string;
   received_on: string;
+  /** For a receipt, how many arrived. For a count, the signed correction. */
   quantity: number;
+  /** 'receipt' is a batch collected; 'count' is a stock count that corrects the balance. */
+  kind: "receipt" | "count";
+  /** The figure counted, on a count row. Null on a receipt. */
+  counted_total: number | null;
   source: string | null;
   note: string | null;
   created_at: string;
