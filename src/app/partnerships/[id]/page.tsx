@@ -8,6 +8,7 @@ import NextActionCard from "@/components/NextActionCard";
 import PartnershipForm from "@/components/PartnershipForm";
 import PlacementCard from "@/components/PlacementCard";
 import StageSelect from "@/components/StageSelect";
+import StarToggle from "@/components/Star";
 import DeletePartnershipButton from "./DeletePartnershipButton";
 import { Empty } from "@/components/Detail";
 import { followUpLabel, followUpState, getPartnership, getPartnershipReferrals } from "@/lib/partnerships";
@@ -98,7 +99,10 @@ export default async function PartnershipDetailPage({
 
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="h1 text-xl md:text-2xl">{partnership.business_name}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="h1 text-xl md:text-2xl">{partnership.business_name}</h1>
+            <StarToggle partnershipId={partnership.id} starred={!!partnership.starred} />
+          </div>
           <div className="muted text-sm">
             {[partnership.address, lookup(names, partnership.zone_id)]
               .filter((v) => v && v !== "—")

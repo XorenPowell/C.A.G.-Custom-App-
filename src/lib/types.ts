@@ -185,6 +185,8 @@ export type Partnership = {
   developing_at: string | null;
   mature_at: string | null;
   notes: string | null;
+  /** Marked important by hand. Stage and tier say what a partnership is; this says whether it matters. */
+  starred: boolean;
   created_at: string;
 };
 

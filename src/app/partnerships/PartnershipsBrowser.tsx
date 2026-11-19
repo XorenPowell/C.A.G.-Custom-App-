@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { StarMark } from "@/components/Star";
 import { followUpLabel, followUpState } from "@/lib/follow-up";
 import { dateDisplay, money } from "@/lib/format";
 import type { ListItem, Partnership } from "@/lib/types";
@@ -34,6 +35,7 @@ const DUE_TONE = {
 
 const SORTS = [
   { value: "follow_up", label: "Next follow-up" },
+  { value: "starred", label: "Importance" },
   { value: "last_contact", label: "Last contact (newest)" },
   { value: "last_contact_oldest", label: "Last contact (oldest)" },
   { value: "business_name", label: "Business name" },
@@ -101,7 +103,9 @@ export default function PartnershipsBrowser({
     const byName = (a: PartnershipRow, b: PartnershipRow) =>
       a.business_name.localeCompare(b.business_name);
     out = [...out];
-    if (sort === "business_name") out.sort(byName);
+    if (sort === "starred")
+      out.sort((a, b) => Number(!!b.starred) - Number(!!a.starred) || byName(a, b));
+    else if (sort === "business_name") out.sort(byName);
     else if (sort === "referrals") out.sort((a, b) => b.referrals - a.referrals || byName(a, b));
     else if (sort === "last_contact")
       out.sort((a, b) => (b.last_contact ?? "").localeCompare(a.last_contact ?? "") || byName(a, b));
@@ -212,7 +216,12 @@ export default function PartnershipsBrowser({
         {visible.map((r) => (
           <Link key={r.id} href={`/partnerships/${r.id}`} className="card card-pad block">
             <div className="flex items-start justify-between gap-2">
-              <span className="font-bold">{r.business_name}</span>
+              <span className="flex min-w-0 items-center gap-1.5 font-bold">
+                <span className="truncate">{r.business_name}</span>
+                {r.starred && (
+                  <StarMark filled size={14} className="shrink-0 text-[var(--color-warn)]" />
+                )}
+              </span>
               <span className={`badge ${STAGE_TONE[r.stage_name === "Mature" ? "good" : r.stage_name === "Developing" ? "warn" : "muted"]}`}>
                 {r.stage_name}
               </span>
@@ -247,9 +256,14 @@ export default function PartnershipsBrowser({
               {visible.map((r) => (
                 <tr key={r.id}>
                   <td>
-                    <Link href={`/partnerships/${r.id}`} className="link font-semibold">
-                      {r.business_name}
-                    </Link>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Link href={`/partnerships/${r.id}`} className="link font-semibold">
+                        {r.business_name}
+                      </Link>
+                      {r.starred && (
+                        <StarMark filled size={14} className="shrink-0 text-[var(--color-warn)]" />
+                      )}
+                    </span>
                     <div className="text-[11px] text-[var(--text-faint)]">
                       {r.contact_count} contact{r.contact_count === 1 ? "" : "s"}
                       {r.address ? ` · ${r.address}` : ""}

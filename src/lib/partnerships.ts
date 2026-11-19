@@ -91,6 +91,12 @@ function sortPartnerships(rows: Partnership[], sort?: string): Partnership[] {
     a.business_name.localeCompare(b.business_name);
 
   switch (sort) {
+    case "starred":
+      // Starred first, then alphabetically within each group, so the
+      // handful that matter sit at the top in a stable order.
+      return out.sort(
+        (a, b) => Number(!!b.starred) - Number(!!a.starred) || byName(a, b),
+      );
     case "business_name":
       return out.sort(byName);
     case "last_contact":

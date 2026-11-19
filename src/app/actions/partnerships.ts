@@ -66,6 +66,34 @@ export async function savePartnership(
   return ok(id);
 }
 
+/**
+ * Mark a partnership as one that matters, or stop marking it.
+ *
+ * Deliberately not written to the activity trail: a star is a note to
+ * self about priority, not something that happened with the business,
+ * and a history full of "starred / unstarred" would bury the contacts.
+ */
+export async function setPartnershipStar(
+  id: string,
+  starred: boolean,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("partnerships")
+    .update({ starred })
+    .eq("id", id);
+  if (error) {
+    return fail(
+      /starred/.test(error.message) && /schema cache|does not exist/i.test(error.message)
+        ? `${error.message} \u2014 migration 033 has not been applied to this database yet.`
+        : error.message,
+    );
+  }
+  revalidatePath("/partnerships", "layout");
+  revalidatePath("/");
+  return ok(id);
+}
+
 export async function deletePartnership(id: string): Promise<ActionResult> {
   const supabase = await createClient();
 
