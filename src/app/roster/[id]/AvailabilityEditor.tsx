@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import { saveAvailability, type AvailabilityBlock } from "@/app/actions/entities";
-import { todayISO } from "@/lib/dates";
+import { TIME_STEP_SECONDS, todayISO } from "@/lib/dates";
 import { daysSince, isAvailabilityStale } from "@/lib/format";
 import type { EntityAvailability } from "@/lib/types";
 
@@ -161,14 +161,14 @@ export default function AvailabilityEditor({
             onChange={(e) => patch(i, { date: e.target.value })}
           />
           <input
-            type="time"
+            type="time" step={TIME_STEP_SECONDS}
             className="input w-auto"
             value={r.start_time ?? ""}
             onChange={(e) => patch(i, { start_time: e.target.value })}
           />
           <span className="muted text-sm">–</span>
           <input
-            type="time"
+            type="time" step={TIME_STEP_SECONDS}
             className="input w-auto"
             value={r.end_time ?? ""}
             onChange={(e) => patch(i, { end_time: e.target.value })}

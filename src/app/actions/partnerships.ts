@@ -11,12 +11,6 @@ function laterOf(a: string | null, b: string | null): string | null {
   return a >= b ? a : b;
 }
 
-/** Blank stays blank — a missing follow-up interval is not "0 days". */
-function toNullableInt(v: unknown): number | null {
-  if (v === null || v === undefined || String(v).trim() === "") return null;
-  const n = parseInt(String(v), 10);
-  return Number.isFinite(n) ? n : null;
-}
 
 export type PartnershipPayload = {
   id: string | null;
@@ -25,19 +19,7 @@ export type PartnershipPayload = {
   zone_id: string | null;
   status_id: string | null;
   tier_id: string | null;
-  poc_name: string | null;
-  poc_phone: string | null;
-  poc_email: string | null;
-  secondary_poc_name: string | null;
-  secondary_poc_phone: string | null;
-  secondary_poc_email: string | null;
-  last_visit: string | null;
-  cards_dropped_last_visit: number | string;
-  total_cards_dropped: number | string;
-  fliers_dropped_last_visit: number | string;
-  total_fliers_dropped: number | string;
   last_contact: string | null;
-  follow_up_days: number | string | null;
   notes: string | null;
 };
 
@@ -54,20 +36,12 @@ export async function savePartnership(
     zone_id: payload.zone_id || null,
     status_id: payload.status_id || null,
     tier_id: payload.tier_id || null,
-    poc_name: orNull(payload.poc_name),
-    poc_phone: orNull(payload.poc_phone),
-    poc_email: orNull(payload.poc_email),
-    secondary_poc_name: orNull(payload.secondary_poc_name),
-    secondary_poc_phone: orNull(payload.secondary_poc_phone),
-    secondary_poc_email: orNull(payload.secondary_poc_email),
-    last_visit: payload.last_visit || null,
-    cards_dropped_last_visit: toInt(payload.cards_dropped_last_visit),
-    total_cards_dropped: toInt(payload.total_cards_dropped),
-    fliers_dropped_last_visit: toInt(payload.fliers_dropped_last_visit),
-    total_fliers_dropped: toInt(payload.total_fliers_dropped),
-    // Visiting someone is contacting them, so a later visit date carries.
-    last_contact: laterOf(payload.last_contact, payload.last_visit),
-    follow_up_days: toNullableInt(payload.follow_up_days),
+    // last_visit and the card totals are no longer edited here: a visit is
+    // logged on the activity trail and carries its own card count, so the
+    // form writing them too would put the two out of step.
+    last_contact: payload.last_contact || null,
+    // A booked instant. follow_up_days is left untouched on the row so 022
+    // stays reversible; nothing reads it any more.
     notes: orNull(payload.notes),
   };
 
@@ -88,6 +62,34 @@ export async function savePartnership(
 
   revalidatePath("/partnerships", "layout");
   revalidatePath("/reports");
+  revalidatePath("/");
+  return ok(id);
+}
+
+/**
+ * Mark a partnership as one that matters, or stop marking it.
+ *
+ * Deliberately not written to the activity trail: a star is a note to
+ * self about priority, not something that happened with the business,
+ * and a history full of "starred / unstarred" would bury the contacts.
+ */
+export async function setPartnershipStar(
+  id: string,
+  starred: boolean,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("partnerships")
+    .update({ starred })
+    .eq("id", id);
+  if (error) {
+    return fail(
+      /starred/.test(error.message) && /schema cache|does not exist/i.test(error.message)
+        ? `${error.message} \u2014 migration 033 has not been applied to this database yet.`
+        : error.message,
+    );
+  }
+  revalidatePath("/partnerships", "layout");
   revalidatePath("/");
   return ok(id);
 }

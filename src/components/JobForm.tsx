@@ -6,6 +6,7 @@ import { useGlobalTransition } from "@/lib/useGlobalTransition";
 import Link from "next/link";
 import SaveBar from "@/components/SaveBar";
 import DispatchPicker from "@/components/DispatchPicker";
+import { TIME_STEP_SECONDS } from "@/lib/dates";
 import {
   AddButton,
   MoneyInput,
@@ -19,7 +20,6 @@ import { saveJob, type JobPayload } from "@/app/actions/jobs";
 import { optionsFor, type Lists } from "@/lib/lists";
 import { calculatedWorkerPay, effectiveWorkerPay, jobTotals, netWorkerPay } from "@/lib/calc";
 import { rateFor } from "@/lib/entity-filters";
-import { chicagoDateTimeInputValue, chicagoLocalToUTCISO } from "@/lib/dates";
 import { dateLongDisplayNoYear, money, timeDisplay } from "@/lib/format";
 import {
   CUSTOMER_TYPES,
@@ -87,6 +87,7 @@ export default function JobForm({
     customer_name: job?.customer_name ?? "",
     customer_phone: job?.customer_phone ?? "",
     customer_type: (job?.customer_type ?? "") as CustomerType | "",
+    direct_to_worker: job?.direct_to_worker ?? false,
     service_category_id: job?.service_category_id ?? "",
     inquiry_source_id: job?.inquiry_source_id ?? "",
     partnership_id: job?.partnership_id ?? "",
@@ -95,7 +96,6 @@ export default function JobForm({
     date_of_invoice: job?.date_of_invoice ?? "",
     confirmed_arrival_date: job?.confirmed_arrival_date ?? "",
     confirmed_arrival_time: job?.confirmed_arrival_time?.slice(0, 5) ?? "",
-    follow_up_local: job?.follow_up_at ? chicagoDateTimeInputValue(job.follow_up_at) : "",
     estimated_duration_minutes: str(job?.estimated_duration_minutes),
     total_invoice_paid: str(job?.total_invoice_paid ?? 0),
     pos_fee_percent: str(job?.pos_fee_percent ?? settings.default_pos_fee_percent),
@@ -128,6 +128,25 @@ export default function JobForm({
 
   function patchWindow(index: number, next: Partial<WindowState>) {
     setWindows((prev) => prev.map((w, i) => (i === index ? { ...w, ...next } : w)));
+    setStatusMsg(null);
+  }
+
+  /**
+   * Drops a window and closes the gap, so removing the first of three leaves
+   * two consecutively numbered windows rather than a blank slot followed by
+   * data. The backing array stays three long; the vacated slot moves to the
+   * end as a blank.
+   *
+   * Removing the last remaining window clears it rather than hiding it —
+   * there is always one slot on screen to type into. A window with no date is
+   * dropped on save, so clearing it is what deletes it from the job.
+   */
+  function removeWindow(index: number) {
+    setWindows((prev) => [
+      ...prev.filter((_, i) => i !== index),
+      { date: "", start_time: "", end_time: "" },
+    ]);
+    setWindowCount((n) => Math.max(1, n - 1));
     setStatusMsg(null);
   }
 
@@ -277,6 +296,7 @@ export default function JobForm({
         customer_name: form.customer_name,
         customer_phone: form.customer_phone,
         customer_type: form.customer_type || null,
+        direct_to_worker: form.direct_to_worker,
         service_category_id: form.service_category_id || null,
         inquiry_source_id: form.inquiry_source_id || null,
         partnership_id: showPartnership ? form.partnership_id || null : null,
@@ -292,7 +312,6 @@ export default function JobForm({
         confirmed_arrival_time: form.confirmed_arrival_time || null,
         estimated_duration_minutes: form.estimated_duration_minutes || null,
         addresses,
-        follow_up_at: form.follow_up_local ? chicagoLocalToUTCISO(form.follow_up_local) : null,
         total_invoice_paid: form.total_invoice_paid,
         pos_fee_percent: form.pos_fee_percent,
         total_worker_payout_override: form.total_worker_payout_override || null,
@@ -448,30 +467,24 @@ export default function JobForm({
             ))}
           </Select>
 
-          <div className="field">
-            <span className="label">Follow-up date/time</span>
-            <div className="flex items-center gap-2">
-              <input
-                type="datetime-local"
-                className="input"
-                value={form.follow_up_local}
-                onChange={(e) => patch({ follow_up_local: e.target.value })}
-              />
-              <button
-                type="button"
-                className="btn btn-sm shrink-0"
-                disabled={!form.follow_up_local}
-                onClick={() => patch({ follow_up_local: "" })}
-              >
-                Clear
-              </button>
-            </div>
-            <p className="mt-1 text-xs text-[var(--color-muted)]">
-              When to call this lead back. Blank means it won&rsquo;t show up anywhere. Shows on
-              Home under Calls Today when it falls today.
-            </p>
-          </div>
         </div>
+
+        <label className="flex cursor-pointer items-start gap-2">
+          <input
+            type="checkbox"
+            className="mt-1 size-4 accent-[var(--color-accent)]"
+            checked={form.direct_to_worker}
+            onChange={(e) => patch({ direct_to_worker: e.target.checked })}
+          />
+          <span>
+            <span className="text-sm font-semibold">Direct to worker</span>
+            <span className="muted block text-xs">
+              Passed straight to a worker, so no money runs through you. Invoice, payout,
+              fees and commission all read zero. The job still moves through the pipeline
+              and still needs following up.
+            </span>
+          </span>
+        </label>
       </Section>
 
       {/* ---------- scheduling ---------- */}
@@ -522,7 +535,7 @@ export default function JobForm({
               />
               <TextInput
                 label="Confirmed arrival time"
-                type="time"
+                type="time" step={TIME_STEP_SECONDS}
                 value={form.confirmed_arrival_time}
                 onChange={(e) => patch({ confirmed_arrival_time: e.target.value })}
               />
@@ -536,9 +549,25 @@ export default function JobForm({
             <div className="flex flex-col gap-2">
               {windows.slice(0, windowCount).map((w, i) => (
                 <details key={i} className="border border-[var(--color-line)]">
-                  <summary className="label cursor-pointer list-none p-2">
-                    Arrival window {i + 1}
-                    {w.date ? ` — ${windowSummary(w)}` : ""}
+                  <summary className="label flex cursor-pointer list-none items-center justify-between gap-2 p-2">
+                    <span className="min-w-0 truncate">
+                      Arrival window {i + 1}
+                      {w.date ? ` — ${windowSummary(w)}` : ""}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger shrink-0"
+                      aria-label={`Remove arrival window ${i + 1}`}
+                      onClick={(e) => {
+                        // The click would otherwise bubble to <summary> and
+                        // toggle the panel open as it is being removed.
+                        e.preventDefault();
+                        e.stopPropagation();
+                        removeWindow(i);
+                      }}
+                    >
+                      Remove
+                    </button>
                   </summary>
                   <div className="grid-form p-2 pt-0">
                     <TextInput
@@ -549,13 +578,13 @@ export default function JobForm({
                     />
                     <TextInput
                       label="Start time"
-                      type="time"
+                      type="time" step={TIME_STEP_SECONDS}
                       value={w.start_time}
                       onChange={(e) => patchWindow(i, { start_time: e.target.value })}
                     />
                     <TextInput
                       label="End time"
-                      type="time"
+                      type="time" step={TIME_STEP_SECONDS}
                       value={w.end_time}
                       onChange={(e) => patchWindow(i, { end_time: e.target.value })}
                     />
@@ -949,7 +978,7 @@ export default function JobForm({
         />
       )}
 
-      <SaveBar onSave={save} pending={pending} status={status} error={error} />
+      <SaveBar onSave={save} pending={pending} status={status} error={error} label="Save job" />
     </>
   );
 }

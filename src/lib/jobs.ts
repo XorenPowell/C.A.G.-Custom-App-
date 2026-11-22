@@ -30,6 +30,7 @@ export async function getJobFinancials(jobIds: string[]): Promise<Map<string, Jo
 export const SORT_FIELDS = [
   { value: "date_of_invoice", label: "Invoice date" },
   { value: "arrival_date", label: "Arrival date" },
+  { value: "follow_up_at", label: "Follow-up" },
   { value: "created_at", label: "Created" },
   { value: "job_id", label: "Job ID" },
   { value: "customer_name", label: "Customer" },
@@ -69,7 +70,9 @@ export type JobListRow = {
   date_of_invoice: string | null;
   arrival_date: string | null;
   arrival_time: string | null;
+  follow_up_at: string | null;
   total_invoice_paid: number;
+  direct_to_worker: boolean;
   created_at: string;
 };
 
@@ -90,9 +93,12 @@ export type JobListResult = {
 export async function getJobList(f: JobFilters): Promise<JobListResult> {
   const supabase = await createClient();
 
+  // Newest first, by when the job was created. The list is read far more
+  // often to see what just came in than to plan a day, and an unsorted
+  // arrival date buries every job that has not been booked yet.
   const sort: SortField = (SORT_FIELDS.find((s) => s.value === f.sort)?.value ??
-    "arrival_date") as SortField;
-  const ascending = f.dir === undefined ? true : f.dir === "asc";
+    "created_at") as SortField;
+  const ascending = f.dir === "asc";
   const page = Math.max(1, parseInt(f.page ?? "1", 10) || 1);
 
   let jobIdsForEntity: string[] | null = null;
@@ -117,14 +123,14 @@ export async function getJobList(f: JobFilters): Promise<JobListResult> {
   let query = supabase
     .from("jobs")
     .select(
-      "id, job_id, customer_name, customer_phone, status, service_category_id, inquiry_source_id, zone_id, partnership_id, date_of_invoice, arrival_date, arrival_time, total_invoice_paid, created_at",
+      "id, job_id, customer_name, customer_phone, status, service_category_id, inquiry_source_id, zone_id, partnership_id, date_of_invoice, arrival_date, arrival_time, follow_up_at, total_invoice_paid, direct_to_worker, created_at",
       { count: "exact" },
     );
 
-  // Fresh navigation (no `status` param) defaults to Booked; an explicit "All"
-  // selection from the filter form comes through as "" and is respected.
-  const status = f.status === undefined ? "Booked" : f.status;
-  if (status) query = query.eq("status", status);
+  // No status filter unless one is asked for. Defaulting to Booked hid
+  // every inquiry and quote behind a dropdown, which made the list look
+  // like it had lost them.
+  if (f.status) query = query.eq("status", f.status);
   if (f.category) query = query.eq("service_category_id", f.category);
   if (f.source) query = query.eq("inquiry_source_id", f.source);
   if (f.zone) query = query.eq("zone_id", f.zone);

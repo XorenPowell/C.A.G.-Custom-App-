@@ -7,7 +7,8 @@ export type ListKind =
   | "vehicle_type"
   | "partnership_status"
   | "partnership_tier"
-  | "conversation_outcome";
+  | "conversation_outcome"
+  | "contact_role";
 
 export const JOB_STATUSES = [
   "Inquiry",
@@ -18,6 +19,13 @@ export const JOB_STATUSES = [
   "Lost",
 ] as const;
 export type JobStatus = (typeof JOB_STATUSES)[number];
+
+/** Terminal: the job is finished or dead and needs no scheduled next step. */
+export const CLOSED_JOB_STATUSES = ["Completed", "Cancelled", "Lost"] as const;
+
+export function isJobOpen(status: string): boolean {
+  return !(CLOSED_JOB_STATUSES as readonly string[]).includes(status);
+}
 
 export const CUSTOMER_TYPES = ["Residential", "Commercial"] as const;
 export type CustomerType = (typeof CUSTOMER_TYPES)[number];
@@ -33,6 +41,8 @@ export type ListItem = {
   kind: ListKind;
   name: string;
   description: string | null;
+  /** conversation_outcome only: cards handed over when this outcome is picked. */
+  default_cards: number | null;
   /** conversation_outcome only: pre-fills a conversation's intent level when this outcome is picked. */
   default_intent_level: number | null;
   /** service_category only: pre-fills a job's Details when this category is picked and Details is empty. */
@@ -57,8 +67,8 @@ export type Settings = {
   pay_period_start_day: number;
   /** Work Face to Face: conversations-per-day target. Resets with the calendar day. */
   face_to_face_daily_goal: number;
-  /** Partnerships zone-maturity card: every zone's target count of Mature-status partnerships. */
-  mature_partnership_goal_per_zone: number;
+  /** Day offsets behind the next-action quick-pick buttons, e.g. [1,3,7,30]. */
+  next_action_presets: number[];
   /** Per-token color overrides from the Appearance settings screen. Empty object = shipped defaults. */
   theme_overrides: Record<string, string>;
 };
@@ -161,23 +171,118 @@ export type Partnership = {
   zone_id: string | null;
   status_id: string | null;
   tier_id: string | null;
-  poc_name: string | null;
-  poc_phone: string | null;
-  poc_email: string | null;
-  secondary_poc_name: string | null;
-  secondary_poc_phone: string | null;
-  secondary_poc_email: string | null;
-  last_visit: string | null;
-  cards_dropped_last_visit: number;
-  total_cards_dropped: number;
-  fliers_dropped_last_visit: number;
-  total_fliers_dropped: number;
   last_contact: string | null;
+  /**
+   * The booked callback. Supersedes follow_up_days, which was an offset from
+   * last_contact and so moved every time contact was logged.
+   */
+  follow_up_at: string | null;
+  follow_up_note: string | null;
+  follow_up_kind: FollowUpKind;
+  /** Retained so 022 stays reversible; nothing reads it any more. */
   follow_up_days: number | null;
   /** Stamped once, the first time status ever entered that stage. Never overwritten afterward. */
   developing_at: string | null;
   mature_at: string | null;
   notes: string | null;
+  /** Marked important by hand. Stage and tier say what a partnership is; this says whether it matters. */
+  starred: boolean;
+  created_at: string;
+};
+
+/** A person. Lives on its own so a stack of cards can be segmented by role. */
+export type Contact = {
+  id: string;
+  partnership_id: string | null;
+  name: string;
+  role_id: string | null;
+  title: string | null;
+  email: string | null;
+  phone: string | null;
+  source: string | null;
+  notes: string | null;
+  email_opt_out: boolean;
+  last_emailed_at: string | null;
+  created_at: string;
+};
+
+export type Campaign = {
+  id: string;
+  name: string;
+  short_name: string | null;
+  description: string | null;
+  target: number;
+  active: boolean;
+  sort_order: number;
+};
+
+/** One business carrying campaign material, with its own restock clock. */
+export type CampaignPlacement = {
+  id: string;
+  campaign_id: string;
+  partnership_id: string;
+  location: string | null;
+  placed_on: string;
+  last_restock_on: string | null;
+  restock_interval_days: number;
+  cards_left: number | null;
+  removed_on: string | null;
+  notes: string | null;
+};
+
+/**
+ * A restock is not a kind of its own: it is a visit to a business that
+ * happens to have a stack. Two kinds for one event meant two queues and
+ * two lists. Collapsed in 029.
+ */
+export const ACTIVITY_KINDS = ["call", "text", "email", "visit", "note"] as const;
+
+/**
+ * What can be booked as a next action. Narrower than ACTIVITY_KINDS: a note
+ * is not something you schedule, and a restock is driven by its placement's
+ * own cadence rather than booked by hand.
+ */
+export const FOLLOW_UP_KINDS = ["call", "visit", "text", "email"] as const;
+export type FollowUpKind = (typeof FOLLOW_UP_KINDS)[number];
+
+/** Verb for the card heading, so it never reads "Call back on" for a visit. */
+export const FOLLOW_UP_LABELS: Record<FollowUpKind, { noun: string; when: string }> = {
+  call:  { noun: "Call",  when: "Call back on" },
+  visit: { noun: "Visit", when: "Visit on" },
+  text:  { noun: "Text",  when: "Text on" },
+  email: { noun: "Email", when: "Email on" },
+};
+export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
+
+/** Shared history for partnerships and jobs. Exactly one parent is ever set. */
+export type Activity = {
+  id: string;
+  partnership_id: string | null;
+  job_id: string | null;
+  contact_id: string | null;
+  kind: ActivityKind;
+  outcome: string | null;
+  note: string | null;
+  occurred_at: string;
+  /** Cards left at the business on this visit. */
+  cards_dropped: number | null;
+  /** Cards still sitting there on arrival — the restock observation. */
+  cards_found: number | null;
+  created_at: string;
+};
+
+/** A batch of cards collected from the printer. The ledger's income side. */
+export type CardReceipt = {
+  id: string;
+  received_on: string;
+  /** For a receipt, how many arrived. For a count, the signed correction. */
+  quantity: number;
+  /** 'receipt' is a batch collected; 'count' is a stock count that corrects the balance. */
+  kind: "receipt" | "count";
+  /** The figure counted, on a count row. Null on a receipt. */
+  counted_total: number | null;
+  source: string | null;
+  note: string | null;
   created_at: string;
 };
 
@@ -212,6 +317,16 @@ export type Job = {
   google_calendar_event_id: string | null;
   /** When the dispatcher needs to call this lead back. Null means it doesn't show up anywhere. */
   follow_up_at: string | null;
+  /** Why — chasing a deposit and confirming arrival are different calls. */
+  follow_up_note: string | null;
+  follow_up_kind: FollowUpKind;
+  /**
+   * Handed straight to a worker: a real job that still needs following up,
+   * but no money passes through the dispatcher. job_financials zeroes every
+   * figure for these; the underlying columns are left alone so unticking it
+   * restores them.
+   */
+  direct_to_worker: boolean;
   /** Trigger-maintained: stamped the moment status becomes Completed, cleared if it moves back out. */
   completed_at: string | null;
   created_at: string;
@@ -334,5 +449,7 @@ export type FaceToFaceConversation = {
   outcome_id: string | null;
   /** 1-10 slider: how interested the dispatcher judged them to be. */
   intent_level: number;
+  /** Cards handed over. Defaults from the outcome; editable per conversation. */
+  cards_dropped: number;
   created_at: string;
 };

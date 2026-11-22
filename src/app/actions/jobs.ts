@@ -39,6 +39,7 @@ export type JobPayload = {
   customer_name: string | null;
   customer_phone: string | null;
   customer_type: CustomerType | null;
+  direct_to_worker: boolean;
   service_category_id: string | null;
   inquiry_source_id: string | null;
   partnership_id: string | null;
@@ -53,7 +54,6 @@ export type JobPayload = {
   estimated_duration_minutes: number | string | null;
   addresses: string[];
   /** UTC ISO instant, already converted from the dispatcher's local input. Null shows up nowhere. */
-  follow_up_at: string | null;
   total_invoice_paid: number | string;
   pos_fee_percent: number | string;
   total_worker_payout_override: number | string | null;
@@ -88,7 +88,6 @@ export async function saveJob(payload: JobPayload): Promise<JobSaveResult> {
         ? null
         : toInt(payload.estimated_duration_minutes),
     addresses: payload.addresses.map((a) => a.trim()).filter(Boolean),
-    follow_up_at: payload.follow_up_at || null,
     total_invoice_paid: toNum(payload.total_invoice_paid),
     pos_fee_percent: toNum(payload.pos_fee_percent),
     total_worker_payout_override: toNullableNum(payload.total_worker_payout_override),
@@ -155,9 +154,13 @@ export async function saveJob(payload: JobPayload): Promise<JobSaveResult> {
   const delWindows = await supabase.from("job_arrival_windows").delete().eq("job_id", jobId);
   if (delWindows.error) return fail(delWindows.error.message);
 
+  // Filter before numbering. Numbering first left a hole in sort_order
+  // whenever a window was cleared (fill only window 2 and it saved as
+  // sort_order 1), which reloaded as an empty slot above a populated one and
+  // shifted the {{arrival_window_N}} template variables by one.
   const windows = payload.arrival_windows
-    .map((w, i) => ({ ...w, sort_order: i }))
-    .filter((w) => orNull(w.date));
+    .filter((w) => orNull(w.date))
+    .map((w, i) => ({ ...w, sort_order: i }));
 
   if (windows.length) {
     const { error: windowError } = await supabase.from("job_arrival_windows").insert(

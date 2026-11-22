@@ -8,8 +8,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 dev.log
-.env
-.env*.local
+# Every env file is ignored, however it is named. `.env*.local` alone let
+# a file like .env.staging through, which is how secrets get committed.
+.env*
+!.env*.example
 .vercel
 
 # Credential screenshots and exports — never commit these

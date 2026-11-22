@@ -7,6 +7,8 @@ export {
   followUpDue,
   followUpLabel,
   followUpState,
+  followUpTime,
+  hasNoNextAction,
   type FollowUpState,
 } from "@/lib/follow-up";
 
@@ -33,17 +35,13 @@ export type PartnershipFilters = {
   zone?: string;
   /** "due" = overdue or due today, "overdue" = overdue only. */
   due?: string;
+  /** Saved views: "none" = nothing scheduled, "never" = never contacted. */
+  view?: string;
   sort?: string;
   /** When set, rows with this status_id (Rejected) are dropped. */
   excludeStatusId?: string | null;
 };
 
-export const PARTNERSHIP_SORTS = [
-  { value: "follow_up", label: "Follow-up due" },
-  { value: "business_name", label: "Business name" },
-  { value: "last_contact", label: "Last contact" },
-  { value: "created_at", label: "Recently added" },
-] as const;
 
 export function filterPartnerships(
   rows: Partnership[],
@@ -58,6 +56,11 @@ export function filterPartnerships(
     if (f.zone && p.zone_id !== f.zone) return false;
     if (f.excludeStatusId && p.status_id === f.excludeStatusId) return false;
 
+    // Saved views. "none" is the leak detector: a partnership with no booked
+    // callback drops out of every due-based list and is never seen again.
+    if (f.view === "none" && p.follow_up_at) return false;
+    if (f.view === "never" && p.last_contact) return false;
+
     if (f.due) {
       const state = followUpState(p, today);
       if (f.due === "overdue" && state !== "overdue") return false;
@@ -69,8 +72,6 @@ export function filterPartnerships(
       const hay = [
         p.business_name,
         p.address,
-        p.poc_name,
-        p.secondary_poc_name,
         p.notes,
       ]
         .filter(Boolean)
@@ -90,12 +91,23 @@ function sortPartnerships(rows: Partnership[], sort?: string): Partnership[] {
     a.business_name.localeCompare(b.business_name);
 
   switch (sort) {
+    case "starred":
+      // Starred first, then alphabetically within each group, so the
+      // handful that matter sit at the top in a stable order.
+      return out.sort(
+        (a, b) => Number(!!b.starred) - Number(!!a.starred) || byName(a, b),
+      );
     case "business_name":
       return out.sort(byName);
     case "last_contact":
       // Never contacted sorts last, not first.
       return out.sort(
         (a, b) => (b.last_contact ?? "").localeCompare(a.last_contact ?? "") || byName(a, b),
+      );
+    case "last_contact_oldest":
+      // Never contacted is the coldest thing there is, so it sorts first here.
+      return out.sort(
+        (a, b) => (a.last_contact ?? "").localeCompare(b.last_contact ?? "") || byName(a, b),
       );
     case "created_at":
       return out.sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -113,12 +125,6 @@ function sortPartnerships(rows: Partnership[], sort?: string): Partnership[] {
   }
 }
 
-/** Color band for a zone's mature-partnership percentage. */
-export function maturityTone(percent: number): "good" | "warn" | "danger" {
-  if (percent >= 75) return "good";
-  if (percent >= 40) return "warn";
-  return "danger";
-}
 
 export type PartnershipReferral = {
   id: string;

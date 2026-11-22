@@ -72,6 +72,15 @@ export function chicagoDateTimeInputValue(instant: string): string {
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour") === "24" ? "00" : get("hour")}:${get("minute")}`;
 }
 
+/** UTC instant -> Chicago wall-clock time, e.g. "9:00 AM". */
+export function chicagoTimeLabel(instant: string | Date): string {
+  return new Date(instant).toLocaleTimeString("en-US", {
+    timeZone: TIME_ZONE,
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 /** "YYYY-MM-DDTHH:mm" Chicago wall time -> UTC ISO instant. */
 export function chicagoLocalToUTCISO(local: string): string {
   // Parsed as if it were already UTC — just a fixed reference point to
@@ -187,4 +196,23 @@ export function inRange(date: string | null, r: DateRange): boolean {
   if (r.start && d < r.start) return false;
   if (r.end && d > r.end) return false;
   return true;
+}
+
+/**
+ * Every time input steps in quarter hours.
+ *
+ * Work is billed in 15-minute increments, so a free-scrolling minute picker
+ * offers precision the business does not use and makes every entry slower.
+ * Expressed in seconds because that is the unit the `step` attribute takes.
+ */
+export const TIME_STEP_SECONDS = 900;
+
+/** Rounds "HH:MM" to the nearest quarter hour. */
+export function snapToQuarterHour(value: string): string {
+  const [h, m] = value.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return value;
+  const total = Math.round((h * 60 + m) / 15) * 15;
+  const capped = Math.min(total, 23 * 60 + 45);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(Math.floor(capped / 60))}:${pad(capped % 60)}`;
 }

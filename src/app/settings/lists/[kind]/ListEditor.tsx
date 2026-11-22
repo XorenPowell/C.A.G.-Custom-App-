@@ -32,6 +32,7 @@ export default function ListEditor({
       name: i.name,
       description: i.description,
       default_intent_level: i.default_intent_level,
+      default_cards: i.default_cards,
       details_template: i.details_template,
       sort_order: i.sort_order,
       archived: i.archived,
@@ -54,6 +55,7 @@ export default function ListEditor({
         name: "",
         description: null,
         default_intent_level: null,
+        default_cards: null,
         details_template: null,
         sort_order: 0,
         archived: false,
@@ -177,6 +179,30 @@ export default function ListEditor({
                     />
                     <p className="mt-1 text-xs text-[var(--color-muted)]">
                       Pre-fills the intent slider when this outcome is picked, e.g. Visitor → 0.
+                    </p>
+                  </div>
+                )}
+                {withIntentLevel && (
+                  <div className="field mb-2">
+                    <span className="label">Cards handed over (optional)</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={1}
+                      inputMode="numeric"
+                      className="input"
+                      placeholder="No default — the count stays at 1"
+                      value={row.default_cards ?? ""}
+                      onChange={(e) =>
+                        patch(index, {
+                          default_cards: e.target.value === "" ? null : Number(e.target.value),
+                        })
+                      }
+                    />
+                    <p className="mt-1 text-xs text-[var(--color-muted)]">
+                      Pre-fills the card count when this outcome is picked, e.g. Took a card → 1,
+                      Not interested → 0. Counts against your stock on the Cards screen.
                     </p>
                   </div>
                 )}

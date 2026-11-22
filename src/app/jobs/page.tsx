@@ -6,7 +6,13 @@ import { getEntitiesFull } from "@/lib/entities";
 import { getPartnerships } from "@/lib/partnerships";
 import { active, getLists, lookup, nameMap } from "@/lib/data";
 import { chicagoDateOf } from "@/lib/dates";
-import { dateDisplay, money, phoneDisplay, timeDisplay } from "@/lib/format";
+import {
+  dateDisplay,
+  instantTimeDisplay,
+  money,
+  phoneDisplay,
+  timeDisplay,
+} from "@/lib/format";
 import { JOB_STATUSES } from "@/lib/types";
 
 const STATUS_TONE: Record<string, string> = {
@@ -40,8 +46,10 @@ export default async function JobsPage({
   ]);
   const names = nameMap(lists);
 
-  const sort = sp.sort ?? "arrival_date";
-  const dir: "asc" | "desc" = sp.dir === undefined ? "asc" : sp.dir === "asc" ? "asc" : "desc";
+  // These have to match getJobList's own defaults exactly, or the form
+  // would describe an ordering the rows are not actually in.
+  const sort = sp.sort ?? "created_at";
+  const dir: "asc" | "desc" = sp.dir === "asc" ? "asc" : "desc";
   const anyFilter = [
     sp.q,
     sp.status,
@@ -91,7 +99,7 @@ export default async function JobsPage({
           <FilterSelect
             name="status"
             label="Status"
-            value={sp.status ?? "Booked"}
+            value={sp.status ?? ""}
             options={JOB_STATUSES.map((s) => ({ id: s, name: s }))}
           />
           <FilterText name="from" label="Invoiced from" value={sp.from ?? ""} type="date" />
@@ -206,9 +214,9 @@ export default async function JobsPage({
               <thead>
                 <tr>
                   <SortHeader field="job_id" label="Job" />
-                  <SortHeader field="date_of_invoice" label="Invoiced" />
-                  <SortHeader field="arrival_date" label="Arrival" />
                   <SortHeader field="customer_name" label="Customer" />
+                  <SortHeader field="arrival_date" label="Arrival" />
+                  <SortHeader field="follow_up_at" label="Follow-up" />
                   <th>Service</th>
                   <th>Source</th>
                   <th>Workers</th>
@@ -230,17 +238,28 @@ export default async function JobsPage({
                           Created {dateDisplay(chicagoDateOf(j.created_at))}
                         </div>
                       </td>
-                      <td className="whitespace-nowrap">{dateDisplay(j.date_of_invoice)}</td>
+                      <td>
+                        {j.customer_name || "—"}
+                        {j.customer_phone && (
+                          <div className="muted text-xs">{phoneDisplay(j.customer_phone)}</div>
+                        )}
+                      </td>
                       <td className="whitespace-nowrap">
                         {dateDisplay(j.arrival_date)}
                         {j.arrival_time && (
                           <div className="muted text-xs">{timeDisplay(j.arrival_time)}</div>
                         )}
                       </td>
-                      <td>
-                        {j.customer_name || "—"}
-                        {j.customer_phone && (
-                          <div className="muted text-xs">{phoneDisplay(j.customer_phone)}</div>
+                      <td className="whitespace-nowrap">
+                        {j.follow_up_at ? (
+                          <>
+                            {dateDisplay(chicagoDateOf(j.follow_up_at))}
+                            <div className="muted text-xs">
+                              {instantTimeDisplay(j.follow_up_at)}
+                            </div>
+                          </>
+                        ) : (
+                          <span className="muted">—</span>
                         )}
                       </td>
                       <td>{lookup(names, j.service_category_id)}</td>
@@ -250,6 +269,11 @@ export default async function JobsPage({
                       </td>
                       <td>
                         <span className={`badge ${STATUS_TONE[j.status] ?? ""}`}>{j.status}</span>
+                        {j.direct_to_worker && (
+                          <div className="mt-0.5 text-[10px] font-bold text-[var(--color-accent)]">
+                            DIRECT
+                          </div>
+                        )}
                       </td>
                       <td className="mono">{money(j.total_invoice_paid)}</td>
                       <td

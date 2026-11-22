@@ -2,8 +2,16 @@ import { notFound } from "next/navigation";
 import TopBar from "@/components/TopBar";
 import JobForm from "@/components/JobForm";
 import CommsActions from "@/components/CommsActions";
+import ActivityTrail from "@/components/ActivityTrail";
+import LogContact from "@/components/LogContact";
+import NextActionCard from "@/components/NextActionCard";
 import DeleteJobButton from "./DeleteJobButton";
 import { getJob, getJobFinancialsOne } from "@/lib/jobs";
+import { getJobActivity } from "@/lib/activity";
+import { getScheduledForJob } from "@/lib/scheduled";
+import PlannedActions from "@/components/PlannedActions";
+import { followUpLabel, followUpState } from "@/lib/follow-up";
+import { isJobOpen } from "@/lib/types";
 import { getEntitiesFull } from "@/lib/entities";
 import { getPartnerships } from "@/lib/partnerships";
 import { getLists, getSettings, getTemplates, lookup, nameMap, partnershipReferralId } from "@/lib/data";
@@ -16,7 +24,7 @@ export default async function JobDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [job, lists, entities, partnerships, settings, templates, financials] =
+  const [job, lists, entities, partnerships, settings, templates, financials, activity] =
     await Promise.all([
       getJob(id),
       getLists(),
@@ -25,11 +33,18 @@ export default async function JobDetailPage({
       getSettings(),
       getTemplates(),
       getJobFinancialsOne(id),
+      getJobActivity(id),
     ]);
+  const planned = await getScheduledForJob(id);
+  const presets = settings.next_action_presets ?? undefined;
 
   if (!job) notFound();
 
   const names = nameMap(lists);
+  const jobDue = followUpState(job);
+  // A finished job with nothing booked is the correct end state, not a
+  // problem to flag in red.
+  const jobOpen = isJobOpen(job.status);
   const assigned = job.job_workers
     .map((w) => {
       const e = entities.find((entity) => entity.id === w.entity_id);
@@ -69,6 +84,11 @@ export default async function JobDetailPage({
 
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <span className="badge border-[var(--color-line)]">{job.status}</span>
+          {job.direct_to_worker && (
+            <span className="badge border-[var(--color-accent)] text-[var(--color-accent)]">
+              DIRECT TO WORKER
+            </span>
+          )}
           {financials?.repeat_customer && (
             <span className="badge border-[var(--color-accent)] text-[var(--color-accent)]">
               Repeat customer
@@ -80,6 +100,59 @@ export default async function JobDetailPage({
             </span>
           )}
         </div>
+
+        {/* Jobs leak the same way partnerships do: a deposit paid, then two
+            weeks of silence before the work starts. Same card, same rules. */}
+        <div className="mb-3">
+          <NextActionCard
+            jobId={job.id}
+            followUpAt={job.follow_up_at}
+            followUpNote={job.follow_up_note}
+            followUpKind={job.follow_up_kind}
+            tone={jobDue}
+            dueLabel={followUpLabel(job)}
+            emptyLabel={jobOpen ? "nothing booked" : job.status}
+            alarmWhenEmpty={jobOpen}
+            presets={presets}
+          >
+            {jobOpen ? (
+              <p className="note">
+                Chasing a deposit and confirming arrival are different calls — say which
+                in <strong>What for</strong> so the queue tells you why it is ringing.
+                This card saves on its own; the Save at the bottom is for the job itself.
+              </p>
+            ) : (
+              <p className="note">
+                This job is {job.status.toLowerCase()}, so no follow-up is expected. Book
+                one anyway to chase a review or check in later and it will appear in your
+                calls like any other.
+              </p>
+            )}
+            <div className="mt-3">
+              <LogContact
+                jobId={job.id}
+                currentFollowUpAt={job.follow_up_at}
+                currentFollowUpNote={job.follow_up_note}
+                compact
+                presets={presets}
+              />
+            </div>
+          </NextActionCard>
+        </div>
+
+        <section className="card mb-3">
+          <div className="section-title">Activity ({activity.length})</div>
+          <div className="card-pad">
+            <PlannedActions jobId={job.id} actions={planned} presets={presets} />
+            <div className="mb-2 border-t border-[var(--color-line)] pt-2">
+              <span className="label mb-0">History</span>
+            </div>
+            <ActivityTrail
+              entries={activity}
+              emptyHint="Nothing logged yet. Log contact records what was said and books the next call."
+            />
+          </div>
+        </section>
 
         {/* Communication actions resolve templates against the saved record. */}
         <section className="card mb-3">
